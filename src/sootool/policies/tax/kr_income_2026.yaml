@@ -1,0 +1,22 @@
+sha256: "6e29cc3458d78916b8b215cbb7ee8d210f882c78993bb59a33b031ccfb7c085f"
+effective_date: "2026-01-01"
+notice_no: "기획재정부 고시 제2025-XXX호"
+source_url: "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2226"
+data:
+  brackets:
+    - upper: 14000000
+      rate: 0.06
+    - upper: 50000000
+      rate: 0.15
+    - upper: 88000000
+      rate: 0.24
+    - upper: 150000000
+      rate: 0.35
+    - upper: 300000000
+      rate: 0.38
+    - upper: 500000000
+      rate: 0.40
+    - upper: 1000000000
+      rate: 0.42
+    - upper: null
+      rate: 0.45
