@@ -151,6 +151,17 @@ def _register_core_tools() -> None:
         ex = BatchExecutor(registry=REGISTRY, max_workers=max_workers, item_timeout_s=item_timeout_s, batch_timeout_s=batch_timeout_s, deterministic=deterministic)
         return ex.run(items=items)
 
+    from sootool.core.pipeline import PipelineExecutor, resume_pipeline
+
+    @REGISTRY.tool(namespace="core", name="pipeline", description="DAG 의존 연산")
+    def core_pipeline(steps: list[dict], step_timeout_s: float = 2.0, pipeline_timeout_s: float = 30.0) -> dict:
+        ex = PipelineExecutor(registry=REGISTRY, step_timeout_s=step_timeout_s, pipeline_timeout_s=pipeline_timeout_s)
+        return ex.run(steps=steps)
+
+    @REGISTRY.tool(namespace="core", name="pipeline_resume", description="파이프라인 부분 재실행")
+    def core_pipeline_resume(pipeline_id: str, from_step: str) -> dict:
+        return resume_pipeline(pipeline_id, from_step, REGISTRY)
+
 
 _register_core_tools()
 

@@ -125,3 +125,15 @@ def test_server_core_batch_roundtrip():
     by_id = {r["id"]: r for r in out["results"]}
     assert by_id["x"]["result"]["result"] == "6"
     assert by_id["y"]["result"]["result"] == "24"
+
+
+def test_server_core_pipeline_chain():
+    from sootool.server import invoke_tool
+    out = invoke_tool("core.pipeline", {
+        "steps": [
+            {"id": "sum", "tool": "core.add", "args": {"operands": ["1", "2", "3"]}},
+            {"id": "double", "tool": "core.mul", "args": {"operands": ["${sum.result.result}", "2"]}},
+        ]
+    })
+    assert out["status"] == "ok"
+    assert out["steps"]["double"]["result"]["result"] == "12"
