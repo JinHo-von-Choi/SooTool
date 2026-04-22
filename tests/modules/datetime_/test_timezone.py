@@ -1,9 +1,7 @@
 """Tests for datetime.tz_convert tool."""
 from __future__ import annotations
 
-import pytest
-
-import sootool.modules.datetime_  # ensure tools are registered
+import sootool.modules.datetime_  # noqa: F401
 from sootool.core.registry import REGISTRY
 
 

@@ -3,9 +3,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
-
-import sootool.modules.datetime_  # ensure tools are registered
+import sootool.modules.datetime_  # noqa: F401
 from sootool.core.registry import REGISTRY
 
 

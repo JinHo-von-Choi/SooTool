@@ -1,9 +1,7 @@
 """Tests for datetime.add_business_days and datetime.count_business_days."""
 from __future__ import annotations
 
-import pytest
-
-import sootool.modules.datetime_  # ensure tools are registered
+import sootool.modules.datetime_  # noqa: F401
 from sootool.core.batch import BatchExecutor
 from sootool.core.registry import REGISTRY
 

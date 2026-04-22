@@ -1,9 +1,7 @@
 """Tests for accounting.balance tool."""
 from __future__ import annotations
 
-import pytest
-
-import sootool.modules.accounting  # ensure tools are registered
+import sootool.modules.accounting  # noqa: F401
 from sootool.core.batch import BatchExecutor
 from sootool.core.registry import REGISTRY
 
