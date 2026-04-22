@@ -1,0 +1,39 @@
+[project]
+name = "sootool"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "nirna", email = "jinho.von.choi@nerdvana.kr" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "holidays>=0.95",
+    "mcp[cli]>=1.2",
+    "mpmath>=1.4.1",
+    "numpy>=2.0",
+    "numpy-financial>=1.0.0",
+    "pint>=0.25.3",
+    "pydantic>=2.13.3",
+    "python-dateutil>=2.9.0.post0",
+    "pyyaml>=6.0.3",
+    "scipy>=1.13",
+    "statsmodels>=0.14.6",
+    "workalendar>=17.0.0",
+]
+
+[project.scripts]
+sootool = "sootool.__main__:main"
+
+[build-system]
+requires = ["uv_build>=0.10.0,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "hypothesis>=6.152.1",
+    "mypy>=1.20.2",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.11",
+]
