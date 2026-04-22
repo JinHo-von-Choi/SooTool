@@ -1,0 +1,97 @@
+sha256: "786f1ffcec7d8c6f655930af96afe1e3e47309d9837f6987b5f67c869fc751f1"
+effective_date: "2026-01-01"
+notice_no: "기획재정부 고시 제2025-XXX호"
+source_url: "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2310"
+data:
+  # 장기보유특별공제율 (소득세법 제95조 제2항)
+  # 일반 부동산: 보유 3년~15년, 2%/년 (최대 30%)
+  # 1세대1주택: 보유 3년~10년 4%/년 + 거주기간 추가공제 (최대 80%)
+  # 참고: 2026년 개정 미발표로 2025년 기준 적용
+  general:
+    # 보유연수: 공제율 (소득세법 제95조 제2항 제1호)
+    # 3년 미만: 0%, 3년: 6%, 4년: 8%, ..., 15년: 30%
+    - holding_years_min: 3
+      holding_years_max: 3
+      rate: 0.06
+    - holding_years_min: 4
+      holding_years_max: 4
+      rate: 0.08
+    - holding_years_min: 5
+      holding_years_max: 5
+      rate: 0.10
+    - holding_years_min: 6
+      holding_years_max: 6
+      rate: 0.12
+    - holding_years_min: 7
+      holding_years_max: 7
+      rate: 0.14
+    - holding_years_min: 8
+      holding_years_max: 8
+      rate: 0.16
+    - holding_years_min: 9
+      holding_years_max: 9
+      rate: 0.18
+    - holding_years_min: 10
+      holding_years_max: 10
+      rate: 0.20
+    - holding_years_min: 11
+      holding_years_max: 11
+      rate: 0.22
+    - holding_years_min: 12
+      holding_years_max: 12
+      rate: 0.24
+    - holding_years_min: 13
+      holding_years_max: 13
+      rate: 0.26
+    - holding_years_min: 14
+      holding_years_max: 14
+      rate: 0.28
+    - holding_years_min: 15
+      holding_years_max: null
+      rate: 0.30
+  one_house:
+    # 1세대1주택 장기보유특별공제 (소득세법 제95조 제2항 제2호)
+    # 보유기간 3년~10년: 연 8% (거주기간 2년 이상 요건 충족 가정)
+    # 10년 이상: 80% (보유+거주 최대 80%)
+    # 참고: 2021년 이후 보유+거주 각각 4%씩 합산하여 최대 80%
+    - holding_years_min: 3
+      holding_years_max: 3
+      rate: 0.24
+    - holding_years_min: 4
+      holding_years_max: 4
+      rate: 0.32
+    - holding_years_min: 5
+      holding_years_max: 5
+      rate: 0.40
+    - holding_years_min: 6
+      holding_years_max: 6
+      rate: 0.48
+    - holding_years_min: 7
+      holding_years_max: 7
+      rate: 0.56
+    - holding_years_min: 8
+      holding_years_max: 8
+      rate: 0.64
+    - holding_years_min: 9
+      holding_years_max: 9
+      rate: 0.72
+    - holding_years_min: 10
+      holding_years_max: null
+      rate: 0.80
+  income_tax_brackets:
+    - upper: 14000000
+      rate: 0.06
+    - upper: 50000000
+      rate: 0.15
+    - upper: 88000000
+      rate: 0.24
+    - upper: 150000000
+      rate: 0.35
+    - upper: 300000000
+      rate: 0.38
+    - upper: 500000000
+      rate: 0.40
+    - upper: 1000000000
+      rate: 0.42
+    - upper: null
+      rate: 0.45

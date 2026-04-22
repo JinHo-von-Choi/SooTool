@@ -1,0 +1,50 @@
+sha256: "3b3f5e7754555d399f55017808d2e850704e797e3da30c56e52c65cacf6683cc"
+effective_date: "2026-01-01"
+notice_no: "국세청 고시 제2025-500호"
+source_url: "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2338"
+data:
+  # 2026년 근로소득 간이세액표 (간소화 공식 버전)
+  # 실제 간이세액표는 복잡한 룩업 테이블이나, 다음 근사 공식을 사용:
+  # 연간 소득 = 월급여 * 12
+  # 근로소득공제 후 과세표준에 소득세율 적용, 월 단위로 나눔
+  # 부양가족 공제: 1인당 월 15,830원
+  #
+  # 참고: 국세청 2026 간이세액표 미발표로 2025년 기준 근사값 적용
+  #       실제 발표 후 YAML 업데이트 필요
+  base_deduction: 1500000
+  labor_income_deduction_brackets:
+    - upper: 5000000
+      rate: 0.70
+      offset: 0
+    - upper: 15000000
+      rate: 0.40
+      offset: 3500000
+    - upper: 45000000
+      rate: 0.15
+      offset: 7500000
+    - upper: 100000000
+      rate: 0.05
+      offset: 12000000
+    - upper: null
+      rate: 0.02
+      offset: 14750000
+  personal_deduction: 1500000
+  progressive_rate_applied: true
+  dependent_credit_monthly: 15830
+  brackets:
+    - upper: 14000000
+      rate: 0.06
+    - upper: 50000000
+      rate: 0.15
+    - upper: 88000000
+      rate: 0.24
+    - upper: 150000000
+      rate: 0.35
+    - upper: 300000000
+      rate: 0.38
+    - upper: 500000000
+      rate: 0.40
+    - upper: 1000000000
+      rate: 0.42
+    - upper: null
+      rate: 0.45
