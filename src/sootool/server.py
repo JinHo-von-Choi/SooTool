@@ -174,8 +174,12 @@ _register_core_tools()
 # ---------------------------------------------------------------------------
 
 def _load_modules() -> None:
-    """Phase 1+ modules activate here when ready."""
-    pass
+    """Import Phase 1+ modules to trigger REGISTRY auto-registration."""
+    import sootool.modules.accounting  # noqa: F401
+    import sootool.modules.datetime_  # noqa: F401
+    import sootool.modules.finance  # noqa: F401
+    import sootool.modules.stats  # noqa: F401
+    import sootool.modules.tax  # noqa: F401
 
 
 def build_server() -> FastMCP:
