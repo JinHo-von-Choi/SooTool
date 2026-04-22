@@ -111,3 +111,17 @@ def test_payload_limit_no_truncation_when_small():
     # Default 512 KB limit — a tiny result must not be flagged
     result = _enforce_payload_limit(result)
     assert result.get("truncated") is not True
+
+
+def test_server_core_batch_roundtrip():
+    from sootool.server import invoke_tool
+    out = invoke_tool("core.batch", {
+        "items": [
+            {"id": "x", "tool": "core.add", "args": {"operands": ["1", "2", "3"]}},
+            {"id": "y", "tool": "core.mul", "args": {"operands": ["2", "3", "4"]}},
+        ]
+    })
+    assert out["status"] == "all_ok"
+    by_id = {r["id"]: r for r in out["results"]}
+    assert by_id["x"]["result"]["result"] == "6"
+    assert by_id["y"]["result"]["result"] == "24"

@@ -144,6 +144,13 @@ def _register_core_tools() -> None:
         result = {"result": str(out), "trace": trace.to_dict()}
         return _enforce_payload_limit(_apply_trace_level(result, trace_level))
 
+    from sootool.core.batch import BatchExecutor
+
+    @REGISTRY.tool(namespace="core", name="batch", description="독립 연산 N개 병렬 실행")
+    def core_batch(items: list[dict], max_workers: int = 16, item_timeout_s: float = 10.0, batch_timeout_s: float = 60.0, deterministic: bool = True) -> dict:
+        ex = BatchExecutor(registry=REGISTRY, max_workers=max_workers, item_timeout_s=item_timeout_s, batch_timeout_s=batch_timeout_s, deterministic=deterministic)
+        return ex.run(items=items)
+
 
 _register_core_tools()
 
