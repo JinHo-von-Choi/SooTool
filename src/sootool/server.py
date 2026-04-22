@@ -182,7 +182,10 @@ def _load_modules() -> None:
     import sootool.modules.finance  # noqa: F401
     import sootool.modules.geometry  # noqa: F401
     import sootool.modules.medical  # noqa: F401
+    import sootool.modules.pm  # noqa: F401
+    import sootool.modules.probability  # noqa: F401
     import sootool.modules.realestate  # noqa: F401
+    import sootool.modules.science  # noqa: F401
     import sootool.modules.stats  # noqa: F401
     import sootool.modules.tax  # noqa: F401
     import sootool.modules.units  # noqa: F401
