@@ -2,9 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from sootool.core.registry import ToolRegistry
-from sootool.core.pipeline import PipelineExecutor, CircularDependencyError, UnresolvedReferenceError
 from sootool.core.errors import DomainConstraintError
+from sootool.core.pipeline import (
+    CircularDependencyError,
+    PipelineExecutor,
+    UnresolvedReferenceError,
+)
+from sootool.core.registry import ToolRegistry
 
 
 def _make_registry() -> ToolRegistry:

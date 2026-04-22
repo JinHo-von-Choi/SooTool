@@ -17,7 +17,9 @@ def main() -> None:
     if args.transport == "stdio":
         server.run("stdio")
     else:
-        server.run("streamable-http", host="0.0.0.0", port=args.port)
+        server.run(  # type: ignore[call-arg]
+            "streamable-http", host="0.0.0.0", port=args.port  # noqa: S104
+        )
 
 
 if __name__ == "__main__":

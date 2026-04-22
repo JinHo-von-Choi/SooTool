@@ -1,9 +1,18 @@
 from __future__ import annotations
-from decimal import Decimal, ROUND_HALF_EVEN, ROUND_HALF_UP, ROUND_DOWN, ROUND_UP, ROUND_FLOOR, ROUND_CEILING
-from enum import Enum
+
+from decimal import (
+    ROUND_CEILING,
+    ROUND_DOWN,
+    ROUND_FLOOR,
+    ROUND_HALF_EVEN,
+    ROUND_HALF_UP,
+    ROUND_UP,
+    Decimal,
+)
+from enum import StrEnum
 
 
-class RoundingPolicy(str, Enum):
+class RoundingPolicy(StrEnum):
     HALF_EVEN = "HALF_EVEN"
     HALF_UP   = "HALF_UP"
     DOWN      = "DOWN"

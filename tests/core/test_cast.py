@@ -6,11 +6,9 @@ Tests for core/cast.py — boundary casting between Decimal, float64, mpmath, Qu
 """
 from __future__ import annotations
 
-import math
 from decimal import Decimal
 
 import mpmath
-import pytest
 
 from sootool.core.cast import (
     decimal_to_float64,

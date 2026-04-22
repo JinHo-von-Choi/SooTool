@@ -1,6 +1,7 @@
-from decimal import Decimal
 import pytest
-from sootool.core.decimal_ops import D, add, sub, mul, div, power
+
+from sootool.core.decimal_ops import D, add, div, power
+
 
 def test_D_from_str_preserves_precision():
     assert D("0.1") + D("0.2") == D("0.3")

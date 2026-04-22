@@ -4,8 +4,8 @@ import time
 
 import pytest
 
-from sootool.core.registry import ToolRegistry
 from sootool.core.batch import BatchExecutor, BatchLimitError
+from sootool.core.registry import ToolRegistry
 
 
 def _make_registry() -> ToolRegistry:

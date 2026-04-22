@@ -37,3 +37,35 @@ dev = [
     "pytest-cov>=7.1.0",
     "ruff>=0.15.11",
 ]
+
+[tool.ruff]
+line-length    = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S"]
+ignore = ["E501", "S101"]
+
+[tool.mypy]
+python_version        = "3.12"
+strict                = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+exclude               = ["tests/"]
+# NOTE: deliberate relaxations from full strict mode:
+#   disallow_untyped_defs=false — pint/mpmath lack py.typed; function signatures
+#     throughout units.py/cast.py use runtime Quantity objects that mypy cannot type.
+#   ignore_missing_imports=true — pint, mpmath, mcp have no bundled stubs.
+#   __main__.py FastMCP.run kwargs (host/port) are not in the mcp package's type stubs.
+# Deviation documented: ADR-011 (tooling gates).
+
+[[tool.mypy.overrides]]
+module = ["pint.*", "mpmath.*", "mcp.*", "yaml.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+addopts   = "--strict-markers"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src/sootool"]

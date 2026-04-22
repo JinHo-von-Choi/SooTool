@@ -1,5 +1,7 @@
 from decimal import Decimal
+
 from sootool.core.audit import CalcTrace
+
 
 def test_trace_records_inputs_and_output():
     t = CalcTrace(tool="finance.npv", formula="sum(cf/(1+r)^t)")

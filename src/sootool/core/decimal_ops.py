@@ -1,12 +1,12 @@
 from __future__ import annotations
+
 from decimal import Decimal, getcontext
-from typing import Union
 
 getcontext().prec = 50
-Number = Union[Decimal, int, str]
+Number = Decimal | int | str
 
 
-def D(value: "Number | float", *, allow_float: bool = False) -> Decimal:
+def D(value: Number | float, *, allow_float: bool = False) -> Decimal:
     if isinstance(value, float):
         if not allow_float:
             raise TypeError(

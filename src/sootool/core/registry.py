@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Callable
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -11,7 +12,7 @@ class ToolEntry:
     description: str
     fn:          Callable[..., Any]
     version:     str                = "1.0.0"
-    deprecated:  dict | None        = None
+    deprecated:  dict[str, Any] | None = None
 
     @property
     def full_name(self) -> str:
@@ -29,7 +30,7 @@ class ToolRegistry:
         name:        str,
         description: str       = "",
         version:     str       = "1.0.0",
-        deprecated:  dict | None = None,
+        deprecated:  dict[str, Any] | None = None,
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
             entry = ToolEntry(

@@ -6,12 +6,11 @@ import time
 import uuid
 from collections import OrderedDict
 from dataclasses import dataclass
-from graphlib import TopologicalSorter, CycleError
+from graphlib import CycleError, TopologicalSorter
 from typing import Any
 
+from sootool.core.errors import DomainConstraintError, SooToolError
 from sootool.core.registry import ToolRegistry
-from sootool.core.errors import SooToolError, DomainConstraintError
-
 
 # Non-recursive linear scanner — single finditer, no nested quantifiers.
 REF_PATTERN = re.compile(
@@ -78,7 +77,7 @@ def _resolve_refs(value: Any, completed: dict[str, dict[str, Any]]) -> Any:
                 node = node[key]
             return node
 
-        def _sub(m: re.Match) -> str:
+        def _sub(m: re.Match[str]) -> str:
             step_id = m.group(1)
             path = m.group(2).lstrip(".").split(".")
             if step_id not in completed:

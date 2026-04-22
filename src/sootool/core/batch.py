@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import time
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeout, as_completed, Future
-from dataclasses import dataclass, field
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from concurrent.futures import TimeoutError as FuturesTimeout
+from dataclasses import dataclass
 from typing import Any
 
-from sootool.core.registry import ToolRegistry
 from sootool.core.errors import SooToolError
+from sootool.core.registry import ToolRegistry
 
 
 class BatchLimitError(SooToolError):
@@ -34,14 +35,14 @@ class BatchExecutor:
         results: dict[str, dict[str, Any]] = {}
 
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            futures: dict[Future, str] = {}
+            futures: dict[Future[Any], str] = {}
             for it in items:
                 fut = pool.submit(self.registry.invoke, it["tool"], **it.get("args", {}))
                 futures[fut] = it["id"]
 
             if self.deterministic:
                 # Collect by future mapped to item id, then order by input order
-                id_to_future: dict[str, Future] = {v: k for k, v in futures.items()}
+                id_to_future: dict[str, Future[Any]] = {v: k for k, v in futures.items()}
                 for item_id, fut in id_to_future.items():
                     t0 = time.monotonic()
                     try:

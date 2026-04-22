@@ -1,6 +1,10 @@
 from decimal import Decimal
+
+import pint
 import pytest
+
 from sootool.core.units import Q, convert, serialize
+
 
 def test_Q_creates_quantity():
     q = Q("10", "meter")
@@ -12,7 +16,7 @@ def test_convert_length():
     assert q.magnitude == Decimal("1")
 
 def test_convert_incompatible_raises():
-    with pytest.raises(Exception):
+    with pytest.raises(pint.errors.DimensionalityError):
         convert(Q("1", "meter"), "second")
 
 def test_serialize_roundtrip():

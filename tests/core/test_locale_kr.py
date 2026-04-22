@@ -8,8 +8,6 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
-
 from sootool.core.locale_kr import KRWMoney
 from sootool.core.rounding import RoundingPolicy
 

@@ -1,6 +1,7 @@
 from decimal import Decimal
-import pytest
+
 from sootool.core.rounding import RoundingPolicy, apply
+
 
 def test_half_even_banker_rounding():
     assert apply(Decimal("2.5"), 0, RoundingPolicy.HALF_EVEN) == Decimal("2")

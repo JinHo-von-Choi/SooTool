@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import os
 from decimal import Decimal
 
 
 def test_server_exposes_core_add():
-    import sootool.server  # ensure _register_core_tools() has run
+    import sootool.server  # noqa: F401 — triggers _register_core_tools() side-effect
     from sootool.core.registry import REGISTRY
     names = {e.full_name for e in REGISTRY.list()}
     assert "core.add" in names
@@ -21,6 +20,7 @@ def test_server_invokes_core_add():
 
 def test_build_server_returns_fastmcp():
     from mcp.server.fastmcp import FastMCP
+
     from sootool.server import build_server
     server = build_server()
     assert isinstance(server, FastMCP)
@@ -51,14 +51,14 @@ def test_parse_request_json_integer_unaffected():
 # --- _apply_trace_level ---
 
 def test_trace_level_none_strips_trace():
-    from sootool.server import invoke_tool, _apply_trace_level
+    from sootool.server import _apply_trace_level, invoke_tool
     result = invoke_tool("core.add", {"operands": ["1", "2"]})
     result = _apply_trace_level(result, "none")
     assert "trace" not in result
 
 
 def test_trace_level_summary_default():
-    from sootool.server import invoke_tool, _apply_trace_level
+    from sootool.server import _apply_trace_level, invoke_tool
     result = invoke_tool("core.add", {"operands": ["1", "2"]})
     result = _apply_trace_level(result, "summary")
     trace = result["trace"]
@@ -68,7 +68,7 @@ def test_trace_level_summary_default():
 
 
 def test_trace_level_full_keeps_steps():
-    from sootool.server import invoke_tool, _apply_trace_level
+    from sootool.server import _apply_trace_level, invoke_tool
     result = invoke_tool("core.add", {"operands": ["1", "2"]})
     # Inject a step manually to verify full preserves it
     result["trace"]["steps"] = [{"label": "test_step", "value": "x"}]
@@ -81,6 +81,7 @@ def test_trace_level_full_keeps_steps():
 
 def test_payload_limit_truncates(monkeypatch):
     import json
+
     from sootool.server import _enforce_payload_limit
     monkeypatch.setenv("SOOTOOL_MAX_PAYLOAD_KB", "1")
 
@@ -106,7 +107,7 @@ def test_payload_limit_truncates(monkeypatch):
 
 
 def test_payload_limit_no_truncation_when_small():
-    from sootool.server import invoke_tool, _enforce_payload_limit
+    from sootool.server import _enforce_payload_limit, invoke_tool
     result = invoke_tool("core.add", {"operands": ["1", "2"]})
     # Default 512 KB limit — a tiny result must not be flagged
     result = _enforce_payload_limit(result)

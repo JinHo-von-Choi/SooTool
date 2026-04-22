@@ -45,7 +45,8 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from sootool.core.rounding import RoundingPolicy, apply as _apply_rounding
+from sootool.core.rounding import RoundingPolicy
+from sootool.core.rounding import apply as _apply_rounding
 
 _DOWN = RoundingPolicy.DOWN
 
@@ -66,7 +67,7 @@ class KRWMoney:
 
     def __init__(
         self,
-        amount:   "Decimal | str | int",
+        amount:   Decimal | str | int,
         rounding: RoundingPolicy = _DOWN,
         unit:     int            = 1,
     ) -> None:
@@ -91,7 +92,7 @@ class KRWMoney:
         rounded  = _apply_rounding(scaled, 0, self._rounding)
         return rounded * Decimal(self._unit)
 
-    def _make(self, value: Decimal) -> "KRWMoney":
+    def _make(self, value: Decimal) -> KRWMoney:
         """Create a new KRWMoney with the same rounding/unit, re-rounding value."""
         obj          = object.__new__(KRWMoney)
         obj._rounding = self._rounding
@@ -115,17 +116,17 @@ class KRWMoney:
     # Arithmetic — LHS policy propagates, result is re-rounded
     # ------------------------------------------------------------------
 
-    def __add__(self, other: "KRWMoney") -> "KRWMoney":
+    def __add__(self, other: KRWMoney) -> KRWMoney:
         if not isinstance(other, KRWMoney):
             return NotImplemented
         return self._make(self._amount + other._amount)
 
-    def __sub__(self, other: "KRWMoney") -> "KRWMoney":
+    def __sub__(self, other: KRWMoney) -> KRWMoney:
         if not isinstance(other, KRWMoney):
             return NotImplemented
         return self._make(self._amount - other._amount)
 
-    def __mul__(self, scalar: "Decimal | int | float") -> "KRWMoney":
+    def __mul__(self, scalar: Decimal | int | float) -> KRWMoney:
         if isinstance(scalar, float):
             scalar = Decimal(str(scalar))
         elif isinstance(scalar, int):
@@ -134,7 +135,7 @@ class KRWMoney:
             return NotImplemented
         return self._make(self._amount * scalar)
 
-    def __rmul__(self, scalar: "Decimal | int | float") -> "KRWMoney":
+    def __rmul__(self, scalar: Decimal | int | float) -> KRWMoney:
         return self.__mul__(scalar)
 
     # ------------------------------------------------------------------

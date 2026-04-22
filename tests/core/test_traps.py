@@ -12,7 +12,6 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 
-
 # ---------------------------------------------------------------------------
 # Group 1: Pint Quantity JSON serialization trap
 # ---------------------------------------------------------------------------
@@ -24,7 +23,7 @@ def test_quantity_direct_json_fails() -> None:
     q = Q("1.5", "meter")
     try:
         json.dumps(q)
-        assert False, "Expected TypeError"
+        raise AssertionError("Expected TypeError")
     except TypeError:
         pass
 
@@ -74,7 +73,7 @@ def test_pipeline_resume_missing_id_raises() -> None:
     r = ToolRegistry()
     try:
         resume_pipeline("nonexistent_id_abc", "s1", r)
-        assert False, "Expected error"
+        raise AssertionError("Expected error")
     except (KeyError, Exception) as e:
         msg = str(e).lower()
         assert (
@@ -160,7 +159,7 @@ def test_batch_100_parallel_deterministic_order() -> None:
 
     @r.tool(namespace="t", name="identity_det")
     def _id(value: str) -> dict:
-        time.sleep(random.random() * 0.01)  # random delay to stress ordering
+        time.sleep(random.random() * 0.01)  # noqa: S311 — deliberate non-crypto random for race stress
         return {"v": value}
 
     ex    = BatchExecutor(registry=r, max_items=200, item_timeout_s=5.0, batch_timeout_s=30.0)

@@ -8,17 +8,20 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from sootool.core.audit import CalcTrace
-from sootool.core.decimal_ops import D, add as d_add, div as d_div, mul as d_mul, sub as d_sub
+from sootool.core.decimal_ops import D
+from sootool.core.decimal_ops import add as d_add
+from sootool.core.decimal_ops import div as d_div
+from sootool.core.decimal_ops import mul as d_mul
+from sootool.core.decimal_ops import sub as d_sub
 from sootool.core.registry import REGISTRY
-
 
 # ---------------------------------------------------------------------------
 # Request parsing
 # ---------------------------------------------------------------------------
 
-def _parse_request_json(raw: str) -> dict:
+def _parse_request_json(raw: str) -> dict[str, Any]:
     """Parse JSON string using Decimal for float values."""
-    return json.loads(raw, parse_float=Decimal)
+    return json.loads(raw, parse_float=Decimal)  # type: ignore[no-any-return]
 
 
 # ---------------------------------------------------------------------------
@@ -28,7 +31,7 @@ def _parse_request_json(raw: str) -> dict:
 _SUMMARY_KEYS = {"tool", "formula", "inputs", "output"}
 
 
-def _apply_trace_level(response: dict, level: str = "summary") -> dict:
+def _apply_trace_level(response: dict[str, Any], level: str = "summary") -> dict[str, Any]:
     """Filter trace content based on requested verbosity level.
 
     - none:    remove trace entirely
@@ -56,7 +59,7 @@ def _apply_trace_level(response: dict, level: str = "summary") -> dict:
 # Payload size guard
 # ---------------------------------------------------------------------------
 
-def _enforce_payload_limit(response: dict) -> dict:
+def _enforce_payload_limit(response: dict[str, Any]) -> dict[str, Any]:
     """Truncate trace.steps from tail if response exceeds SOOTOOL_MAX_PAYLOAD_KB.
 
     If still over limit after stripping all steps, removes trace entirely and
@@ -65,7 +68,7 @@ def _enforce_payload_limit(response: dict) -> dict:
     limit_kb = int(os.environ.get("SOOTOOL_MAX_PAYLOAD_KB", "512"))
     limit_bytes = limit_kb * 1024
 
-    def _size(d: dict) -> int:
+    def _size(d: dict[str, Any]) -> int:
         return len(json.dumps(d, default=str).encode("utf-8"))
 
     if _size(response) <= limit_bytes:
@@ -144,22 +147,22 @@ def _register_core_tools() -> None:
         result = {"result": str(out), "trace": trace.to_dict()}
         return _enforce_payload_limit(_apply_trace_level(result, trace_level))
 
-    from sootool.core.batch import BatchExecutor
+    from sootool.core.batch import BatchExecutor  # noqa: PLC0415
 
     @REGISTRY.tool(namespace="core", name="batch", description="독립 연산 N개 병렬 실행")
-    def core_batch(items: list[dict], max_workers: int = 16, item_timeout_s: float = 10.0, batch_timeout_s: float = 60.0, deterministic: bool = True) -> dict:
+    def core_batch(items: list[dict[str, Any]], max_workers: int = 16, item_timeout_s: float = 10.0, batch_timeout_s: float = 60.0, deterministic: bool = True) -> dict[str, Any]:
         ex = BatchExecutor(registry=REGISTRY, max_workers=max_workers, item_timeout_s=item_timeout_s, batch_timeout_s=batch_timeout_s, deterministic=deterministic)
         return ex.run(items=items)
 
     from sootool.core.pipeline import PipelineExecutor, resume_pipeline
 
     @REGISTRY.tool(namespace="core", name="pipeline", description="DAG 의존 연산")
-    def core_pipeline(steps: list[dict], step_timeout_s: float = 2.0, pipeline_timeout_s: float = 30.0) -> dict:
+    def core_pipeline(steps: list[dict[str, Any]], step_timeout_s: float = 2.0, pipeline_timeout_s: float = 30.0) -> dict[str, Any]:
         ex = PipelineExecutor(registry=REGISTRY, step_timeout_s=step_timeout_s, pipeline_timeout_s=pipeline_timeout_s)
         return ex.run(steps=steps)
 
     @REGISTRY.tool(namespace="core", name="pipeline_resume", description="파이프라인 부분 재실행")
-    def core_pipeline_resume(pipeline_id: str, from_step: str) -> dict:
+    def core_pipeline_resume(pipeline_id: str, from_step: str) -> dict[str, Any]:
         return resume_pipeline(pipeline_id, from_step, REGISTRY)
 
 

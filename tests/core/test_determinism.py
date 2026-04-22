@@ -7,7 +7,6 @@ Tests for core/determinism.py — deterministic RNG and sort helpers.
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from sootool.core.determinism import get_rng, sorted_by_id
 

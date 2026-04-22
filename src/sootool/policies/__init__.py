@@ -103,7 +103,7 @@ def _find_supported_years(domain_dir: Path, key: str) -> list[int]:
 # Public API
 # ---------------------------------------------------------------------------
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def load(domain: str, key: str, year: int) -> dict[str, Any]:
     """
     Load and verify a policy YAML file, returning an immutable-safe dict.

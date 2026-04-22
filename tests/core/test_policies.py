@@ -7,7 +7,6 @@ Tests for policies/__init__.py — YAML policy loader with SHA256 integrity chec
 from __future__ import annotations
 
 import shutil
-import tempfile
 from pathlib import Path
 
 import pytest

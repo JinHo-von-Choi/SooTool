@@ -10,12 +10,12 @@ No module may call float() on a Decimal or cast mpf directly outside this file.
 from __future__ import annotations
 
 import logging
-from decimal import Decimal, Context, InvalidOperation
-from typing import TYPE_CHECKING
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any
 
 import mpmath
 
-from sootool.core.units import _UREG, Quantity
+from sootool.core.units import _UREG
 
 if TYPE_CHECKING:
     pass
@@ -56,7 +56,7 @@ def float64_to_decimal_str(x: float, digits: int = 15) -> str:
     """
     mp_val = mpmath.mpf(x)
     # nstr produces a minimal string representation at the given number of digits
-    raw = mpmath.nstr(mp_val, digits, strip_zeros=True)
+    raw: str = str(mpmath.nstr(mp_val, digits, strip_zeros=True))
     # Remove trailing dot and ".0" suffix (e.g. "42." or "42.0" -> "42")
     if "." in raw:
         raw = raw.rstrip("0").rstrip(".")
@@ -74,7 +74,7 @@ def mpmath_to_decimal(x: mpmath.mpf, digits: int = 50) -> Decimal:
     return Decimal(raw)
 
 
-def quantity_to_snapshot(q: Quantity) -> dict:
+def quantity_to_snapshot(q: Any) -> dict[str, str]:
     """
     Serialize a pint Quantity to a JSON-safe dict.
 
@@ -87,7 +87,7 @@ def quantity_to_snapshot(q: Quantity) -> dict:
     }
 
 
-def snapshot_to_quantity(d: dict) -> Quantity:
+def snapshot_to_quantity(d: dict[str, str]) -> Any:
     """
     Reconstruct a pint Quantity from a snapshot dict.
 
