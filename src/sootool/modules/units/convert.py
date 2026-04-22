@@ -1,7 +1,6 @@
 """Physical unit conversion tool backed by pint with Decimal magnitude."""
 from __future__ import annotations
 
-from decimal import Decimal
 from typing import Any
 
 from sootool.core.audit import CalcTrace

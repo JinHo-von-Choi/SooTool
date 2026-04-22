@@ -77,29 +77,32 @@ def electrical_ohm(
 
     if voltage is None:
         # V = I * R
-        if i_d <= _ZERO:  # type: ignore[operator]
+        assert i_d is not None and r_d is not None
+        if i_d <= _ZERO:
             raise InvalidInputError("current는 0 초과여야 합니다.")
-        if r_d <= _ZERO:  # type: ignore[operator]
+        if r_d <= _ZERO:
             raise InvalidInputError("resistance는 0 초과여야 합니다.")
-        v_d = mul(i_d, r_d)  # type: ignore[arg-type]
+        v_d = mul(i_d, r_d)
         trace.step("V = I × R", str(v_d))
 
     elif current is None:
         # I = V / R
-        if v_d < _ZERO:  # type: ignore[operator]
+        assert v_d is not None and r_d is not None
+        if v_d < _ZERO:
             raise InvalidInputError("voltage는 0 이상이어야 합니다.")
-        if r_d <= _ZERO:  # type: ignore[operator]
+        if r_d <= _ZERO:
             raise InvalidInputError("resistance는 0 초과여야 합니다.")
-        i_d = div(v_d, r_d)  # type: ignore[arg-type]
+        i_d = div(v_d, r_d)
         trace.step("I = V / R", str(i_d))
 
     else:
         # R = V / I
-        if v_d < _ZERO:  # type: ignore[operator]
+        assert v_d is not None and i_d is not None
+        if v_d < _ZERO:
             raise InvalidInputError("voltage는 0 이상이어야 합니다.")
-        if i_d <= _ZERO:  # type: ignore[operator]
+        if i_d <= _ZERO:
             raise InvalidInputError("current는 0 초과여야 합니다.")
-        r_d = div(v_d, i_d)  # type: ignore[arg-type]
+        r_d = div(v_d, i_d)
         trace.step("R = V / I", str(r_d))
 
     trace.output({"voltage": str(v_d), "current": str(i_d), "resistance": str(r_d)})
@@ -164,43 +167,49 @@ def electrical_power(
 
     if keys == frozenset({"voltage", "current"}):
         # P = V * I, R = V / I
-        p_d = mul(v_d, i_d)  # type: ignore[arg-type]
-        r_d = div(v_d, i_d)  # type: ignore[arg-type]
+        assert v_d is not None and i_d is not None
+        p_d = mul(v_d, i_d)
+        r_d = div(v_d, i_d)
         trace.step("P = V × I", str(p_d))
         trace.step("R = V / I", str(r_d))
 
     elif keys == frozenset({"voltage", "resistance"}):
         # P = V² / R, I = V / R
-        p_d = div(mul(v_d, v_d), r_d)  # type: ignore[arg-type]
-        i_d = div(v_d, r_d)  # type: ignore[arg-type]
+        assert v_d is not None and r_d is not None
+        p_d = div(mul(v_d, v_d), r_d)
+        i_d = div(v_d, r_d)
         trace.step("P = V² / R", str(p_d))
         trace.step("I = V / R", str(i_d))
 
     elif keys == frozenset({"current", "resistance"}):
         # P = I² * R, V = I * R
-        p_d = mul(mul(i_d, i_d), r_d)  # type: ignore[arg-type]
-        v_d = mul(i_d, r_d)  # type: ignore[arg-type]
+        assert i_d is not None and r_d is not None
+        p_d = mul(mul(i_d, i_d), r_d)
+        v_d = mul(i_d, r_d)
         trace.step("P = I² × R", str(p_d))
         trace.step("V = I × R", str(v_d))
 
     elif keys == frozenset({"power", "voltage"}):
         # I = P / V, R = V² / P
-        i_d = div(p_d, v_d)  # type: ignore[arg-type]
-        r_d = div(mul(v_d, v_d), p_d)  # type: ignore[arg-type]
+        assert p_d is not None and v_d is not None
+        i_d = div(p_d, v_d)
+        r_d = div(mul(v_d, v_d), p_d)
         trace.step("I = P / V", str(i_d))
         trace.step("R = V² / P", str(r_d))
 
     elif keys == frozenset({"power", "current"}):
         # V = P / I, R = P / I²
-        v_d = div(p_d, i_d)  # type: ignore[arg-type]
-        r_d = div(p_d, mul(i_d, i_d))  # type: ignore[arg-type]
+        assert p_d is not None and i_d is not None
+        v_d = div(p_d, i_d)
+        r_d = div(p_d, mul(i_d, i_d))
         trace.step("V = P / I", str(v_d))
         trace.step("R = P / I²", str(r_d))
 
     elif keys == frozenset({"power", "resistance"}):
         # I = √(P/R), V = √(P*R)
-        pr_ratio  = div(p_d, r_d)  # type: ignore[arg-type]
-        pr_product = mul(p_d, r_d)  # type: ignore[arg-type]
+        assert p_d is not None and r_d is not None
+        pr_ratio   = div(p_d, r_d)
+        pr_product = mul(p_d, r_d)
         i_d = _sqrt_decimal(pr_ratio)
         v_d = _sqrt_decimal(pr_product)
         trace.step("I = √(P/R)", str(i_d))

@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any
 
 from sootool.core.audit import CalcTrace
-from sootool.core.decimal_ops import D, add, div, mul, sub
+from sootool.core.decimal_ops import D, add, mul, sub
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 
