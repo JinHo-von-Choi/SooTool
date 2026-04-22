@@ -141,7 +141,7 @@ def stats_ttest_two_sample(
         df_raw = float(len(arr_a) + len(arr_b) - 2)
         df_str = str(int(df_raw))
     else:
-        df_raw = float(getattr(result, "df"))
+        df_raw = float(result.df)
         df_str = _fmt(df_raw, 6)
 
     # CI for difference of means
