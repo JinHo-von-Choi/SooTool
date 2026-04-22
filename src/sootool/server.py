@@ -180,6 +180,7 @@ def _load_modules() -> None:
     import sootool.modules.finance  # noqa: F401
     import sootool.modules.stats  # noqa: F401
     import sootool.modules.tax  # noqa: F401
+    import sootool.modules.crypto  # noqa: F401
 
 
 def build_server() -> FastMCP:
