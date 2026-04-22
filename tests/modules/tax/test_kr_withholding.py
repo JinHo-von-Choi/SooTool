@@ -10,9 +10,9 @@ from decimal import Decimal
 import pytest
 
 import sootool.modules.tax  # noqa: F401
-from sootool.core.errors   import InvalidInputError
+from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
-from sootool.policies      import UnsupportedPolicyError
+from sootool.policies import UnsupportedPolicyError
 
 
 def call_withholding(**kwargs):

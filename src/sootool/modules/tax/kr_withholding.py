@@ -18,11 +18,12 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from sootool.core.audit       import CalcTrace
+from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
-from sootool.core.errors      import InvalidInputError
-from sootool.core.registry    import REGISTRY
-from sootool.core.rounding    import RoundingPolicy, apply as round_apply
+from sootool.core.errors import InvalidInputError
+from sootool.core.registry import REGISTRY
+from sootool.core.rounding import RoundingPolicy
+from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.progressive import _calc_progressive
 from sootool.policies import load as policy_load
 

@@ -11,7 +11,7 @@ from decimal import Decimal
 import pytest
 
 import sootool.modules.tax  # noqa: F401 - registers tools
-from sootool.core.errors   import InvalidInputError
+from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 
 

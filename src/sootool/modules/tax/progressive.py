@@ -8,21 +8,22 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from sootool.core.audit     import CalcTrace
+from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
-from sootool.core.errors    import InvalidInputError
-from sootool.core.registry  import REGISTRY
-from sootool.core.rounding  import RoundingPolicy, apply as round_apply
+from sootool.core.errors import InvalidInputError
+from sootool.core.registry import REGISTRY
+from sootool.core.rounding import RoundingPolicy
+from sootool.core.rounding import apply as round_apply
 
 
 def _parse_rounding(rounding: str) -> RoundingPolicy:
     try:
         return RoundingPolicy(rounding)
-    except ValueError:
+    except ValueError as exc:
         raise InvalidInputError(
             f"유효하지 않은 rounding 정책: '{rounding}'. "
             f"허용값: {[p.value for p in RoundingPolicy]}"
-        )
+        ) from exc
 
 
 def _calc_progressive(
@@ -84,7 +85,7 @@ def _calc_progressive(
 
         if not is_top and taxable_income <= (upper or Decimal("0")):
             # remaining brackets contribute 0
-            for j, rem_bracket in enumerate(brackets[i + 1:], i + 1):
+            for _j, rem_bracket in enumerate(brackets[i + 1:], i + 1):
                 upper_r = rem_bracket["upper"]
                 rate_r  = D(str(rem_bracket["rate"]))
                 upper_r_d = None if upper_r is None else D(str(upper_r))
