@@ -14,8 +14,8 @@ from sootool.core.rounding import RoundingPolicy, apply
 def _parse_policy(rounding: str) -> RoundingPolicy:
     try:
         return RoundingPolicy(rounding)
-    except ValueError:
-        raise InvalidInputError(f"유효하지 않은 반올림 정책: {rounding!r}")
+    except ValueError as exc:
+        raise InvalidInputError(f"유효하지 않은 반올림 정책: {rounding!r}") from exc
 
 
 @REGISTRY.tool(

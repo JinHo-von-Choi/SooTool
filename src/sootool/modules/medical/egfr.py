@@ -21,13 +21,12 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-import mpmath
-
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
-from sootool.core.rounding import RoundingPolicy, apply as round_apply
+from sootool.core.rounding import RoundingPolicy
+from sootool.core.rounding import apply as round_apply
 
 # CKD-EPI 2021 race-free creatinine equation coefficients
 # eGFR = 142 * min(Scr/kappa, 1)^alpha * max(Scr/kappa, 1)^(-1.200)
@@ -66,7 +65,7 @@ def _ckd_epi_2021(creatinine: float, age: int, sex: str) -> float:
     if sex == "female":
         egfr *= _COEFF_SEX_FEMALE
 
-    return egfr
+    return float(egfr)
 
 
 def _ckd_stage(egfr: Decimal) -> str:
