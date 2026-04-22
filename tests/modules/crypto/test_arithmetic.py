@@ -117,16 +117,16 @@ class TestLcm:
     def test_lcm_multiple_of_both(self) -> None:
         for a, b in [(4, 6), (12, 18), (7, 13)]:
             result = _lcm(str(a), str(b))
-            l = int(result["result"])
-            assert l % a == 0
-            assert l % b == 0
+            lcm_val = int(result["result"])
+            assert lcm_val % a == 0
+            assert lcm_val % b == 0
 
     # Property: gcd(a,b) * lcm(a,b) == |a*b|
     def test_lcm_gcd_relation(self) -> None:
         for a, b in [(48, 18), (15, 25), (7, 13)]:
-            g = int(_gcd(str(a), str(b))["result"])
-            l = int(_lcm(str(a), str(b))["result"])
-            assert g * l == a * b
+            g       = int(_gcd(str(a), str(b))["result"])
+            lcm_val = int(_lcm(str(a), str(b))["result"])
+            assert g * lcm_val == a * b
 
 
 class TestModpow:

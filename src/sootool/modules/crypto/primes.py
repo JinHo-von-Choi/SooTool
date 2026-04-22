@@ -71,7 +71,7 @@ def _is_prime_miller_rabin(n: int, k: int = 20) -> bool:
         witnesses = [2, 3, 5, 7, 11, 13, 17, 19, 23]
     else:
         # For very large n, use k random witnesses
-        witnesses = [random.randrange(2, min(n - 1, 10**9)) for _ in range(k)]
+        witnesses = [random.randrange(2, min(n - 1, 10**9)) for _ in range(k)]  # noqa: S311
 
     for a in witnesses:
         a_mod = a % n
