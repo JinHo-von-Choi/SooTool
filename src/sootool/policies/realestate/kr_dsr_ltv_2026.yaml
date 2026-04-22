@@ -1,0 +1,14 @@
+sha256: "bcf37361bc90384550903d0f9e9e5826a8b139a5a3036b6b71f6c79c1a4597c3"
+effective_date: "2026-01-01"
+notice_no: "금융위원회 DSR 규제"
+source_url: "https://www.fsc.go.kr/"
+data:
+  dsr_cap: 0.40
+  ltv:
+    regulated_first_house: 0.50
+    regulated_multi_house: 0.00
+    non_regulated_first_house: 0.70
+    non_regulated_multi_house: 0.60
+  dti:
+    regulated: 0.40
+    non_regulated: 0.60

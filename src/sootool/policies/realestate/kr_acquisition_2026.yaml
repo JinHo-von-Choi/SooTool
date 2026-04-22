@@ -1,0 +1,24 @@
+sha256: "39e015ea410eaf7b02a6633c3dbc86cf5ba015a2c872a22e812845faef962948"
+effective_date: "2026-01-01"
+notice_no: "행정안전부 지방세법 제11조"
+source_url: "https://www.law.go.kr/"
+data:
+  house:
+    # 주택 취득세율 (지방세법 제11조 제1항)
+    # 6억원 이하 1%, 6억~9억 2% (단계비례), 9억 초과 3%
+    brackets:
+      - upper: 600000000
+        rate: 0.01
+      - upper: 900000000
+        rate: 0.02
+      - upper: null
+        rate: 0.03
+    # 다주택자 중과세율 (2024~2025년 완화 후 기준)
+    multi_house_surcharge:
+      two_houses_non_regulated: 0.00
+      two_houses_regulated: 0.08
+      three_plus: 0.12
+  # 부가세
+  surcharges:
+    rural_special: 0.002
+    local_edu: 0.001
