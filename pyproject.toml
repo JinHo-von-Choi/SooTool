@@ -36,6 +36,7 @@ dev = [
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
     "ruff>=0.15.11",
+    "types-python-dateutil>=2.9.0.20260408",
 ]
 
 [tool.ruff]
@@ -60,7 +61,7 @@ exclude               = ["tests/"]
 # Deviation documented: ADR-011 (tooling gates).
 
 [[tool.mypy.overrides]]
-module = ["pint.*", "mpmath.*", "mcp.*", "yaml.*"]
+module = ["pint.*", "mpmath.*", "mcp.*", "yaml.*", "dateutil.*", "holidays.*", "workalendar.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
