@@ -83,4 +83,4 @@ class TestPERTBatchRaceFree:
             results = [f.result() for f in futures]
 
         for r in results:
-            assert r == expected_e, f"Race condition in pert"
+            assert r == expected_e, "Race condition in pert"

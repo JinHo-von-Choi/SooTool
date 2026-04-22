@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal
 
 import pytest
 
@@ -162,4 +161,4 @@ class TestCPMBatchRaceFree:
             results = [f.result() for f in futures]
 
         for r in results:
-            assert r == expected_total, f"Race condition in critical_path"
+            assert r == expected_total, "Race condition in critical_path"

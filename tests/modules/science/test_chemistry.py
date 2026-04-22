@@ -195,4 +195,4 @@ class TestScienceBatchRaceFree:
             results = [f.result() for f in futures]
 
         for r in results:
-            assert r == expected_mm, f"Race condition in molar_mass"
+            assert r == expected_mm, "Race condition in molar_mass"

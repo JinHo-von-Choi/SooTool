@@ -97,4 +97,4 @@ class TestHalfLifeBatchRaceFree:
             results = [f.result() for f in futures]
 
         for r in results:
-            assert r == expected, f"Race condition in half_life"
+            assert r == expected, "Race condition in half_life"
