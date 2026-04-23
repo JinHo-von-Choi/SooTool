@@ -57,7 +57,7 @@ def build_sse_legacy_app(
         POST /messages   — receives JSON-RPC from client (query: session_id)
         GET  /healthz    — health check (auth-exempt)
     """
-    sse_transport = SseServerTransport("/messages")
+    sse_transport = SseServerTransport("/messages/")
 
     mcp_server = server._mcp_server
 
@@ -75,7 +75,7 @@ def build_sse_legacy_app(
 
     routes = [
         Route("/sse", endpoint=sse_endpoint, methods=["GET"]),
-        Mount("/messages", app=sse_transport.handle_post_message),
+        Mount("/messages/", app=sse_transport.handle_post_message),
         Route("/healthz", endpoint=healthz, methods=["GET"]),
     ]
 
