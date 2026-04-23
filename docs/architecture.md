@@ -114,3 +114,20 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - MCP 클라이언트 생태계가 스펙 버전별·구현별로 전송 요구가 갈라지며, 단일 전송 제공은 통합 비용을 사용자에게 전가한다.
 - 단일 REGISTRY 공유로 구현 복잡도가 `O(전송 수) + O(1)(공통 미들웨어)`로 억제된다.
 - 기본 loopback + 인증 필수 정책은 무인증 공용 노출 위험을 제거한다.
+
+## ADR-015: 에이전트 능동 활용 가이드
+
+결정:
+- SooTool 서버는 `sootool.skill_guide` MCP 도구로 트리거·예시·안티패턴·플레이북을 JSON으로 노출한다.
+- FastMCP `instructions` 필드에 도구 우선 사용 지시를 주입한다.
+- 모든 도구 응답이 `_meta.hints` 배열을 포함하며 세션 호출 이력을 근거로 후속 행동을 제안한다.
+- `.github/skills/sootool/SKILL.md` 및 통합 스니펫 3종(Claude Code / Cursor / AGENTS.md)을 배포한다.
+- 가이드 데이터는 SemVer(`version` 필드)로 관리하며 ADR-012 변경 규칙 준수한다.
+- 세션 상태는 `SessionStore` 프로토콜 + `InMemoryStore` 구현으로 추상화하여 Redis drop-in 가능하게 한다.
+- `_meta.hints` 주입은 6개 규칙 기반(세무 trace 미완, 반복 산술, 구 정책 연도, trace 절단, 수동 체인, 과도 단일 호출).
+- result와 trace는 변경 없이 `_meta`에만 기록하여 ADR-011 결정론 훼손을 방지한다.
+
+사유:
+- 도구 등록만으로는 LLM이 확률 추론 대신 도구 호출 경로로 자동 전환하지 않음.
+- Memento(AnchorMind) MCP가 동일 문제에 대해 검증한 패턴(instructions + guide 도구 + _meta.hints + 스킬 문서 + 사용자 스니펫) 재사용.
+- 서버 측 단일 근원으로 가이드를 유지해 트리거·플레이북 개정 시 전 에이전트가 자동 최신화.
