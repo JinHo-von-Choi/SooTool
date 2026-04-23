@@ -1,6 +1,13 @@
 # SooTool
 
-LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Python 3.12 · FastMCP · Decimal 전용 커널 위에 16개 계산 도메인 236개 기본 도구 + admin 10개 정책 도구, 5종 전송(stdio/HTTP/SSE/WebSocket/Unix), 감사 트레이스·정책 외부화·배치·파이프라인을 얹었다.
+Precision Calc MCP for LLM tool use.
+
+[![CI](https://github.com/JinHo-von-Choi/SooTool/actions/workflows/ci.yml/badge.svg)](https://github.com/JinHo-von-Choi/SooTool/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/sootool.svg)](https://pypi.org/project/sootool/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
+LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Python 3.12 · FastMCP · Decimal 전용 커널 위에 16개 계산 도메인 243개 기본 도구 + 10개 admin 정책 도구, 5종 전송(stdio/HTTP/SSE/WebSocket/Unix), 감사 트레이스·정책 외부화·배치·파이프라인을 얹었다.
 
 ## 왜 필요한가
 
@@ -17,6 +24,39 @@ SooTool은 그 경로를 원천 차단한다.
 - 세법·부동산 규제 데이터를 `src/sootool/policies/{domain}/{key}_{year}.yaml`로 외부화하고 SHA-256 무결성 검증 + lru_cache로 로드한다(ADR-009).
 - 모든 응답은 `trace.{tool, formula, inputs, steps, output}` 필드를 포함한다. 계산 근거를 사용자에게 직접 보여줄 수 있다(ADR-003).
 - 결정론. ThreadPool 결과는 입력 id 순으로 재정렬하고, 비결정 허용 시 `non_deterministic:true` 플래그를 강제한다(ADR-011).
+
+## 감사 트레이스 실물 샘플
+
+"이 숫자는 어떻게 나왔는가"에 즉답하기 위해 모든 도구는 `trace` 필드를 반환한다. 아래는 `finance.npv(rate=0.08, cashflows=[-1000, 300, 400, 500, 200], rounding=HALF_EVEN, decimals=2)` 실제 응답이다. 공식·입력·중간 단계·출력이 원자적으로 기록된다.
+
+```json
+{
+  "npv": "164.64",
+  "trace": {
+    "tool": "finance.npv",
+    "formula": "NPV = sum(CF_t / (1+r)^t, t=0..n)",
+    "inputs": {
+      "rate": "0.08",
+      "cashflows": ["-1000", "300", "400", "500", "200"],
+      "rounding": "HALF_EVEN",
+      "decimals": 2
+    },
+    "steps": [
+      {
+        "label": "npv_raw",
+        "value": "164.63539696786661172171511042618089308126395968697"
+      }
+    ],
+    "output": "164.64"
+  },
+  "_meta": {
+    "hints": [],
+    "session_stats": {"tool_calls": 1, "unique_tools": 1}
+  }
+}
+```
+
+중간 단계의 `npv_raw`는 반올림 이전 완전 정밀 Decimal 값으로, 반올림 정책(HALF_EVEN)이 소수점 2자리(`decimals=2`)에 적용된 결과가 `output`과 `npv` 필드에 일치하게 노출된다. 감사 추적은 `trace` 필드만 보면 충분하며, `_meta`는 미들웨어 주입 영역(ADR-014)으로 결과 신뢰에 영향을 주지 않는다(ADR-011).
 
 ## 설치
 
@@ -54,14 +94,14 @@ uv run python -m sootool --transports stdio,http,websocket
 claude mcp add sootool -- uv run python -m sootool
 ```
 
-## 도구 카탈로그 (236개 기본 + 10개 admin, 16 계산 도메인 + sootool 운영 도구)
+## 도구 카탈로그 (243개 기본 + 10개 admin, 16 계산 도메인 + sootool 운영 도구)
 
 |Namespace|Count|대표 도구|
 |-|-|-|
-|core|7|add, sub, mul, div, batch, pipeline, pipeline_resume|
+|core|8|add, sub, mul, div, calc, batch, pipeline, pipeline_resume|
 |accounting|11|vat_extract, vat_add, balance, depreciation 3종, interest_compound 외|
 |finance|15|pv, fv, npv, irr, loan_schedule, bond_ytm, bond_duration, black_scholes, var_parametric, sharpe 외|
-|tax|7|progressive, kr_income, kr_withholding_simple, capital_gains_kr 외|
+|tax|10|progressive, kr_income, kr_withholding_simple, capital_gains_kr, kr_local_income_tax, kr_education_tax_add, kr_rural_special_tax 외|
 |realestate|8|kr_ltv, kr_dti, kr_dsr, kr_acquisition_tax, kr_transfer_tax, rental_yield 외|
 |stats|14|descriptive, ttest 3종, chi_square_independence, ci_mean, regression_linear, anova, correlation 외|
 |probability|30|normal/binomial/poisson, gamma, beta, exponential, lognormal, chi_square, F, bayes, factorial, nCr, nPr, expected_value|
@@ -74,7 +114,7 @@ claude mcp add sootool -- uv run python -m sootool
 |science|11|half_life, ideal_gas, molar_mass, stoichiometry, nernst, faraday_electrolysis, battery_capacity, snell_law, thin_lens, bragg, intensity|
 |crypto|10|gcd, lcm, hash, is_prime, modinv, modpow, egcd, crt, euler_totient, carmichael_lambda|
 |pm|5|critical_path (CPM), evm, pert, earned_schedule, monte_carlo_schedule|
-|payroll|1|kr_net_monthly|
+|payroll|5|kr_net_monthly, kr_severance_pay, kr_year_end_tax_settlement, kr_bonus_tax, hourly_to_monthly_net|
 |sootool|1+10|skill_guide (항시) + policy_mgmt 10종 (admin 모드)|
 
 전체 도구 사양은 `docs/user_guide.md` 및 `sootool.skill_guide` MCP 호출로 조회한다.

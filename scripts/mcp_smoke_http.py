@@ -20,10 +20,8 @@ from decimal import Decimal
 from typing import Any
 
 import httpx
-
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
-
 
 _PORT    = 19999
 _TOKEN   = "smoke-test-token"

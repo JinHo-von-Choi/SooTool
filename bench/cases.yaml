@@ -1,0 +1,346 @@
+# SooTool 벤치마크 리트머스 케이스 (FB-M3)
+#
+# 작성자: 최진호
+# 작성일: 2026-04-24
+#
+# 20 케이스: 한국 소득세(8), 부가세(3), 복리이자(2),
+# 확률/통계(3), 공학(2), 양도소득세(2).
+#
+# 각 케이스는 run_benchmark.py 에 의해 다음 2경로로 평가된다.
+#   1. REGISTRY.invoke(tool_call.namespace + '.' + name, **args)
+#      → SooTool ground truth (Decimal 정확치)
+#   2. LLM 채팅 (OpenAI / Anthropic / Google) → 자연어 prompt 전달 후
+#      응답에서 숫자 추출하여 expected_decimal_string 과 비교.
+#
+# 비교 분류:
+#   - exact : 정확 일치
+#   - approx: 상대오차 <= 1e-4 (±0.01%)
+#   - wrong : 이외
+#
+# expected_decimal_string 은 REGISTRY.invoke 로 미리 산출한 정답
+# (master@587b763, 2026-04-24 기준). 정책 YAML 개정 시 재생성 필요.
+
+cases:
+  # =========================================================================
+  # 한국 소득세 8구간 경계 (tax.kr_income, year=2026)
+  # =========================================================================
+  - id: tax_kr_income_14M
+    category: tax_korea
+    difficulty: easy
+    prompt: |
+      한국 2026년 과세표준 14,000,000원에 대한 종합소득세를 원 단위로 계산해 주세요.
+      결과는 숫자만 답하세요.
+    tool_call:
+      tool: tax.kr_income
+      args:
+        taxable_income: "14000000"
+        year: 2026
+      field: tax
+    expected_decimal_string: "840000"
+
+  - id: tax_kr_income_50M
+    category: tax_korea
+    difficulty: easy
+    prompt: |
+      한국 2026년 과세표준 50,000,000원에 대한 종합소득세를 원 단위로 계산해 주세요.
+      결과는 숫자만 답하세요.
+    tool_call:
+      tool: tax.kr_income
+      args:
+        taxable_income: "50000000"
+        year: 2026
+      field: tax
+    expected_decimal_string: "6240000"
+
+  - id: tax_kr_income_88M
+    category: tax_korea
+    difficulty: medium
+    prompt: |
+      한국 2026년 과세표준 88,000,000원에 대한 종합소득세를 원 단위로 계산해 주세요.
+      결과는 숫자만 답하세요.
+    tool_call:
+      tool: tax.kr_income
+      args:
+        taxable_income: "88000000"
+        year: 2026
+      field: tax
+    expected_decimal_string: "15360000"
+
+  - id: tax_kr_income_125M_midbracket
+    category: tax_korea
+    difficulty: medium
+    prompt: |
+      한국 2026년 과세표준 125,000,000원(8,800만~1.5억 구간 내부)에 대한
+      종합소득세를 원 단위로 계산해 주세요. 결과는 숫자만 답하세요.
+    tool_call:
+      tool: tax.kr_income
+      args:
+        taxable_income: "125000000"
+        year: 2026
+      field: tax
+    expected_decimal_string: "28310000"
+
+  - id: tax_kr_income_150M
+    category: tax_korea
+    difficulty: medium
+    prompt: |
+      한국 2026년 과세표준 150,000,000원에 대한 종합소득세를 원 단위로 계산해 주세요.
+      결과는 숫자만 답하세요.
+    tool_call:
+      tool: tax.kr_income
+      args:
+        taxable_income: "150000000"
+        year: 2026
+      field: tax
+    expected_decimal_string: "37060000"
+
+  - id: tax_kr_income_300M
+    category: tax_korea
+    difficulty: hard
+    prompt: |
+      한국 2026년 과세표준 300,000,000원에 대한 종합소득세를 원 단위로 계산해 주세요.
+      결과는 숫자만 답하세요.
+    tool_call:
+      tool: tax.kr_income
+      args:
+        taxable_income: "300000000"
+        year: 2026
+      field: tax
+    expected_decimal_string: "94060000"
+
+  - id: tax_kr_income_500M
+    category: tax_korea
+    difficulty: hard
+    prompt: |
+      한국 2026년 과세표준 500,000,000원에 대한 종합소득세를 원 단위로 계산해 주세요.
+      결과는 숫자만 답하세요.
+    tool_call:
+      tool: tax.kr_income
+      args:
+        taxable_income: "500000000"
+        year: 2026
+      field: tax
+    expected_decimal_string: "174060000"
+
+  - id: tax_kr_income_1B
+    category: tax_korea
+    difficulty: hard
+    prompt: |
+      한국 2026년 과세표준 1,000,000,000원(10억)에 대한 종합소득세를 원 단위로
+      계산해 주세요. 결과는 숫자만 답하세요.
+    tool_call:
+      tool: tax.kr_income
+      args:
+        taxable_income: "1000000000"
+        year: 2026
+      field: tax
+    expected_decimal_string: "384060000"
+
+  # =========================================================================
+  # 부가세 역산 (accounting.vat_extract) — 반올림 정책별
+  # =========================================================================
+  - id: vat_extract_down_1234567
+    category: vat
+    difficulty: medium
+    prompt: |
+      공급대가(VAT 포함) 1,234,567원에서 세율 10% 기준 공급가액(net)을
+      한국 국세청 표준인 절사(DOWN) 반올림으로 역산해 주세요.
+      결과는 공급가액 숫자만 답하세요.
+    tool_call:
+      tool: accounting.vat_extract
+      args:
+        gross: "1234567"
+        rate: "0.1"
+        rounding: "DOWN"
+      field: net
+    expected_decimal_string: "1122333"
+
+  - id: vat_extract_halfup_1234567
+    category: vat
+    difficulty: medium
+    prompt: |
+      공급대가 1,234,567원에서 세율 10% 기준 공급가액(net)을 HALF_UP 반올림으로
+      역산해 주세요. 결과는 공급가액 숫자만 답하세요.
+    tool_call:
+      tool: accounting.vat_extract
+      args:
+        gross: "1234567"
+        rate: "0.1"
+        rounding: "HALF_UP"
+      field: net
+    expected_decimal_string: "1122334"
+
+  - id: vat_extract_halfeven_1100001
+    category: vat
+    difficulty: medium
+    prompt: |
+      공급대가 1,100,001원에서 세율 10% 기준 공급가액(net)을 HALF_EVEN
+      (Banker's rounding) 반올림으로 역산해 주세요. 결과는 공급가액 숫자만 답하세요.
+    tool_call:
+      tool: accounting.vat_extract
+      args:
+        gross: "1100001"
+        rate: "0.1"
+        rounding: "HALF_EVEN"
+      field: net
+    expected_decimal_string: "1000001"
+
+  # =========================================================================
+  # 복리이자 (finance.fv)
+  # =========================================================================
+  - id: fv_monthly_compound_10y
+    category: finance_compound
+    difficulty: medium
+    prompt: |
+      원금 10,000,000원을 월복리 이자율 0.0041666666666667 (연 5%/12)으로
+      120개월 예치한 경우의 미래가치(FV)를 소수 둘째 자리까지 계산해 주세요.
+      결과는 숫자만 답하세요.
+    tool_call:
+      tool: finance.fv
+      args:
+        present_value: "10000000"
+        rate: "0.0041666666666667"
+        periods: 120
+      field: fv
+    expected_decimal_string: "16470094.98"
+
+  - id: fv_daily_compound_30d
+    category: finance_compound
+    difficulty: medium
+    prompt: |
+      원금 1,000,000원을 일복리 이자율 0.0001 (연 3.65%)으로 30일 예치한 경우의
+      미래가치(FV)를 소수 둘째 자리까지 계산해 주세요. 결과는 숫자만 답하세요.
+    tool_call:
+      tool: finance.fv
+      args:
+        present_value: "1000000"
+        rate: "0.0001"
+        periods: 30
+      field: fv
+    expected_decimal_string: "1003004.35"
+
+  # =========================================================================
+  # 확률/통계 (probability/stats)
+  # =========================================================================
+  - id: binomial_cdf_15_30_half
+    category: probability
+    difficulty: medium
+    prompt: |
+      공정한 동전을 30번 던져서 앞면이 15번 이하로 나올 확률 P(X<=15)을
+      이항분포 CDF로 계산해 주세요. 소수 6자리까지 답하세요.
+    tool_call:
+      tool: probability.binomial_cdf
+      args:
+        k: 15
+        n: 30
+        p: "0.5"
+      field: result
+    expected_decimal_string: "0.572232224"
+
+  - id: normal_ppf_999
+    category: probability
+    difficulty: hard
+    prompt: |
+      표준정규분포에서 누적확률 0.999에 해당하는 분위수 z값을 소수 6자리까지
+      계산해 주세요. 결과는 숫자만 답하세요.
+    tool_call:
+      tool: probability.normal_ppf
+      args:
+        q: "0.999"
+        mu: "0"
+        sigma: "1"
+      field: result
+    expected_decimal_string: "3.090232306"
+
+  - id: ttest_one_sample_p
+    category: stats
+    difficulty: hard
+    prompt: |
+      다음 10개 표본 [10.1, 10.2, 10.3, 9.9, 10.0, 10.2, 10.4, 9.8, 10.3, 10.1]이
+      모평균 10.0과 다르다고 볼 수 있는지 일표본 양측 t-검정을 수행하고,
+      p-value를 소수 4자리까지 답하세요. 결과는 숫자만 답하세요.
+    tool_call:
+      tool: stats.ttest_one_sample
+      args:
+        values: ["10.1","10.2","10.3","9.9","10.0","10.2","10.4","9.8","10.3","10.1"]
+        popmean: "10.0"
+        tail: "two"
+      field: p_value
+    expected_decimal_string: "0.05747636879"
+
+  # =========================================================================
+  # 공학 (engineering)
+  # =========================================================================
+  - id: ac_impedance_rlc_series
+    category: engineering_ac
+    difficulty: hard
+    prompt: |
+      60 Hz AC 회로에서 R=10 Ω, L=0.1 H, C=100 µF (0.0001 F)를 직렬로 연결한
+      경우의 임피던스 크기 |Z|를 옴(Ω) 단위, 소수 둘째 자리까지 계산해 주세요.
+      결과는 숫자만 답하세요.
+    tool_call:
+      tool: engineering.ac_impedance
+      args:
+        frequency: "60"
+        resistance: "10"
+        inductance: "0.1"
+        capacitance: "0.0001"
+        topology: "series"
+      field: magnitude
+    expected_decimal_string: "14.9947445662283790155654688184"
+
+  - id: three_phase_power_wye
+    category: engineering_ac
+    difficulty: medium
+    prompt: |
+      3상 균형 부하(Y결선) 선간전압 380V, 선전류 20A, 역률 0.85일 때
+      유효전력 P(W)를 계산해 주세요. 공식 P = √3 · V_LL · I_L · cosφ.
+      결과는 숫자만 답하세요 (소수 둘째 자리 반올림 허용).
+    tool_call:
+      tool: engineering.three_phase_power
+      args:
+        line_voltage: "380"
+        line_current: "20"
+        power_factor: "0.85"
+        connection: "wye"
+      field: real
+    expected_decimal_string: "11189.0482168949473161873033661546000"
+
+  # =========================================================================
+  # 양도소득세 (tax.capital_gains_kr, 장특공)
+  # =========================================================================
+  - id: capital_gains_10y_general
+    category: tax_korea_capgain
+    difficulty: hard
+    prompt: |
+      한국 2026년 기준 일반 부동산을 취득가액 500,000,000원, 양도가액 800,000,000원,
+      보유 10년(1세대1주택 아님)으로 매도한 경우의 양도소득세를 원 단위로
+      계산해 주세요. 장기보유특별공제 포함. 결과는 세액 숫자만 답하세요.
+    tool_call:
+      tool: tax.capital_gains_kr
+      args:
+        acquisition_price: "500000000"
+        sale_price: "800000000"
+        holding_years: 10
+        is_one_house: false
+        year: 2026
+      field: tax
+    expected_decimal_string: "71260000"
+
+  - id: capital_gains_15y_general
+    category: tax_korea_capgain
+    difficulty: hard
+    prompt: |
+      한국 2026년 기준 일반 부동산을 취득가액 500,000,000원, 양도가액 800,000,000원,
+      보유 15년(1세대1주택 아님)으로 매도한 경우의 양도소득세를 원 단위로
+      계산해 주세요. 장기보유특별공제 포함. 결과는 세액 숫자만 답하세요.
+    tool_call:
+      tool: tax.capital_gains_kr
+      args:
+        acquisition_price: "500000000"
+        sale_price: "800000000"
+        holding_years: 15
+        is_one_house: false
+        year: 2026
+      field: tax
+    expected_decimal_string: "59860000"

@@ -1,7 +1,8 @@
 [project]
 name = "sootool"
 version = "0.1.1"
-description = "LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Decimal 전용 커널, 15개 계산 도메인 236개 기본 도구 + 10개 admin 정책 도구, 5종 전송(stdio/HTTP/SSE/WebSocket/Unix)."
+# keep in sync with README first paragraph (ADR-019)
+description = "LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Decimal 전용 커널, 16개 계산 도메인 243개 기본 도구 + 10개 admin 정책 도구, 5종 전송(stdio/HTTP/SSE/WebSocket/Unix)."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
@@ -80,6 +81,12 @@ target-version = "py312"
 select = ["E", "F", "I", "B", "UP", "S"]
 ignore = ["E501", "S101"]
 
+[tool.ruff.lint.per-file-ignores]
+# scripts/ 는 개발·운영 유틸로 subprocess 와 하드코딩 토큰이 로컬 스모크 테스트 용도로 필요하다.
+"scripts/*" = ["S105", "S603", "S607"]
+# tests/bench/ 는 벤치마크 팀 소유 영역 — import 정렬은 해당 팀이 추후 정리한다.
+"tests/bench/*" = ["I001"]
+
 [tool.mypy]
 python_version        = "3.12"
 strict                = true
@@ -96,6 +103,19 @@ exclude               = ["tests/"]
 [[tool.mypy.overrides]]
 module = ["pint.*", "mpmath.*", "mcp.*", "yaml.*", "dateutil.*", "holidays.*", "workalendar.*"]
 ignore_missing_imports = true
+
+# scripts/mcp_smoke_* 는 MCP SDK 타입 스텁 불균일로 인한 legacy `type: ignore` 주석이 남아 있다.
+# 기존 스모크 스크립트는 해당 팀에서 정리 예정이므로 unused-ignore 를 비활성화한다.
+[[tool.mypy.overrides]]
+module = [
+    "mcp_smoke_http",
+    "mcp_smoke_sse",
+    "mcp_smoke_stdio",
+    "mcp_smoke_test",
+    "mcp_smoke_unix",
+    "mcp_smoke_ws",
+]
+warn_unused_ignores = false
 
 [tool.pytest.ini_options]
 addopts   = "--strict-markers"

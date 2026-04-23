@@ -18,7 +18,6 @@ from typing import Any
 from mcp import ClientSession
 from mcp.client.stdio import StdioServerParameters, stdio_client
 
-
 # ---------------------------------------------------------------------------
 # Result extraction
 # ---------------------------------------------------------------------------

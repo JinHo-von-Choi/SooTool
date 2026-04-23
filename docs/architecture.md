@@ -164,3 +164,31 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - `eval` 기반 계산기는 prompt injection·supply-chain 공격 경로에서 임의 코드 실행 표면이 넓다. LLM 경유 호출에서 악의적 입력이 `expression` 인자에 직접 주입될 수 있다. AST 화이트리스트는 허용 노드를 명시적으로 관리하므로 감사 가능하고, 확장 시 코드 리뷰에서 즉시 식별된다.
 - Decimal/mpmath 이원화는 ADR-001(Decimal 전 구간) 및 ADR-008(초월 함수 mpmath 경유) 과 일치하며 트레이스의 출력 타입을 문자열 하나로 통일해 ADR-003(트레이스 의무) 을 지킨다.
 - 복잡도 상한을 보수적으로 고정하면 catastrophic parsing DoS (`(((...)))` 중첩, 초장문 Pow 체인) 를 상수 시간에 차단하면서 일반적인 수식 길이에는 영향이 없다.
+
+## ADR-019: 배포 문서 숫자 단일 소스
+
+결정:
+- 도구 수·계산 도메인 수·운영 네임스페이스 수·정책 도구 수·admin 정책 도구 수는 REGISTRY 전수 조회 결과(`scripts/count_tools.py`)를 유일한 진실로 한다.
+- 배포 문서 3자 — `README.md` 첫 문단·도구 카탈로그 헤더, `pyproject.toml` `project.description`, `CHANGELOG.md` 릴리즈 요약 — 는 동일 숫자 문자열을 노출한다. `pyproject.toml` description 상단에 `# keep in sync with README first paragraph` 주석을 유지한다.
+- 계산 도메인의 정의는 "운영 네임스페이스(`core`, `sootool`) 를 제외한 모든 네임스페이스" 로 고정한다. 전체 네임스페이스·계산 도메인·운영 도메인은 분리 표기하여 혼동을 차단한다.
+- CI 가드는 `scripts/count_tools.py --json` 출력을 기준으로 README·pyproject·CHANGELOG 의 선언 숫자 토큰을 정규식으로 대조하고, `--assert-total`/`--assert-domains`/`--assert-policy` 단언을 병행한다. 불일치 시 빌드 실패로 릴리즈 태깅·PyPI 배포를 차단한다.
+- 테스트 수는 `pytest --collect-only` 결과를 부가 지표로 기록하되 빌드 차단 기준은 아니다(테스트는 지속 추가되며 문서 동기화 우선순위가 낮다).
+
+사유:
+- 문서 간 숫자 불일치는 "Decimal 정밀성" 이라는 제품 약속과 직접 충돌한다. 첫인상에서 신뢰가 꺾이면 후속 엔지니어링 성과가 상쇄된다.
+- 수동 동기화는 사람 개입마다 드리프트가 재발한다. REGISTRY 를 단일 소스로 삼고 CI 에서 기계적으로 대조하면 릴리즈 이전에 오차가 발견되며, 배포 후 사후 패치(0.1.1 hotfix) 필요성을 제거한다.
+- `core`·`sootool` 을 계산 도메인에서 분리하는 것은 외부 사용자 관점의 "계산 능력" 정의와 내부 아키텍처의 "운영 표면" 정의를 충돌 없이 유지하기 위한 결정이다.
+
+## ADR-020: core.batch deterministic 재정렬 전략
+
+결정:
+- `BatchExecutor.run(deterministic=True)` 경로의 결과 수집 루프를 순차 `future.result()` 블록킹 방식에서 `concurrent.futures.as_completed` 기반 수집 + 입력 id 순 재정렬로 전환한다.
+- ADR-011 결정론 invariant(응답 `results` 배열이 입력 `items` 의 id 순서) 를 유지하되, wall-clock 은 `max(item_time)` 에 근접하도록 단축한다. 느린 선행 항목이 뒤따르는 빠른 항목의 결과 수집을 블로킹하지 않는다.
+- `item_timeout_s` 와 `batch_timeout_s` 두 시한을 모두 존중한다. 개별 future 의 제출 시각(`item_started_at`) 을 저장하고, 루프 매 반복에서 `now - item_started_at >= item_timeout_s` 인 future 를 즉시 타임아웃 처리한다. 총 경과가 `batch_timeout_s` 를 초과하면 남은 pending 전체를 타임아웃으로 일괄 종결한다.
+- `deterministic=False` 경로는 이전과 동일하게 완료 순서로 노출하고 응답에 `non_deterministic=True` 플래그를 강제한다. 두 경로 모두 `as_completed` 를 공유하므로 코드 중복을 제거한다.
+
+사유:
+- 기존 순차 `future.result()` 루프는 ThreadPoolExecutor 의 병렬 제출 이점을 수집 단계에서 희석했다. 예를 들어 50개 항목 중 첫 항목만 5초 소요·나머지 49개는 0.1초인 배치에서, 기존 구조는 첫 항목 완료까지 5초 블로킹 후에야 뒤쪽 이미 완료된 항목들을 수집했다. 새 구조는 빠른 항목들을 완료 즉시 수집하므로 동일 배치의 wall-clock 이 `max(item_time)` 수준으로 수렴한다.
+- ADR-011 의 결정론 약속은 응답 `results` 의 인덱스 순서에만 의존한다. 수집 순서를 변경해도 최종 재정렬 단계에서 입력 id 순으로 복원하면 invariant 는 보존된다. 회귀 테스트 `test_batch_deterministic_order_independent_of_completion` 이 이 성질을 감시한다.
+- `item_timeout_s` 를 루프 내 명시적 polling 으로 처리하면 개별 항목의 취소 가능성을 유지하면서도 `as_completed` 의 timeout 파라미터(배치 단위) 와 충돌하지 않는다. 추가적인 회귀 테스트 `test_batch_deterministic_wall_clock_bounded_by_max_item` 이 느린 선행 항목 시나리오에서 wall-clock 상한을 감시한다.
+

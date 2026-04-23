@@ -32,13 +32,35 @@ jobs:
         run: uv sync --frozen
 
       - name: Ruff
-        run: uv run ruff check src/sootool tests
+        run: uv run ruff check src/sootool tests scripts
 
       - name: Mypy
-        run: uv run mypy src/sootool
+        run: uv run mypy src/sootool scripts
 
       - name: Pytest
         run: uv run pytest -q --strict-markers
+
+      - name: Tool count single source guard (ADR-019)
+        run: |
+          set -euo pipefail
+          SNAPSHOT="$(uv run python scripts/count_tools.py --json)"
+          TOTAL="$(echo "$SNAPSHOT" | python -c 'import json,sys;print(json.load(sys.stdin)["total_tools"])')"
+          DOMAINS="$(echo "$SNAPSHOT" | python -c 'import json,sys;print(json.load(sys.stdin)["calculation_domains"])')"
+          POLICY="$(echo "$SNAPSHOT" | python -c 'import json,sys;print(json.load(sys.stdin)["policy_tools"])')"
+          BASE="$(( TOTAL - POLICY ))"
+          echo "measured: total=$TOTAL base=$BASE policy=$POLICY domains=$DOMAINS"
+          grep -q "${DOMAINS}개 계산 도메인 ${BASE}개 기본 도구 + ${POLICY}개 admin 정책 도구" README.md \
+            || { echo "README.md 첫 문단 숫자 불일치"; exit 1; }
+          grep -q "(${BASE}개 기본 + ${POLICY}개 admin, ${DOMAINS} 계산 도메인" README.md \
+            || { echo "README.md 카탈로그 헤더 숫자 불일치"; exit 1; }
+          grep -q "${DOMAINS}개 계산 도메인 ${BASE}개 기본 도구 + ${POLICY}개 admin 정책 도구" pyproject.toml \
+            || { echo "pyproject.toml description 숫자 불일치"; exit 1; }
+          grep -q "${DOMAINS} domains, ${BASE} base tools, ${POLICY} admin policy-management tools" CHANGELOG.md \
+            || { echo "CHANGELOG.md [Unreleased] 도메인·도구 수 불일치"; exit 1; }
+          uv run python scripts/count_tools.py \
+            --assert-total "$TOTAL" \
+            --assert-domains "$DOMAINS" \
+            --assert-policy "$POLICY"
 
       - name: MCP smoke (stdio)
         run: uv run python scripts/mcp_smoke_test.py

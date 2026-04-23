@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Current master snapshot: 16 domains, 243 base tools, 10 admin policy-management tools, 5 transport modes.
+
+### Added
+- FB-M1 (P0 remediation): `scripts/count_tools.py` registry-backed single source for domain/tool counts; CI guard (ADR-019) gates README, `pyproject.toml`, and CHANGELOG numbers against the live REGISTRY.
+- FB-M2: README subtitle "Precision Calc MCP for LLM tool use", CI/PyPI/Python/License badges, and a real `finance.npv` audit-trace sample block.
+- FB-M9: GitHub About tagline aligned to "SooTool — Precision Calc MCP: Decimal-only deterministic calculation server for LLM tool use".
+- `docs/architecture.md` — ADR-019 (docs-number single source) and ADR-020 (batch deterministic as_completed reordering).
+- Batch regression tests covering wall-clock reduction and completion-order independence for `deterministic=True`.
+
+### Changed
+- `pyproject.toml` description resynced to match README first paragraph; annotated with "keep in sync" marker (ADR-019).
+- `core.batch` deterministic path now collects futures via `as_completed` and reorders by input id, shortening wall-clock to `max(item_time)` while preserving ADR-011 ordering invariant. `item_timeout_s` / `batch_timeout_s` are both enforced (ADR-020).
+- README tool-catalog table reflects the updated payroll (5), tax (10), and core (8) counts; running totals aligned to the current REGISTRY.
+
 ## [0.1.1] - 2026-04-24
 
 Infrastructure patch: GitHub Actions CI and PyPI Trusted Publishing workflows.
@@ -22,7 +38,7 @@ No functional changes to tools, policies, or transports.
 
 ## [0.1.0] - 2026-04-23
 
-Initial public release. Decimal-only calculation MCP server with 15 domains,
+Initial public release. Decimal-only calculation MCP server with 16 domains,
 236 base tools, 10 admin policy-management tools, and 5 transport modes.
 
 ### Added

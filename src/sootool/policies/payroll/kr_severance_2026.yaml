@@ -1,0 +1,68 @@
+sha256: "ac9721381c93995d1709bd42407a622ab10ad0a5b8b8ab15af1a005730baba3b"
+effective_date: "2026-01-01"
+notice_no: "소득세법 제48조·시행령 제105조 (법률 제21065호, 2025.10.1. 타법개정, 시행 2026.1.2.)"
+source_url: "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1019372661&chrClsCd=010202&ancYnChk="
+# 2026-04-23 verified: 퇴직소득세 계산 구조는 소득세법 제48조(퇴직소득공제) 및
+# 제55조(세율)에 의거. 2023.1.1. 이후 퇴직분 기준 근속연수공제 테이블(5/10/20년 구간)과
+# 환산급여공제 테이블(800만/7000만/1억/3억 구간) 반영. 기본세율은 kr_income_2026 참조.
+data:
+  # 근속연수 공제 (소득세법 제48조 제1항)
+  # 공제액 = base + marginal * (근속연수 - years_from)
+  service_deduction_brackets:
+    - years_from: 0
+      years_to:   5
+      base:       0
+      marginal:   1000000       # 100만원/년
+    - years_from: 5
+      years_to:   10
+      base:       5000000        # 5년까지 500만원
+      marginal:   2000000        # 초과 200만원/년
+    - years_from: 10
+      years_to:   20
+      base:       15000000       # 10년까지 1,500만원
+      marginal:   2500000        # 초과 250만원/년
+    - years_from: 20
+      years_to:   null
+      base:       40000000       # 20년까지 4,000만원
+      marginal:   3000000        # 초과 300만원/년
+  # 환산급여 공제 (소득세법 제48조 제2항)
+  # base + marginal * (환산급여 - lower)
+  converted_salary_deduction_brackets:
+    - lower:    0
+      upper:    8000000
+      base:     0
+      marginal: "1.0"             # 전액 공제
+    - lower:    8000000
+      upper:    70000000
+      base:     8000000
+      marginal: "0.60"
+    - lower:    70000000
+      upper:    100000000
+      base:     45200000
+      marginal: "0.55"
+    - lower:    100000000
+      upper:    300000000
+      base:     61700000
+      marginal: "0.45"
+    - lower:    300000000
+      upper:    null
+      base:     151700000
+      marginal: "0.35"
+  # 기본세율 (소득세법 제55조) — kr_income_2026 동일
+  tax_brackets:
+    - upper: 14000000
+      rate:  0.06
+    - upper: 50000000
+      rate:  0.15
+    - upper: 88000000
+      rate:  0.24
+    - upper: 150000000
+      rate:  0.35
+    - upper: 300000000
+      rate:  0.38
+    - upper: 500000000
+      rate:  0.40
+    - upper: 1000000000
+      rate:  0.42
+    - upper: null
+      rate:  0.45
