@@ -124,6 +124,44 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "expected_output": {"imported": True, "source": "override"},
         "caveats": ["SOOTOOL_ADMIN_MODE=1 필요", "서명 검증 활성화 시 require_signature=true"],
     },
+    {
+        "id": "lunar_holiday_planner",
+        "scenario": "음력 명절 양력 환산 + 주변 공휴일·영업일 산정",
+        "title": "음력 명절 캘린더 (설/추석 + 영업일)",
+        "description": "설날·추석의 양력 날짜를 계산하고 전후 영업일 3일을 함께 반환한다.",
+        "steps": [
+            {"id": "seollal",  "tool": "datetime.lunar_holiday", "args": {"name": "seollal", "year": "<연도>"}},
+            {"id": "chuseok",  "tool": "datetime.lunar_holiday", "args": {"name": "chuseok", "year": "<연도>"}},
+            {"id": "preholiday", "tool": "datetime.add_business_days", "args": {"start_date": "${chuseok.solar_date}", "days": "-3", "country": "KR"}},
+        ],
+        "expected_output": {"seollal": "설날 양력 ISO", "chuseok": "추석 양력 ISO", "preholiday": "추석 3영업일 전"},
+        "caveats": ["음력 연도 지원 범위 2020-2030", "country=KR 공휴일 포함"],
+    },
+    {
+        "id": "medical_dose_with_qtc",
+        "scenario": "체중 기반 용량 + QT 보정 (약물 안전 체크)",
+        "title": "약물 용량 + QT 보정 동시 평가",
+        "description": "체중 기반 용량 계산 후 동일 환자의 QTc(Bazett) 와 CHA2DS2-VASc 점수를 묶어 반환한다.",
+        "steps": [
+            {"id": "dose", "tool": "medical.dose_weight_based", "args": {"weight_kg": "<체중>", "dose_per_kg": "<mg/kg>", "max_dose": "<상한>"}},
+            {"id": "qtc",  "tool": "medical.qtc_bazett",         "args": {"qt": "<QT ms>", "rr": "<RR ms>"}},
+            {"id": "cha",  "tool": "medical.cha2ds2_vasc",        "args": {"age": "<나이>", "female": "<bool>", "hypertension": "<bool>", "diabetes": "<bool>", "stroke_or_tia": "<bool>"}},
+        ],
+        "expected_output": {"dose": "계산 용량", "qtc": "보정 QTc ms", "cha": "CHA2DS2-VASc 점수"},
+        "caveats": ["QT/RR 단위 일치 필수 (기본 ms)", "CHA 점수 ≥2 이면 항응고 고려 — 임상 판단 필요"],
+    },
+    {
+        "id": "math_integration_npv",
+        "scenario": "연속 현금흐름 수치 적분 → NPV 검증",
+        "title": "NPV 검증 (이산 vs 수치 적분)",
+        "description": "연속 현금흐름 f(t) 를 심프슨 법칙으로 적분하고 finance.npv 의 이산 합산 결과와 비교한다.",
+        "steps": [
+            {"id": "integral", "tool": "math.integrate_simpson", "args": {"expression": "<f(t) 표현식>", "a": "0", "b": "<T>", "n": "200", "variable": "t"}},
+            {"id": "npv",      "tool": "finance.npv",            "args": {"rate": "<할인율>", "cashflows": "<샘플링된 현금흐름 리스트>"}},
+        ],
+        "expected_output": {"integral": "연속 적분 현재가치", "npv": "이산 NPV"},
+        "caveats": ["expression은 core.calc 화이트리스트만 사용", "n은 짝수, 수렴 전 이산 샘플 수 증가 필요"],
+    },
 ]
 
 _PLAYBOOKS_EN: list[dict[str, Any]] = [
@@ -246,6 +284,44 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         ],
         "expected_output": {"imported": True, "source": "override"},
         "caveats": ["Requires SOOTOOL_ADMIN_MODE=1", "Enable signature verification with require_signature=true"],
+    },
+    {
+        "id": "lunar_holiday_planner",
+        "scenario": "Lunar holiday -> solar date + surrounding business days",
+        "title": "Lunar holiday calendar (Seollal/Chuseok + business days)",
+        "description": "Compute solar dates for Seollal and Chuseok and derive business days ±3 around them.",
+        "steps": [
+            {"id": "seollal",    "tool": "datetime.lunar_holiday",      "args": {"name": "seollal", "year": "<year>"}},
+            {"id": "chuseok",    "tool": "datetime.lunar_holiday",      "args": {"name": "chuseok", "year": "<year>"}},
+            {"id": "preholiday", "tool": "datetime.add_business_days",  "args": {"start_date": "${chuseok.solar_date}", "days": "-3", "country": "KR"}},
+        ],
+        "expected_output": {"seollal": "Seollal solar ISO", "chuseok": "Chuseok solar ISO", "preholiday": "3 business days before"},
+        "caveats": ["Lunar year range 2020-2030", "country=KR holidays considered"],
+    },
+    {
+        "id": "medical_dose_with_qtc",
+        "scenario": "Weight-based dose + QT correction + stroke risk",
+        "title": "Drug dose + QT correction safety panel",
+        "description": "Compute weight-based dose then evaluate QTc (Bazett) and CHA2DS2-VASc score for the same patient.",
+        "steps": [
+            {"id": "dose", "tool": "medical.dose_weight_based", "args": {"weight_kg": "<kg>", "dose_per_kg": "<mg/kg>", "max_dose": "<ceiling>"}},
+            {"id": "qtc",  "tool": "medical.qtc_bazett",         "args": {"qt": "<QT ms>", "rr": "<RR ms>"}},
+            {"id": "cha",  "tool": "medical.cha2ds2_vasc",        "args": {"age": "<age>", "female": "<bool>", "hypertension": "<bool>", "diabetes": "<bool>", "stroke_or_tia": "<bool>"}},
+        ],
+        "expected_output": {"dose": "dose", "qtc": "corrected QTc ms", "cha": "CHA2DS2-VASc score"},
+        "caveats": ["QT/RR units must match (ms by default)", "CHA ≥2 → consider anticoagulation, use clinical judgement"],
+    },
+    {
+        "id": "math_integration_npv",
+        "scenario": "Continuous cash flow integration cross-checked with discrete NPV",
+        "title": "NPV validation (discrete vs continuous)",
+        "description": "Integrate continuous cash flow f(t) via Simpson's rule and compare against discrete finance.npv.",
+        "steps": [
+            {"id": "integral", "tool": "math.integrate_simpson", "args": {"expression": "<f(t) expression>", "a": "0", "b": "<T>", "n": "200", "variable": "t"}},
+            {"id": "npv",      "tool": "finance.npv",            "args": {"rate": "<rate>", "cashflows": "<sampled cash flows>"}},
+        ],
+        "expected_output": {"integral": "continuous PV", "npv": "discrete NPV"},
+        "caveats": ["expression limited to core.calc whitelist", "n even, increase sampling for convergence"],
     },
 ]
 

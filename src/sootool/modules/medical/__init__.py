@@ -9,6 +9,8 @@ from sootool.modules.medical import (
     dose,
     egfr,
     pregnancy,
+    qt_correction,
+    risk_scores,
 )
 
-__all__ = ["body", "dose", "egfr", "pregnancy"]
+__all__ = ["body", "dose", "egfr", "pregnancy", "qt_correction", "risk_scores"]

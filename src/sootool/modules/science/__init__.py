@@ -9,6 +9,6 @@ Importing this package registers all science tools in REGISTRY.
 """
 from __future__ import annotations
 
-from sootool.modules.science import chemistry, physics, thermo
+from sootool.modules.science import chemistry, electrochemistry, optics, physics, thermo
 
-__all__ = ["chemistry", "physics", "thermo"]
+__all__ = ["chemistry", "electrochemistry", "optics", "physics", "thermo"]

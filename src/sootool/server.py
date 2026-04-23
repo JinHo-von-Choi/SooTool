@@ -267,6 +267,7 @@ def _load_modules() -> None:
     import sootool.modules.engineering  # noqa: F401
     import sootool.modules.finance  # noqa: F401
     import sootool.modules.geometry  # noqa: F401
+    import sootool.modules.math  # noqa: F401
     import sootool.modules.medical  # noqa: F401
     import sootool.modules.payroll  # noqa: F401
     import sootool.modules.pm  # noqa: F401

@@ -89,6 +89,46 @@ _TRIGGERS_KO: list[dict[str, Any]] = [
         "tool": "sootool.policy_rollback",
         "reason": "override 정책 제거 후 패키지 기본값 복원 — 감사 로그 자동 기록",
     },
+    {
+        "signal": '"음력", "설날", "추석", "절기", "24절기" 포함',
+        "tool": "datetime.solar_to_lunar / datetime.lunar_to_solar / datetime.lunar_holiday / datetime.solar_terms",
+        "reason": "KASI 조견표 기반 음력↔양력 정밀 변환 — 연도별 윤달 자동 반영",
+    },
+    {
+        "signal": '"회계연도", "fiscal year", "과세기간", "월급 정산일" 포함',
+        "tool": "datetime.fiscal_year / datetime.fiscal_quarter / datetime.tax_period_kr / datetime.payroll_period",
+        "reason": "국가별 FY 경계 (KR/US/JP/UK) + 급여/과세 기간 정확 계산",
+    },
+    {
+        "signal": '"수치적분", "simpson", "가우스", "스플라인", "푸리에" 포함',
+        "tool": "math.integrate_simpson / math.integrate_gauss_legendre / math.interpolate_* / math.fft",
+        "reason": "core.calc 안전 AST + mpmath/numpy 수치해석 - LLM 직접 적분 오류 방지",
+    },
+    {
+        "signal": '"CHA2DS2-VASc", "HAS-BLED", "Framingham", "QT 보정" 포함',
+        "tool": "medical.cha2ds2_vasc / medical.has_bled / medical.framingham_cvd_10y / medical.qtc_*",
+        "reason": "임상 결정 지원 - 공인 점수표 및 보정식 (Bazett/Fridericia/Framingham/Hodges)",
+    },
+    {
+        "signal": '"Nernst", "전기분해", "패러데이", "스넬", "브래그", "렌즈" 포함',
+        "tool": "science.nernst / science.faraday_electrolysis / science.snell_law / science.bragg / science.thin_lens",
+        "reason": "물리·화학 공식 Decimal 경계 계산 — 삼각/로그는 mpmath",
+    },
+    {
+        "signal": '"에너지 단위", "압력 단위", "MB/MiB", "ms/us/ns" 포함',
+        "tool": "units.energy_convert / units.pressure_convert / units.data_size_convert / units.time_small_convert",
+        "reason": "단위 전용 변환 테이블 (J/cal/eV, Pa/atm/psi, SI/IEC, ms~ps)",
+    },
+    {
+        "signal": '"Earned Schedule", "SPI(t)", "일정 몬테카를로" 포함',
+        "tool": "pm.earned_schedule / pm.monte_carlo_schedule",
+        "reason": "시간 기반 일정 성과 지표 + PERT-Beta 몬테카를로 (결정론 seed)",
+    },
+    {
+        "signal": '"확장 유클리드", "CRT", "중국인의 나머지", "오일러 phi", "카마이클" 포함',
+        "tool": "crypto.egcd / crypto.crt / crypto.euler_totient / crypto.carmichael_lambda",
+        "reason": "정수 이론 정확 계산 (암호·모듈러 필수 빌딩블록)",
+    },
 ]
 
 _TRIGGERS_EN: list[dict[str, Any]] = [
@@ -176,6 +216,46 @@ _TRIGGERS_EN: list[dict[str, Any]] = [
         "signal": '"policy rollback", "previous rate", "revert policy"',
         "tool": "sootool.policy_rollback",
         "reason": "Remove override and restore package default — audit log auto-recorded",
+    },
+    {
+        "signal": '"lunar", "Seollal", "Chuseok", "solar term", "24 solar terms"',
+        "tool": "datetime.solar_to_lunar / datetime.lunar_to_solar / datetime.lunar_holiday / datetime.solar_terms",
+        "reason": "KASI-aligned lunar↔solar conversions with leap-month awareness",
+    },
+    {
+        "signal": '"fiscal year", "quarter boundary", "tax period", "payroll period"',
+        "tool": "datetime.fiscal_year / datetime.fiscal_quarter / datetime.tax_period_kr / datetime.payroll_period",
+        "reason": "Country-specific FY boundaries (KR/US/JP/UK) + payroll/tax windows",
+    },
+    {
+        "signal": '"numerical integration", "Simpson", "Gauss-Legendre", "spline", "FFT"',
+        "tool": "math.integrate_simpson / math.integrate_gauss_legendre / math.interpolate_* / math.fft",
+        "reason": "core.calc safe AST + mpmath/numpy numerical analysis — avoid LLM integration errors",
+    },
+    {
+        "signal": '"CHA2DS2-VASc", "HAS-BLED", "Framingham", "QT correction"',
+        "tool": "medical.cha2ds2_vasc / medical.has_bled / medical.framingham_cvd_10y / medical.qtc_*",
+        "reason": "Clinical decision support - validated scores and correction formulas",
+    },
+    {
+        "signal": '"Nernst", "electrolysis", "Faraday", "Snell", "Bragg", "lens"',
+        "tool": "science.nernst / science.faraday_electrolysis / science.snell_law / science.bragg / science.thin_lens",
+        "reason": "Physics/chemistry formulas with Decimal boundary and mpmath transcendentals",
+    },
+    {
+        "signal": '"energy units", "pressure units", "MB/MiB", "ms/us/ns"',
+        "tool": "units.energy_convert / units.pressure_convert / units.data_size_convert / units.time_small_convert",
+        "reason": "Domain-specific conversion tables (J/cal/eV, Pa/atm/psi, SI/IEC, ms~ps)",
+    },
+    {
+        "signal": '"Earned Schedule", "SPI(t)", "schedule Monte Carlo"',
+        "tool": "pm.earned_schedule / pm.monte_carlo_schedule",
+        "reason": "Time-based schedule metrics + deterministic PERT-Beta Monte Carlo",
+    },
+    {
+        "signal": '"extended Euclidean", "CRT", "Chinese Remainder", "Euler totient", "Carmichael"',
+        "tool": "crypto.egcd / crypto.crt / crypto.euler_totient / crypto.carmichael_lambda",
+        "reason": "Exact integer number theory (cryptographic building blocks)",
     },
 ]
 

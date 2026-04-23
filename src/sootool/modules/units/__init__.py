@@ -8,6 +8,6 @@ Importing this package registers all units tools in REGISTRY:
 """
 from __future__ import annotations
 
-from sootool.modules.units import convert, currency, temperature
+from sootool.modules.units import convert, currency, extended, temperature
 
-__all__ = ["convert", "currency", "temperature"]
+__all__ = ["convert", "currency", "extended", "temperature"]

@@ -9,6 +9,6 @@ Importing this package registers all PM tools in REGISTRY.
 """
 from __future__ import annotations
 
-from sootool.modules.pm import cpm, evm, pert
+from sootool.modules.pm import cpm, earned_schedule, evm, monte_carlo, pert
 
-__all__ = ["cpm", "evm", "pert"]
+__all__ = ["cpm", "earned_schedule", "evm", "monte_carlo", "pert"]

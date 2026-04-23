@@ -132,6 +132,25 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - Memento(AnchorMind) MCP가 동일 문제에 대해 검증한 패턴(instructions + guide 도구 + _meta.hints + 스킬 문서 + 사용자 스니펫) 재사용.
 - 서버 측 단일 근원으로 가이드를 유지해 트리거·플레이북 개정 시 전 에이전트가 자동 최신화.
 
+## ADR-016: 정책 파일 사용자 관리
+
+결정:
+- 정책 YAML을 이중 저장소로 분리: 패키지 동봉 기본값(읽기 전용) + 사용자 덮어쓰기(XDG_DATA_HOME 또는 `SOOTOOL_POLICY_DIR`).
+- 로더는 덮어쓰기 > 기본값 순으로 해석하며, 호출자에게 `policy_source` 로 어느 저장소가 적용됐는지 투명하게 반환한다.
+- 쓰기 도구 10종(`sootool.policy_*` — validate, propose, activate, rollback, history, diff, list, export, import, status)은 admin 모드 한정으로 노출한다. 진입은 환경변수 `SOOTOOL_ADMIN_MODE=1` 또는 CLI `--admin` 중 하나.
+- 모든 쓰기는 원자적 파일 교체(tmp → rename) + JSONL 감사 로그(append-only)로 기록한다. audit_id 는 계산 도구 trace 에 `policy_audit_id` 로 전파된다.
+- 수명 주기: draft → validate → propose → activate (24시간 TTL). rollback 은 activate 역연산으로 감사 로그에 기록한다.
+- 계산 도구 trace 는 `policy_source: package|override`, `policy_sha256`, `policy_audit_id` 3개 필드를 의무 주입하여 덮어쓰기 여부를 호출자가 항상 식별 가능하게 한다.
+- 번들 서명 검증은 기본 비활성(`require_signature`), 민감 도메인은 `SOOTOOL_POLICY_REQUIRE_SIGNATURE=1` 으로 강제 가능하다.
+- 전년도 대비 민감도 임계값은 `SOOTOOL_POLICY_DIFF_THRESHOLD`(기본 50%p) 또는 호출 인자 `sensitivity_threshold` 로 제어한다.
+- ADR-009 원칙(SHA256 검증·year 필수·외부 API 금지·감사 추적)은 모두 유지한다.
+
+사유:
+- 세법·부동산 규제는 매년 개정되지만 편집→커밋→배포 루프가 비개발자 사용자를 배제하여 실무 투입 리드 타임을 분기 단위로 지연시킨다.
+- 코드 저장소 변경 없이 정책만 갱신 가능해야 실무 투입 리드 타임이 당일로 단축된다.
+- YAML 직접 편집은 스키마·교차 검증 실패가 런타임까지 전파되므로 서버 측 검증 파이프라인(validate → propose → activate)의 의무화가 필요하다.
+- 감사 가능성(누가·언제·어떤 고시문으로 바꿨는가)은 회계·세무 자동화의 법적 요구사항이며 JSONL append-only 로그로 충족한다.
+
 ## ADR-017: core.calc 보안 경계
 
 결정:

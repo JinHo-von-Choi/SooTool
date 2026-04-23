@@ -60,8 +60,8 @@ class TestSkillGuideSection:
 class TestTriggersContent:
     def test_trigger_count(self) -> None:
         result = skill_guide(section="triggers")
-        # Phase 1 base 15 + M8 policy management 2 = 17
-        assert len(result["triggers"]) == 17
+        # Phase 1 base 15 + M8 policy management 2 + Phase 4 Tier B/C 8 = 25
+        assert len(result["triggers"]) == 25
 
     def test_trigger_structure(self) -> None:
         result = skill_guide(section="triggers", lang="ko")
@@ -96,8 +96,8 @@ class TestAntiPatternsContent:
 class TestPlaybooksContent:
     def test_playbook_count(self) -> None:
         result = skill_guide(section="playbooks")
-        # Phase 1 base 6 + M8 policy management 3 = 9
-        assert len(result["playbooks"]) == 9
+        # Phase 1 base 6 + M8 policy management 3 + Phase 4 Tier B/C 3 = 12
+        assert len(result["playbooks"]) == 12
 
     def test_playbook_structure(self) -> None:
         result = skill_guide(section="playbooks", lang="ko")
@@ -105,6 +105,7 @@ class TestPlaybooksContent:
             "payroll_to_net", "vat_batch_summary", "loan_compare_3",
             "npv_sensitivity", "bond_yield_duration", "ab_test_full",
             "policy_annual_update", "policy_hotfix_rollback", "policy_portability",
+            "lunar_holiday_planner", "medical_dose_with_qtc", "math_integration_npv",
         }
         actual_ids = {pb["id"] for pb in result["playbooks"]}
         assert actual_ids == expected_ids
