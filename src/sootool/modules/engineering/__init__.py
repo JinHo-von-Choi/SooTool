@@ -33,23 +33,59 @@ Importing this package registers all engineering tools in REGISTRY:
   - engineering.lmtd                        (log-mean ΔT)
   - engineering.convective_heat_transfer    (Q = hAΔT)
   - engineering.si_prefix_convert           (SI prefix scale conversion)
+  - engineering.beam_deflection             (cantilever/simply-supported δ_max)
+  - engineering.bending_stress              (σ = M c / I)
+  - engineering.shear_stress                (τ = V Q / (I b))
+  - engineering.euler_buckling              (P_cr = π² E I / (K L)²)
+  - engineering.section_moment_inertia      (rectangle/circle/I-beam I)
+  - engineering.first_order_response        (1차 시스템 스텝 응답)
+  - engineering.second_order_response       (2차 시스템 ωd/Mp/ts)
+  - engineering.bode_magnitude_phase        (Bode 크기·위상)
+  - engineering.pid_discrete_output         (이산 PID 속도형)
+  - engineering.safety_factor               (SF = σ_allow / σ_applied)
+  - engineering.thermal_expansion_strain    (ε = α ΔT)
+  - engineering.sn_fatigue_life             (Basquin N_f)
+  - engineering.hardness_convert            (HV↔HB↔HRC)
+  - engineering.gear_ratio                  (i = N_driven / N_driver)
+  - engineering.gear_torque_transmission    (τ_out = τ_in · i · η)
+  - engineering.bearing_life_l10            (L10 = (C/P)^p)
+  - engineering.bearing_equivalent_load     (P = X·Fr + Y·Fa)
+  - engineering.thevenin_equivalent         (V_th, R_th)
+  - engineering.norton_equivalent           (I_N, R_N)
+  - engineering.max_power_transfer          (R_L = R_th, P_max)
+  - engineering.exponential_reliability     (R(t) = exp(−λt); MTBF)
+  - engineering.series_reliability          (R_sys = Π R_i)
+  - engineering.parallel_reliability        (R_sys = 1 − Π(1 − R_i))
+  - engineering.weibull_reliability         (R(t) = exp(−(t/η)^β))
 """
 from __future__ import annotations
 
 from sootool.modules.engineering import (
+    control,
     electrical,
     electrical_ac,
+    equivalent_circuit,
     fluid,
+    gear_bearing,
+    materials,
     mechanical,
+    reliability,
     si_prefix,
+    structural,
     thermal,
 )
 
 __all__ = [
+    "control",
     "electrical",
     "electrical_ac",
+    "equivalent_circuit",
     "fluid",
+    "gear_bearing",
+    "materials",
     "mechanical",
+    "reliability",
     "si_prefix",
+    "structural",
     "thermal",
 ]
