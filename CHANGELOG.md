@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-04-24
+
+Infrastructure patch: GitHub Actions CI and PyPI Trusted Publishing workflows.
+No functional changes to tools, policies, or transports.
+
+### Added
+- `.github/workflows/ci.yml` — ruff, mypy, pytest, MCP stdio smoke, `uv build` on push and pull requests
+- `.github/workflows/publish-pypi.yml` — automated PyPI upload on GitHub Release publish, manual TestPyPI target via `workflow_dispatch`
+- `.github/workflows/README.md` — Trusted Publishing setup guide
+
+### Changed
+- Version bump 0.1.0 → 0.1.1
+
+[0.1.1]: https://github.com/JinHo-von-Choi/SooTool/releases/tag/v0.1.1
+
 ## [0.1.0] - 2026-04-23
 
 Initial public release. Decimal-only calculation MCP server with 15 domains,
