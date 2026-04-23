@@ -79,6 +79,16 @@ _TRIGGERS_KO: list[dict[str, Any]] = [
         "tool": "finance.black_scholes",
         "reason": "mpmath 고정밀 계산",
     },
+    {
+        "signal": '"세법 개정", "고시문", "세율 변경" 포함',
+        "tool": "sootool.policy_propose / sootool.policy_activate",
+        "reason": "정책 YAML 갱신 워크플로우 — validate → propose → activate 순서 준수",
+    },
+    {
+        "signal": '"정책 롤백", "이전 세율", "원상 복구" 포함',
+        "tool": "sootool.policy_rollback",
+        "reason": "override 정책 제거 후 패키지 기본값 복원 — 감사 로그 자동 기록",
+    },
 ]
 
 _TRIGGERS_EN: list[dict[str, Any]] = [
@@ -156,6 +166,16 @@ _TRIGGERS_EN: list[dict[str, Any]] = [
         "signal": '"option price", "Greeks", "Black-Scholes"',
         "tool": "finance.black_scholes",
         "reason": "mpmath high-precision computation",
+    },
+    {
+        "signal": '"tax law amendment", "official notice", "gazette", "rate change"',
+        "tool": "sootool.policy_propose / sootool.policy_activate",
+        "reason": "Policy YAML update workflow — validate → propose → activate sequence",
+    },
+    {
+        "signal": '"policy rollback", "previous rate", "revert policy"',
+        "tool": "sootool.policy_rollback",
+        "reason": "Remove override and restore package default — audit log auto-recorded",
     },
 ]
 

@@ -87,6 +87,40 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "expected_output": {"p_value": "유의확률", "ci_a": "A 신뢰구간", "ci_b": "B 신뢰구간"},
         "caveats": ["p < 0.05 기준 유의성 판단", "효과 크기(Cohen's d) 별도 계산 필요 시 descriptive stats 활용"],
     },
+    {
+        "id": "policy_annual_update",
+        "title": "연간 세법 개정 정책 업데이트",
+        "description": "고시문 확인 후 policy_propose → policy_activate 워크플로우로 정책 YAML을 갱신한다.",
+        "steps": [
+            {"id": "validate", "tool": "sootool.policy_validate", "args": {"domain": "<도메인>", "name": "<정책명>", "year": "<연도>", "yaml_content": "<새 YAML>"}},
+            {"id": "propose",  "tool": "sootool.policy_propose",  "args": {"domain": "<도메인>", "name": "<정책명>", "year": "<연도>", "yaml_content": "<새 YAML>"}},
+            {"id": "activate", "tool": "sootool.policy_activate",  "args": {"draft_id": "<propose 응답의 draft_id>"}},
+        ],
+        "expected_output": {"source": "override", "audit_id": "aud-..."},
+        "caveats": ["SOOTOOL_ADMIN_MODE=1 필요", "SHA256 불일치 시 auto_fix_sha256=true 옵션 활용"],
+    },
+    {
+        "id": "policy_hotfix_rollback",
+        "title": "긴급 롤백 — 오적용된 정책 원상 복구",
+        "description": "잘못 활성화된 override 정책을 즉시 롤백하여 패키지 기본값으로 복원한다.",
+        "steps": [
+            {"id": "history",  "tool": "sootool.policy_history",  "args": {"domain": "<도메인>", "name": "<정책명>"}},
+            {"id": "rollback", "tool": "sootool.policy_rollback",  "args": {"domain": "<도메인>", "name": "<정책명>", "year": "<연도>"}},
+        ],
+        "expected_output": {"rolled_back": True, "source_now": "package"},
+        "caveats": ["SOOTOOL_ADMIN_MODE=1 필요", "감사 로그에 rollback 항목 기록됨"],
+    },
+    {
+        "id": "policy_portability",
+        "title": "정책 번들 내보내기/가져오기 (환경 이전)",
+        "description": "policy_export로 서명된 번들을 생성하고 policy_import로 다른 환경에 이식한다.",
+        "steps": [
+            {"id": "export", "tool": "sootool.policy_export", "args": {"domain": "<도메인>", "name": "<정책명>", "year": "<연도>"}},
+            {"id": "import", "tool": "sootool.policy_import", "args": {"bundle": "<export 응답의 bundle>"}},
+        ],
+        "expected_output": {"imported": True, "source": "override"},
+        "caveats": ["SOOTOOL_ADMIN_MODE=1 필요", "서명 검증 활성화 시 require_signature=true"],
+    },
 ]
 
 _PLAYBOOKS_EN: list[dict[str, Any]] = [
@@ -172,6 +206,40 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         ],
         "expected_output": {"p_value": "significance probability", "ci_a": "CI for A", "ci_b": "CI for B"},
         "caveats": ["Significance threshold p < 0.05", "Use descriptive stats for Cohen's d effect size"],
+    },
+    {
+        "id": "policy_annual_update",
+        "title": "Annual Tax Law Policy Update",
+        "description": "After reviewing official notices, update a policy YAML via policy_propose → policy_activate workflow.",
+        "steps": [
+            {"id": "validate", "tool": "sootool.policy_validate", "args": {"domain": "<domain>", "name": "<policy>", "year": "<year>", "yaml_content": "<new YAML>"}},
+            {"id": "propose",  "tool": "sootool.policy_propose",  "args": {"domain": "<domain>", "name": "<policy>", "year": "<year>", "yaml_content": "<new YAML>"}},
+            {"id": "activate", "tool": "sootool.policy_activate",  "args": {"draft_id": "<draft_id from propose>"}},
+        ],
+        "expected_output": {"source": "override", "audit_id": "aud-..."},
+        "caveats": ["Requires SOOTOOL_ADMIN_MODE=1", "Use auto_fix_sha256=true if SHA256 mismatch"],
+    },
+    {
+        "id": "policy_hotfix_rollback",
+        "title": "Emergency Rollback — Revert Misapplied Policy",
+        "description": "Immediately roll back a wrongly activated override policy to restore the package default.",
+        "steps": [
+            {"id": "history",  "tool": "sootool.policy_history",  "args": {"domain": "<domain>", "name": "<policy>"}},
+            {"id": "rollback", "tool": "sootool.policy_rollback",  "args": {"domain": "<domain>", "name": "<policy>", "year": "<year>"}},
+        ],
+        "expected_output": {"rolled_back": True, "source_now": "package"},
+        "caveats": ["Requires SOOTOOL_ADMIN_MODE=1", "Audit log records rollback entry"],
+    },
+    {
+        "id": "policy_portability",
+        "title": "Policy Bundle Export/Import (Environment Migration)",
+        "description": "Export a signed bundle with policy_export and import it into another environment with policy_import.",
+        "steps": [
+            {"id": "export", "tool": "sootool.policy_export", "args": {"domain": "<domain>", "name": "<policy>", "year": "<year>"}},
+            {"id": "import", "tool": "sootool.policy_import", "args": {"bundle": "<bundle from export>"}},
+        ],
+        "expected_output": {"imported": True, "source": "override"},
+        "caveats": ["Requires SOOTOOL_ADMIN_MODE=1", "Enable signature verification with require_signature=true"],
     },
 ]
 
