@@ -65,8 +65,11 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "anthropic>=0.96.0",
+    "google-genai>=1.73.1",
     "hypothesis>=6.152.1",
     "mypy>=1.20.2",
+    "openai>=2.32.0",
     "pytest>=9.0.3",
     "pytest-cov>=7.1.0",
     "ruff>=0.15.11",

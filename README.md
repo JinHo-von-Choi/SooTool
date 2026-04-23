@@ -1,5 +1,8 @@
-# SooTool
+<p align="center">
+  <img src="assets/logo.png" alt="SooTool logo" width="240">
+</p>
 
+# SooTool
 Precision Calc MCP for LLM tool use.
 
 [![CI](https://github.com/JinHo-von-Choi/SooTool/actions/workflows/ci.yml/badge.svg)](https://github.com/JinHo-von-Choi/SooTool/actions/workflows/ci.yml)
@@ -57,6 +60,20 @@ SooTool은 그 경로를 원천 차단한다.
 ```
 
 중간 단계의 `npv_raw`는 반올림 이전 완전 정밀 Decimal 값으로, 반올림 정책(HALF_EVEN)이 소수점 2자리(`decimals=2`)에 적용된 결과가 `output`과 `npv` 필드에 일치하게 노출된다. 감사 추적은 `trace` 필드만 보면 충분하며, `_meta`는 미들웨어 주입 영역(ADR-014)으로 결과 신뢰에 영향을 주지 않는다(ADR-011).
+
+
+## 벤치마크 결과 (2026-04-24)
+
+20 케이스(한국 소득세 8 · 부가세 3 · 복리 2 · 확률통계 3 · 공학 2 · 양도세 2) × 최신 대형 LLM 비교. `exact` 문자열 일치, `approx` 상대오차 ≤ 0.01%, `wrong` 그 외.
+
+|provider|model|exact|approx|wrong|
+|-|-|-|-|-|
+|SooTool|Decimal 커널|**20**|0|0|
+|Gemini|gemini-2.5-pro|13|3|4|
+
+wrong 4건 중 양도소득세(capital_gains_10y/15y)는 8% 이상 실제 세액 오차. LLM이 장기보유특별공제 적용을 다르게 해석. 반면 SooTool은 `tax.capital_gains_kr` 가 정책 YAML 기반으로 경계를 명확히 분리한다. 전체 상세: [`bench/results/2026-04-24-v2.md`](bench/results/2026-04-24-v2.md).
+
+OpenAI·Anthropic 런타임에서 키 401 반환으로 해당 provider 집계 제외. 사용자 환경에서 유효 키로 재실행 시 표 갱신 가능.
 
 ## 설치
 
