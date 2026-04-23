@@ -51,9 +51,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage   = "https://github.com/<placeholder>/SooTool"
-Repository = "https://github.com/<placeholder>/SooTool"
-Issues     = "https://github.com/<placeholder>/SooTool/issues"
+Homepage   = "https://github.com/JinHo-von-Choi/SooTool"
+Repository = "https://github.com/JinHo-von-Choi/SooTool"
+Issues     = "https://github.com/JinHo-von-Choi/SooTool/issues"
 
 [project.scripts]
 sootool = "sootool.__main__:main"

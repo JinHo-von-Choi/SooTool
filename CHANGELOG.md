@@ -55,4 +55,4 @@ Initial public release. Decimal-only calculation MCP server with 15 domains,
 - Registry surface: 236 base tools + 10 admin policy tools = 246 tools
   exposed via `tools/list` once `sootool.policy_mgmt.tools` is imported.
 
-[0.1.0]: https://github.com/<placeholder>/SooTool/releases/tag/v0.1.0
+[0.1.0]: https://github.com/JinHo-von-Choi/SooTool/releases/tag/v0.1.0
