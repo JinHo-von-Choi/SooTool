@@ -64,16 +64,27 @@ SooTool은 그 경로를 원천 차단한다.
 
 ## 벤치마크 결과 (2026-04-24)
 
-20 케이스(한국 소득세 8 · 부가세 3 · 복리 2 · 확률통계 3 · 공학 2 · 양도세 2) × 최신 대형 LLM 비교. `exact` 문자열 일치, `approx` 상대오차 ≤ 0.01%, `wrong` 그 외.
+20 케이스(한국 소득세 8 · 부가세 3 · 복리 2 · 확률통계 3 · 공학 2 · 양도세 2) × 대형 LLM 실측. `exact` 문자열 일치, `approx` 상대오차 ≤ 0.01%, `wrong` 그 외.
 
-|provider|model|exact|approx|wrong|skip|
+### 표준 모델
+
+|Provider|Model|Exact|Approx|Wrong|정확율|
 |-|-|-|-|-|-|
-|SooTool|Decimal 커널|**20**|0|0|0|
-|Gemini|gemini-2.5-pro|13|3|4|0|
-|Claude|claude-sonnet-4-5|3|3|13|1|
-|GPT|gpt-4o|2|4|14|0|
+|SooTool|Decimal 커널|**20**|0|0|**100%**|
+|Google|gemini-2.5-pro|13|3|4|65%|
+|Anthropic|claude-sonnet-4-5|3|3|13|15%|
+|OpenAI|gpt-4o|2|4|14|10%|
 
-세 LLM 모두 양도소득세 장기보유특별공제 적용에서 실수령액 기준 8% 이상 실무 오차를 남겼다. Claude·GPT는 누진세 구간 산출에서도 다수 오답. SooTool은 정책 YAML + Decimal 커널 조합으로 20 케이스 전량 정확 일치. 전체 상세: [`bench/results/2026-04-24-final.md`](bench/results/2026-04-24-final.md).
+### 현존 최고 모델 (SOTA)
+
+|Provider|Model|Exact|Approx|Wrong|정확율|
+|-|-|-|-|-|-|
+|SooTool|Decimal 커널|**20**|0|0|**100%**|
+|Google|gemini-3-pro-preview|12|4|4|60%|
+|Anthropic|claude-opus-4-7|9|3|8|45%|
+|OpenAI|gpt-5.4|5|3|12|25%|
+
+모델을 최신 SOTA로 올려도 어느 LLM도 20/20에 도달하지 못한다. Claude 3→9 (3배 개선), OpenAI 2→5 (2.5배), Gemini는 보합. 공통 실패 지점은 누진세 구간 경계, 양도소득세 장기보유특별공제(실세액 8% 이상 오차), 부가세 HALF_EVEN 반올림, AC 임피던스 정밀도다. 모델 발전만으로 닫히지 않는 구조적 한계를 SooTool이 Decimal + 정책 YAML + 명시적 rounding enum 세 층위로 메운다. 상세: [`bench/results/2026-04-24-final.md`](bench/results/2026-04-24-final.md) (표준), [`bench/results/2026-04-24-sota.md`](bench/results/2026-04-24-sota.md) (SOTA).
 
 ## 설치
 

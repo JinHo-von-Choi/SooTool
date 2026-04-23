@@ -108,13 +108,15 @@ def _call_anthropic(prompt: str) -> LLMResult:
         return LLMResult(provider, model, None, None, f"anthropic SDK not installed: {exc}")
     try:
         client = anthropic.Anthropic(api_key=key)
-        msg = client.messages.create(
-            model=model,
-            max_tokens=256,
-            temperature=0,
-            system="You are a precise calculator. Answer with a single number only.",
-            messages=[{"role": "user", "content": prompt}],
-        )
+        create_kwargs: dict[str, Any] = {
+            "model": model,
+            "max_tokens": 2048,
+            "system": "You are a precise calculator. Answer with a single number only.",
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        if "opus-4" not in model and "sonnet-4" not in model and "haiku-4" not in model:
+            create_kwargs["temperature"] = 0
+        msg = client.messages.create(**create_kwargs)
         parts: list[str] = []
         for block in msg.content:
             txt = getattr(block, "text", None)
