@@ -14,6 +14,8 @@ from sootool.core.decimal_ops import div as d_div
 from sootool.core.decimal_ops import mul as d_mul
 from sootool.core.decimal_ops import sub as d_sub
 from sootool.core.registry import REGISTRY
+from sootool.skill_guide.hints import generate_hints, inject_meta
+from sootool.skill_guide.session_state import STORE, ToolCall
 
 # ---------------------------------------------------------------------------
 # Request parsing
@@ -93,10 +95,53 @@ def _enforce_payload_limit(response: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# _meta.hints injection pipeline
+# ---------------------------------------------------------------------------
+
+def _inject_hints(
+    response: dict[str, Any],
+    tool_name: str,
+    session_id: str,
+    trace_level: str = "summary",
+    policy_year: int | None = None,
+) -> dict[str, Any]:
+    """Record the call in session state and inject _meta.hints into response.
+
+    result and trace are never modified (ADR-011 determinism guard).
+    Skipped for sootool.skill_guide itself to avoid recursive noise.
+    """
+    truncated = bool(response.get("truncated", False))
+
+    call = ToolCall(
+        tool=tool_name,
+        trace_level=trace_level,
+        truncated=truncated,
+        policy_year=policy_year,
+    )
+    STORE.record(session_id, call)
+
+    hints      = generate_hints(STORE, session_id, call)
+    stats      = STORE.stats(session_id)
+    return inject_meta(response, hints, stats)
+
+
+# ---------------------------------------------------------------------------
 # Core tool registration (idempotent — only runs once per process)
 # ---------------------------------------------------------------------------
 
 _CORE_TOOLS_REGISTERED = False
+
+# Default session ID for stdio transport (single process, no session header).
+_STDIO_SESSION_ID = "stdio-default"
+
+
+def _get_session_id() -> str:
+    """Return the current session ID.
+
+    HTTP transport sets SOOTOOL_SESSION_ID via middleware (future M3+).
+    stdio uses a fixed constant for the process lifetime.
+    """
+    return os.environ.get("SOOTOOL_SESSION_ID", _STDIO_SESSION_ID)
 
 
 def _register_core_tools() -> None:
@@ -113,7 +158,8 @@ def _register_core_tools() -> None:
         out = d_add(*decimals)
         trace.output(out)
         result = {"result": str(out), "trace": trace.to_dict()}
-        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        processed = _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        return _inject_hints(processed, "core.add", _get_session_id(), trace_level)
 
     @REGISTRY.tool(namespace="core", name="sub", description="Decimal 뺄셈")
     def core_sub(a: str, b: str, trace_level: str = "summary") -> dict[str, Any]:
@@ -124,7 +170,8 @@ def _register_core_tools() -> None:
         out = d_sub(da, db)
         trace.output(out)
         result = {"result": str(out), "trace": trace.to_dict()}
-        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        processed = _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        return _inject_hints(processed, "core.sub", _get_session_id(), trace_level)
 
     @REGISTRY.tool(namespace="core", name="mul", description="Decimal 곱셈")
     def core_mul(operands: list[str], trace_level: str = "summary") -> dict[str, Any]:
@@ -134,7 +181,8 @@ def _register_core_tools() -> None:
         out = d_mul(*decimals)
         trace.output(out)
         result = {"result": str(out), "trace": trace.to_dict()}
-        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        processed = _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        return _inject_hints(processed, "core.mul", _get_session_id(), trace_level)
 
     @REGISTRY.tool(namespace="core", name="div", description="Decimal 나눗셈(분모 0 예외)")
     def core_div(a: str, b: str, trace_level: str = "summary") -> dict[str, Any]:
@@ -145,7 +193,8 @@ def _register_core_tools() -> None:
         out = d_div(da, db)
         trace.output(out)
         result = {"result": str(out), "trace": trace.to_dict()}
-        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        processed = _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        return _inject_hints(processed, "core.div", _get_session_id(), trace_level)
 
     from sootool.core.batch import BatchExecutor  # noqa: PLC0415
 
@@ -189,10 +238,28 @@ def _load_modules() -> None:
     import sootool.modules.stats  # noqa: F401
     import sootool.modules.tax  # noqa: F401
     import sootool.modules.units  # noqa: F401
+    import sootool.skill_guide  # noqa: F401
+
+
+_SOOTOOL_INSTRUCTIONS = """\
+SooTool은 LLM이 직접 계산해서는 안 되는 요청(산수, 세액, 할인율, 통계, 날짜 차이 등)을
+100% 결정론적 Decimal 경로로 대체합니다.
+
+세션 시작 시 sootool.skill_guide()를 호출해 트리거 테이블을 숙지하세요.
+수치 계산이 포함된 응답에서는 사전에 해당 도메인 도구를 호출하고 trace를 사용자에게
+제시하세요. 프롬프트 내 직접 산술을 금지합니다.
+
+핵심 원칙:
+- 숫자 연산은 core.add/sub/mul/div 또는 core.batch/pipeline으로 처리
+- 세금·부동산은 tax.* / realestate.* (year 인자 필수)
+- 금융 계산은 finance.* (Decimal 복리 정확도)
+- 통계는 stats.* / probability.* (scipy/mpmath 기반)
+- 복수 시나리오는 core.batch, 결과 체이닝은 core.pipeline
+"""
 
 
 def build_server() -> FastMCP:
-    server = FastMCP("sootool")
+    server = FastMCP("sootool", instructions=_SOOTOOL_INSTRUCTIONS)
     for entry in REGISTRY.list():
         server.add_tool(entry.fn, name=entry.full_name, description=entry.description)
     return server
