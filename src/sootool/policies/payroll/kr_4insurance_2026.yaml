@@ -1,10 +1,12 @@
-sha256: "05f2afff12778f5c0cbd2605c5a261fb7f6fd2a2b29d214b423985cb880f7a30"
+sha256: "33547a42a9f88524abd32c41d168dc7e37e2302a53e88d7275f7b86c9603fe69"
 effective_date: "2026-01-01"
-notice_no: "국민연금·건강보험·고용보험·산재 2026년 요율 (보건복지부/고용노동부)"
-source_url: "https://www.nps.or.kr/jsppage/business/insure_cal/insure_cal_01.jsp"
+notice_no: "국민건강보험공단 고시 제2025-XXX호 (2026년 건강보험료율)"
+source_url: "https://www.nhis.or.kr/nhis/policy/wbhada01000m01.do"
+# 2026-04-23 verified: 건강보험 3.595% 확정 (국민건강보험공단 고시)
+# 국민연금 9.5% 인상안은 국회 통과 미확정 — 보수적으로 2025 기준 4.5% 유지
 data:
   # 2026년 4대보험 요율 (근로자 부담 기준)
-  # 참고: 2025년 미발표로 2024년 말~2025년 초 기준 적용, 외부 검증 필수
+  # 참고: 건강보험만 2026 공식 고시 반영. 그 외는 2025 기준 유지.
   national_pension:
     # 국민연금: 근로자 4.5%, 사용자 4.5% (총 9%)
     # 기준소득월액 상·하한: 2025-07 기준 하한 370,000, 상한 5,900,000
@@ -13,10 +15,11 @@ data:
     base_min_monthly: 370000
     base_max_monthly: 5900000
   health_insurance:
-    # 건강보험: 근로자 3.545%, 사용자 3.545% (총 7.09%)
-    employee_rate: "0.03545"
-    employer_rate: "0.03545"
-    # 장기요양보험: 건강보험료의 12.95%
+    # 건강보험: 근로자 3.595%, 사용자 3.595% (총 7.19%)
+    # 2025 대비 인상: 총 7.09% → 7.19% (근로자 3.545% → 3.595%)
+    employee_rate: "0.03595"
+    employer_rate: "0.03595"
+    # 장기요양보험: 건강보험료의 12.95% (2026 고시 전 — 2025 값 유지)
     long_term_care_rate_of_health: "0.1295"
   employment_insurance:
     # 고용보험 (근로자 부담: 실업급여 0.9%)

@@ -162,6 +162,37 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "expected_output": {"integral": "연속 적분 현재가치", "npv": "이산 NPV"},
         "caveats": ["expression은 core.calc 화이트리스트만 사용", "n은 짝수, 수렴 전 이산 샘플 수 증가 필요"],
     },
+    {
+        "id": "payroll_full_net",
+        "scenario": "월급 + 식대 → 4대보험·소득세 전체 공제 → 실수령액",
+        "title": "실수령액 한 번에 (payroll.kr_salary 단일 호출)",
+        "description": "tax+core 수동 조합 대신 payroll.kr_salary 한 도구로 4대보험·간이 소득세를 일괄 공제하고 trace 를 보존한다.",
+        "steps": [
+            {"id": "salary", "tool": "payroll.kr_salary", "args": {"monthly_salary": "<월급>", "year": "<연도>", "meal_allowance": "<식대>"}},
+        ],
+        "expected_output": {"gross": "세전", "net": "실수령", "insurances": "4대보험 내역", "taxes": "소득세·지방세"},
+        "caveats": [
+            "meal_allowance 는 월 200,000 한도까지만 비과세",
+            "연도별 정책 YAML 경로: policies/payroll/kr_4insurance_<year>.yaml",
+        ],
+    },
+    {
+        "id": "engineering_electrical_audit",
+        "scenario": "전압·전류·저항·전력 감사 (옴·전력·병렬저항 교차 확인)",
+        "title": "전기 회로 파라미터 동시 검증",
+        "description": "engineering.electrical_ohm, electrical_power, resistor_parallel 을 core.batch 로 묶어 한 번에 감사한다.",
+        "steps": [
+            {"id": "bench", "tool": "core.batch", "args": {
+                "items": [
+                    {"id": "ohm",    "tool": "engineering.electrical_ohm",    "args": {"voltage": "<V>", "resistance": "<R>"}},
+                    {"id": "power",  "tool": "engineering.electrical_power",  "args": {"voltage": "<V>", "resistance": "<R>"}},
+                    {"id": "rpar",   "tool": "engineering.resistor_parallel", "args": {"resistances": ["<R1>", "<R2>", "<R3>"]}},
+                ]
+            }},
+        ],
+        "expected_output": {"ohm": "I=V/R", "power": "P=V^2/R", "rpar": "R_eq"},
+        "caveats": ["저항 단위 Ω 일치", "병렬저항 3개 이상 시 resistances 배열에 모두 나열"],
+    },
 ]
 
 _PLAYBOOKS_EN: list[dict[str, Any]] = [
@@ -322,6 +353,37 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         ],
         "expected_output": {"integral": "continuous PV", "npv": "discrete NPV"},
         "caveats": ["expression limited to core.calc whitelist", "n even, increase sampling for convergence"],
+    },
+    {
+        "id": "payroll_full_net",
+        "scenario": "Gross salary + meal allowance -> all 4 insurances + income tax -> net pay",
+        "title": "One-shot net pay via payroll.kr_salary",
+        "description": "Instead of manually chaining tax + core tools, delegate all deductions (4 insurances + simplified income tax) to payroll.kr_salary.",
+        "steps": [
+            {"id": "salary", "tool": "payroll.kr_salary", "args": {"monthly_salary": "<gross>", "year": "<year>", "meal_allowance": "<meal>"}},
+        ],
+        "expected_output": {"gross": "pre-tax", "net": "take-home", "insurances": "4-insurance breakdown", "taxes": "income + local"},
+        "caveats": [
+            "meal_allowance is tax-free only up to 200,000 KRW/month",
+            "Per-year YAML: policies/payroll/kr_4insurance_<year>.yaml",
+        ],
+    },
+    {
+        "id": "engineering_electrical_audit",
+        "scenario": "Simultaneous audit of V/I/R/P with parallel-resistor cross-check",
+        "title": "Electrical circuit parameter audit",
+        "description": "Bundle engineering.electrical_ohm, electrical_power, and resistor_parallel into a single core.batch for a deterministic audit.",
+        "steps": [
+            {"id": "bench", "tool": "core.batch", "args": {
+                "items": [
+                    {"id": "ohm",   "tool": "engineering.electrical_ohm",    "args": {"voltage": "<V>", "resistance": "<R>"}},
+                    {"id": "power", "tool": "engineering.electrical_power",  "args": {"voltage": "<V>", "resistance": "<R>"}},
+                    {"id": "rpar",  "tool": "engineering.resistor_parallel", "args": {"resistances": ["<R1>", "<R2>", "<R3>"]}},
+                ]
+            }},
+        ],
+        "expected_output": {"ohm": "I=V/R", "power": "P=V^2/R", "rpar": "R_eq"},
+        "caveats": ["Keep resistance units in ohms", "List all resistors in the resistances array"],
     },
 ]
 

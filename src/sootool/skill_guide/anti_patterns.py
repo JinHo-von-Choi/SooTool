@@ -34,6 +34,16 @@ _ANTI_PATTERNS_KO: list[dict[str, Any]] = [
         "why": "세율·규제는 매년 개정된다. 구 버전 세율 적용은 법적 위험.",
         "instead": "year 인자를 명시하고 서버가 UnsupportedPolicyError를 반환하면 해당 연도 정책 미지원임을 사용자에게 안내하라.",
     },
+    {
+        "pattern": "math.integrate_* 대신 LLM이 테일러 전개·사다리꼴 근사로 수식 적분",
+        "why": "부동소수 자릿수 제어 없이 LLM이 수치적분을 수행하면 수렴 실패·대칭성 위반·부호 오류가 조용히 누적된다. core.calc 안전 AST + mpmath 경계 없이는 재현 불가.",
+        "instead": "math.integrate_simpson / math.integrate_gauss_legendre 를 호출하고 expression·a·b·n 을 명시하라. 적분 결과와 trace 를 응답에 인용하라.",
+    },
+    {
+        "pattern": "engineering.electrical_power 대신 dB·전류·저항을 LLM이 암산으로 환산",
+        "why": "V, I, R, P 사이 변환은 유효숫자·단위 계열(SI prefix)을 LLM이 수시로 혼동한다. 저항 병렬/직렬 합산과 Reynolds 수도 동일한 리스크.",
+        "instead": "engineering.electrical_* / resistor_* / fluid_reynolds / si_prefix_convert 를 호출하고 반환 trace 의 입력 단위를 그대로 응답에 복붙하라.",
+    },
 ]
 
 _ANTI_PATTERNS_EN: list[dict[str, Any]] = [
@@ -66,6 +76,16 @@ _ANTI_PATTERNS_EN: list[dict[str, Any]] = [
         "pattern": "Answering with a rough estimate when the policy YAML has not been updated",
         "why": "Tax rates and regulations change annually. Applying old rates creates legal risk.",
         "instead": "Specify the year argument explicitly. If the server returns UnsupportedPolicyError, inform the user that the year is not yet supported.",
+    },
+    {
+        "pattern": "Approximating numerical integrals by Taylor / trapezoid estimation in the prompt instead of calling math.integrate_*",
+        "why": "Without controlled precision, LLM quadrature silently loses symmetry, drops signs, or fails to converge. Results are unreproducible and untraceable.",
+        "instead": "Invoke math.integrate_simpson or math.integrate_gauss_legendre with explicit expression / a / b / n, and cite the returned trace.",
+    },
+    {
+        "pattern": "Mentally converting dB, current, resistance and power instead of calling engineering.* tools",
+        "why": "LLM frequently confuses significant figures and SI-prefix chains across V / I / R / P, Reynolds numbers, and resistor parallel/series sums.",
+        "instead": "Use engineering.electrical_* / resistor_* / fluid_reynolds / si_prefix_convert and keep the returned trace input units in the final answer.",
     },
 ]
 

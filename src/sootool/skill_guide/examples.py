@@ -61,6 +61,34 @@ _EXAMPLES_KO: list[dict[str, Any]] = [
         },
         "expected_output": {"steps": [{"id": "annual"}, {"id": "tax"}, {"id": "net"}]},
     },
+    {
+        "request": "2026년 월급 350만원(식대 20만원 포함) 세후 실수령액 알려줘",
+        "tool_call": {
+            "tool": "payroll.kr_salary",
+            "args": {"monthly_salary": "3500000", "year": 2026, "meal_allowance": "200000"},
+        },
+        "expected_output": {
+            "gross":  "3500000",
+            "net":    "...",
+            "insurances": {"national_pension": "...", "health_insurance": "...", "long_term_care": "..."},
+            "trace":  {"tool": "payroll.kr_salary"},
+        },
+    },
+    {
+        "request": "저항 220Ω에 12V 인가 시 전류와 소비전력 계산",
+        "tool_call": {
+            "tool": "core.batch",
+            "args": {
+                "items": [
+                    {"id": "ohm",   "tool": "engineering.electrical_ohm",   "args": {"voltage": "12", "resistance": "220"}},
+                    {"id": "power", "tool": "engineering.electrical_power", "args": {"voltage": "12", "resistance": "220"}},
+                ]
+            },
+        },
+        "expected_output": {
+            "results": [{"id": "ohm", "status": "ok"}, {"id": "power", "status": "ok"}],
+        },
+    },
 ]
 
 _EXAMPLES_EN: list[dict[str, Any]] = [
@@ -120,6 +148,34 @@ _EXAMPLES_EN: list[dict[str, Any]] = [
             },
         },
         "expected_output": {"steps": [{"id": "annual"}, {"id": "tax"}, {"id": "net"}]},
+    },
+    {
+        "request": "Korean monthly take-home pay for 3.5M KRW gross (200k meal allowance) in 2026",
+        "tool_call": {
+            "tool": "payroll.kr_salary",
+            "args": {"monthly_salary": "3500000", "year": 2026, "meal_allowance": "200000"},
+        },
+        "expected_output": {
+            "gross":  "3500000",
+            "net":    "...",
+            "insurances": {"national_pension": "...", "health_insurance": "...", "long_term_care": "..."},
+            "trace":  {"tool": "payroll.kr_salary"},
+        },
+    },
+    {
+        "request": "Current and power dissipation for 12V across a 220 ohm resistor",
+        "tool_call": {
+            "tool": "core.batch",
+            "args": {
+                "items": [
+                    {"id": "ohm",   "tool": "engineering.electrical_ohm",   "args": {"voltage": "12", "resistance": "220"}},
+                    {"id": "power", "tool": "engineering.electrical_power", "args": {"voltage": "12", "resistance": "220"}},
+                ]
+            },
+        },
+        "expected_output": {
+            "results": [{"id": "ohm", "status": "ok"}, {"id": "power", "status": "ok"}],
+        },
     },
 ]
 

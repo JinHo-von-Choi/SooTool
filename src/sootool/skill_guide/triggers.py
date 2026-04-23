@@ -129,6 +129,21 @@ _TRIGGERS_KO: list[dict[str, Any]] = [
         "tool": "crypto.egcd / crypto.crt / crypto.euler_totient / crypto.carmichael_lambda",
         "reason": "정수 이론 정확 계산 (암호·모듈러 필수 빌딩블록)",
     },
+    {
+        "signal": '"월급", "실수령", "4대보험", "급여명세", "세후 월급" 포함',
+        "tool": "payroll.kr_salary",
+        "reason": "4대보험(국민연금·건강·장기요양·고용)과 간이 소득세를 연도별 정책 YAML 기반으로 일괄 공제 — LLM 수치 계산 금지",
+    },
+    {
+        "signal": '"저항", "옴의 법칙", "레이놀즈수", "SI 접두사", "병렬 저항" 포함',
+        "tool": "engineering.electrical_ohm / engineering.resistor_parallel / engineering.fluid_reynolds / engineering.si_prefix_convert",
+        "reason": "공학 결정론 공식 — 단위·유효숫자 보존, LLM 암산 대체",
+    },
+    {
+        "signal": '"DSR", "DTI", "LTV", "주담대 한도", "전세자금대출" 포함',
+        "tool": "realestate.kr_dsr / realestate.kr_dti / realestate.kr_ltv",
+        "reason": "감독규정 고시 기반 한도 계산 — 연도별 YAML 정책 고정",
+    },
 ]
 
 _TRIGGERS_EN: list[dict[str, Any]] = [
@@ -256,6 +271,21 @@ _TRIGGERS_EN: list[dict[str, Any]] = [
         "signal": '"extended Euclidean", "CRT", "Chinese Remainder", "Euler totient", "Carmichael"',
         "tool": "crypto.egcd / crypto.crt / crypto.euler_totient / crypto.carmichael_lambda",
         "reason": "Exact integer number theory (cryptographic building blocks)",
+    },
+    {
+        "signal": '"monthly salary", "net pay", "Korean 4 insurances", "payroll", "take-home"',
+        "tool": "payroll.kr_salary",
+        "reason": "Applies per-year 4-insurance YAML (pension, health, LTC, employment) plus simplified income tax — never compute by hand",
+    },
+    {
+        "signal": '"resistor", "Ohm\'s law", "Reynolds number", "SI prefix", "parallel resistor"',
+        "tool": "engineering.electrical_ohm / engineering.resistor_parallel / engineering.fluid_reynolds / engineering.si_prefix_convert",
+        "reason": "Deterministic engineering formulas with unit and significant-figure preservation",
+    },
+    {
+        "signal": '"DSR", "DTI", "LTV", "mortgage cap", "loan-to-value"',
+        "tool": "realestate.kr_dsr / realestate.kr_dti / realestate.kr_ltv",
+        "reason": "Regulatory-notice-based limits pinned to per-year YAML policies",
     },
 ]
 

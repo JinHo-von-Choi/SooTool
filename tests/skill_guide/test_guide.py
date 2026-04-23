@@ -60,8 +60,8 @@ class TestSkillGuideSection:
 class TestTriggersContent:
     def test_trigger_count(self) -> None:
         result = skill_guide(section="triggers")
-        # Phase 1 base 15 + M8 policy management 2 + Phase 4 Tier B/C 8 = 25
-        assert len(result["triggers"]) == 25
+        # Phase 1 base 15 + M8 policy management 2 + Phase 4 Tier B/C 8 + coverage-audit 3 = 28
+        assert len(result["triggers"]) == 28
 
     def test_trigger_structure(self) -> None:
         result = skill_guide(section="triggers", lang="ko")
@@ -82,8 +82,8 @@ class TestTriggersContent:
 class TestAntiPatternsContent:
     def test_anti_pattern_count(self) -> None:
         result = skill_guide(section="anti_patterns")
-        # Plan specifies 6 anti-patterns
-        assert len(result["anti_patterns"]) == 6
+        # Plan specifies 6 anti-patterns + 2 coverage-audit additions (math integration, engineering) = 8
+        assert len(result["anti_patterns"]) == 8
 
     def test_anti_pattern_structure(self) -> None:
         result = skill_guide(section="anti_patterns", lang="ko")
@@ -96,8 +96,8 @@ class TestAntiPatternsContent:
 class TestPlaybooksContent:
     def test_playbook_count(self) -> None:
         result = skill_guide(section="playbooks")
-        # Phase 1 base 6 + M8 policy management 3 + Phase 4 Tier B/C 3 = 12
-        assert len(result["playbooks"]) == 12
+        # Phase 1 base 6 + M8 policy management 3 + Phase 4 Tier B/C 3 + coverage-audit 2 = 14
+        assert len(result["playbooks"]) == 14
 
     def test_playbook_structure(self) -> None:
         result = skill_guide(section="playbooks", lang="ko")
@@ -106,6 +106,7 @@ class TestPlaybooksContent:
             "npv_sensitivity", "bond_yield_duration", "ab_test_full",
             "policy_annual_update", "policy_hotfix_rollback", "policy_portability",
             "lunar_holiday_planner", "medical_dose_with_qtc", "math_integration_npv",
+            "payroll_full_net", "engineering_electrical_audit",
         }
         actual_ids = {pb["id"] for pb in result["playbooks"]}
         assert actual_ids == expected_ids
