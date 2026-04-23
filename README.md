@@ -66,14 +66,14 @@ SooTool은 그 경로를 원천 차단한다.
 
 20 케이스(한국 소득세 8 · 부가세 3 · 복리 2 · 확률통계 3 · 공학 2 · 양도세 2) × 최신 대형 LLM 비교. `exact` 문자열 일치, `approx` 상대오차 ≤ 0.01%, `wrong` 그 외.
 
-|provider|model|exact|approx|wrong|
-|-|-|-|-|-|
-|SooTool|Decimal 커널|**20**|0|0|
-|Gemini|gemini-2.5-pro|13|3|4|
+|provider|model|exact|approx|wrong|skip|
+|-|-|-|-|-|-|
+|SooTool|Decimal 커널|**20**|0|0|0|
+|Gemini|gemini-2.5-pro|13|3|4|0|
+|Claude|claude-sonnet-4-5|3|3|13|1|
+|GPT|gpt-4o|2|4|14|0|
 
-wrong 4건 중 양도소득세(capital_gains_10y/15y)는 8% 이상 실제 세액 오차. LLM이 장기보유특별공제 적용을 다르게 해석. 반면 SooTool은 `tax.capital_gains_kr` 가 정책 YAML 기반으로 경계를 명확히 분리한다. 전체 상세: [`bench/results/2026-04-24-v2.md`](bench/results/2026-04-24-v2.md).
-
-OpenAI·Anthropic 런타임에서 키 401 반환으로 해당 provider 집계 제외. 사용자 환경에서 유효 키로 재실행 시 표 갱신 가능.
+세 LLM 모두 양도소득세 장기보유특별공제 적용에서 실수령액 기준 8% 이상 실무 오차를 남겼다. Claude·GPT는 누진세 구간 산출에서도 다수 오답. SooTool은 정책 YAML + Decimal 커널 조합으로 20 케이스 전량 정확 일치. 전체 상세: [`bench/results/2026-04-24-final.md`](bench/results/2026-04-24-final.md).
 
 ## 설치
 
