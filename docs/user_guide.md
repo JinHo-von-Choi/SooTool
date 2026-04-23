@@ -1,6 +1,6 @@
 # SooTool User Guide
 
-작성자 최진호. 작성일 2026-04-23. 버전 0.1.0.
+작성자 최진호. 작성일 2026-04-24. 버전 0.1.1.
 
 본 문서는 SooTool이 노출하는 도구 표면을 도메인별로 요약한다. 상세한 입력
 스키마와 trace 예시는 `sootool.skill_guide` MCP 호출 또는 개별 테스트 케이스
@@ -9,18 +9,18 @@
 
 ## 총괄
 
-SooTool 0.1.0은 15개 계산 도메인에 236개의 기본 도구를 노출하고, 별도의 10개
+SooTool 0.1.1은 16개 계산 도메인에 243개의 기본 도구를 노출하고, 별도의 10개
 admin 정책 도구를 `sootool` 네임스페이스에 올린다. admin 도구는
 `SOOTOOL_ADMIN_MODE=1` 환경변수에서만 호출이 허용되며, 등록 자체는 항상
-이뤄진다. `sootool.skill_guide` 1개를 포함하면 `tools/list`는 총 246개를
+이뤄진다. `sootool.skill_guide` 1개를 포함하면 `tools/list`는 총 253개를
 반환한다.
 
 | 네임스페이스 | 도구 수 | 대표 도구 | 설명 |
 |-|-|-|-|
 | core | 8 | core.add, core.batch, core.pipeline, core.calc | Decimal 4칙, DAG 파이프라인, AST 수식 평가기 |
 | accounting | 11 | accounting.balance, accounting.vat_add, accounting.depreciation_straight_line | 회계식·감가상각·부가세 |
-| tax | 7 | tax.kr_income, tax.capital_gains_kr, tax.progressive | 한국 세목 누진세 + 범용 누진세 |
-| payroll | 1 | payroll.kr_salary | 2026 4대보험+소득세 통합 급여 계산 |
+| tax | 10 | tax.kr_income, tax.capital_gains_kr, tax.progressive, tax.kr_local_income_tax, tax.kr_education_tax_add, tax.kr_rural_special_tax | 한국 세목 누진세 + 지방소득세·지방교육세·농특세 부가분 + 범용 누진세 |
+| payroll | 5 | payroll.kr_salary, payroll.kr_severance_pay, payroll.kr_year_end_tax_settlement, payroll.kr_bonus_tax, payroll.hourly_to_monthly_net | 급여·퇴직금·연말정산·상여·시급환산 통합 |
 | realestate | 8 | realestate.kr_acquisition_tax, realestate.kr_dsr, realestate.kr_comprehensive | 취득·종부세·DSR/LTV/DTI·임대수익률 |
 | finance | 15 | finance.npv, finance.irr, finance.black_scholes, finance.var_historical | 현금흐름·옵션·채권·리스크 지표 |
 | probability | 30 | probability.normal_cdf, probability.poisson_pmf, probability.beta_ppf | 이산/연속 분포 pdf/cdf/ppf + 조합 |
