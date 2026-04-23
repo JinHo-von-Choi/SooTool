@@ -18,7 +18,8 @@ from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.rounding import RoundingPolicy
 from sootool.modules.tax.progressive import _calc_progressive
-from sootool.policies import load as policy_load
+from sootool.policy_mgmt.loader import load as policy_load
+from sootool.policy_mgmt.trace_ext import enrich_response
 
 
 def _lookup_ltct_rate(
@@ -109,7 +110,7 @@ def tax_capital_gains_kr(
         trace.step("ltct_deduction",  "0")
         trace.step("taxable_gain",    "0")
         trace.output("0")
-        return {
+        resp0 = {
             "gain":            str(gain),
             "ltct_deduction":  "0",
             "taxable_gain":    "0",
@@ -117,6 +118,7 @@ def tax_capital_gains_kr(
             "policy_version":  pv,
             "trace":           trace.to_dict(),
         }
+        return enrich_response(resp0, policy_doc)
 
     ltct_rate   = _lookup_ltct_rate(holding_years, ltct_table)
     ltct_deduct = gain * ltct_rate
@@ -133,7 +135,7 @@ def tax_capital_gains_kr(
     trace.step("taxable_gain",   str(taxable))
     trace.output(str(tax))
 
-    return {
+    resp = {
         "gain":            str(gain),
         "ltct_deduction":  str(ltct_deduct),
         "taxable_gain":    str(taxable),
@@ -141,3 +143,4 @@ def tax_capital_gains_kr(
         "policy_version":  pv,
         "trace":           trace.to_dict(),
     }
+    return enrich_response(resp, policy_doc)

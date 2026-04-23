@@ -21,7 +21,8 @@ from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
-from sootool.policies import load as policy_load
+from sootool.policy_mgmt.loader import load as policy_load
+from sootool.policy_mgmt.trace_ext import enrich_response
 
 
 def _lookup_bracket_rate(price: Decimal, brackets: list[dict[str, Any]]) -> Decimal:
@@ -139,10 +140,11 @@ def realestate_kr_acquisition_tax(
     trace.step("surcharges",    str(surcharges))
     trace.output(str(total_tax))
 
-    return {
+    resp = {
         "base_tax":       str(base_tax),
         "surcharges":     surcharges,
         "total_tax":      str(total_tax),
         "policy_version": pv,
         "trace":          trace.to_dict(),
     }
+    return enrich_response(resp, policy_doc)

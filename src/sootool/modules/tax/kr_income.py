@@ -16,7 +16,8 @@ from sootool.modules.tax.progressive import (
     _calc_progressive,
     _parse_rounding,
 )
-from sootool.policies import load as policy_load
+from sootool.policy_mgmt.loader import load as policy_load
+from sootool.policy_mgmt.trace_ext import enrich_response
 
 
 @REGISTRY.tool(
@@ -75,7 +76,7 @@ def tax_kr_income(
     trace.step("breakdown", breakdown)
     trace.output(str(tax))
 
-    return {
+    resp = {
         "tax":            str(tax),
         "effective_rate":  str(eff_rate),
         "marginal_rate":   str(marginal_rate),
@@ -83,3 +84,4 @@ def tax_kr_income(
         "policy_version":  pv,
         "trace":           trace.to_dict(),
     }
+    return enrich_response(resp, policy_doc)

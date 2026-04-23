@@ -25,7 +25,8 @@ from sootool.core.registry import REGISTRY
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.progressive import _calc_progressive
-from sootool.policies import load as policy_load
+from sootool.policy_mgmt.loader import load as policy_load
+from sootool.policy_mgmt.trace_ext import enrich_response
 
 
 def _calc_labor_income_deduction(
@@ -171,8 +172,9 @@ def tax_kr_withholding_simple(
     trace.step("decided_tax",      str(decided_tax))
     trace.output(str(monthly_withheld))
 
-    return {
+    resp = {
         "withheld_tax":   str(monthly_withheld),
         "policy_version": pv,
         "trace":          trace.to_dict(),
     }
+    return enrich_response(resp, policy_doc)
