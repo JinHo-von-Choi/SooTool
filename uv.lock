@@ -1330,6 +1330,7 @@ dependencies = [
     { name = "starlette" },
     { name = "statsmodels" },
     { name = "uvicorn", extra = ["standard"] },
+    { name = "websockets" },
     { name = "workalendar" },
 ]
 
@@ -1358,6 +1359,7 @@ requires-dist = [
     { name = "starlette", specifier = ">=0.47" },
     { name = "statsmodels", specifier = ">=0.14.6" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.33" },
+    { name = "websockets", specifier = ">=14" },
     { name = "workalendar", specifier = ">=17.0.0" },
 ]
 
