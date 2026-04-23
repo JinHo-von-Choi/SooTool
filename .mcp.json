@@ -1,9 +1,0 @@
-{
-  "mcpServers": {
-    "sootool": {
-      "command": "uv",
-      "args": ["run", "python", "-m", "sootool"],
-      "env": {}
-    }
-  }
-}
