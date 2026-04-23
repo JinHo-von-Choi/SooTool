@@ -131,3 +131,17 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - 도구 등록만으로는 LLM이 확률 추론 대신 도구 호출 경로로 자동 전환하지 않음.
 - Memento(AnchorMind) MCP가 동일 문제에 대해 검증한 패턴(instructions + guide 도구 + _meta.hints + 스킬 문서 + 사용자 스니펫) 재사용.
 - 서버 측 단일 근원으로 가이드를 유지해 트리거·플레이북 개정 시 전 에이전트가 자동 최신화.
+
+## ADR-017: core.calc 보안 경계
+
+결정:
+- `core.calc` 도구는 Python `eval`/`exec`/`compile` 을 사용하지 않는다. `ast.parse(mode="eval")` 로 구문 트리를 얻고 전용 NodeVisitor 로 화이트리스트에 포함된 노드·연산자·함수·상수만 통과시킨다.
+- 허용 AST 노드: `Expression`, `BinOp`, `UnaryOp`, `Constant`(int/float), `Name`, `Call`, `Tuple`(Call 인자 위치에서만), `Load`. 허용 연산자: `Add, Sub, Mult, Div, Pow, Mod, FloorDiv, USub, UAdd`. 허용 함수: `sqrt, abs, floor, ceil, round, log, log10, log2, ln, exp, sin, cos, tan, asin, acos, atan, atan2, pow`. 허용 상수: `pi, e, tau`. 그 외(Attribute/Subscript/Lambda/Comprehension/BoolOp/Compare/IfExp/NamedExpr/JoinedStr/Starred/List/Set/Dict/Await/Yield)는 명시 차단하고 에러 메시지에 노드 종류와 위치를 포함한다.
+- 수치 평가는 이원화한다. 순수 정수 사칙·모듈러·정수 지수 `Pow` 는 Decimal 직접 연산으로, 초월 함수와 비정수 지수 `Pow` 는 `mpmath.workdps(precision)` 로 격리된 컨텍스트에서 계산한 뒤 `core.cast.mpmath_to_decimal` 을 통해 Decimal 문자열로 복귀한다(ADR-008 유지).
+- 변수 바인딩은 호출자 제공 `dict[str, str]` 만 사용한다. 전역·빌트인·클래스 속성 참조는 AST 수준에서 불가능하다. 미정의 이름은 `UndefinedVariableError`, 파싱 실패는 `InvalidExpressionError`, 화이트리스트 위반은 `DisallowedOperationError`, 복잡도 초과는 `ExpressionTooComplexError` 로 분류한다. 0 나눗셈·모듈러 0·도메인 위반은 `DomainConstraintError` 로 통합한다.
+- 복잡도 상한은 AST 노드 300개, 표현식 문자열 3000자를 기본값으로 고정하고 `SOOTOOL_CALC_MAX_NODES`, `SOOTOOL_CALC_MAX_EXPR_LEN` 환경변수로만 조정 가능하다. 허용 함수·노드·상수 집합 확장은 별도 PR 과 보안 리뷰를 거친다.
+
+사유:
+- `eval` 기반 계산기는 prompt injection·supply-chain 공격 경로에서 임의 코드 실행 표면이 넓다. LLM 경유 호출에서 악의적 입력이 `expression` 인자에 직접 주입될 수 있다. AST 화이트리스트는 허용 노드를 명시적으로 관리하므로 감사 가능하고, 확장 시 코드 리뷰에서 즉시 식별된다.
+- Decimal/mpmath 이원화는 ADR-001(Decimal 전 구간) 및 ADR-008(초월 함수 mpmath 경유) 과 일치하며 트레이스의 출력 타입을 문자열 하나로 통일해 ADR-003(트레이스 의무) 을 지킨다.
+- 복잡도 상한을 보수적으로 고정하면 catastrophic parsing DoS (`(((...)))` 중첩, 초장문 Pow 체인) 를 상수 시간에 차단하면서 일반적인 수식 길이에는 영향이 없다.

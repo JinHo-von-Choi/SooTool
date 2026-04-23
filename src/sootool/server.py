@@ -224,6 +224,32 @@ def _register_core_tools() -> None:
     def core_pipeline_resume(pipeline_id: str, from_step: str) -> dict[str, Any]:
         return resume_pipeline(pipeline_id, from_step, REGISTRY)
 
+    from sootool.core.calc import calc as _calc  # noqa: PLC0415
+
+    @REGISTRY.tool(
+        namespace   = "core",
+        name        = "calc",
+        description = (
+            "AST 기반 안전 수식 평가기. Decimal 결과 + mpmath 초월 함수. "
+            "변수 바인딩 Decimal 문자열 전용."
+        ),
+        version     = "1.0.0",
+    )
+    def core_calc(
+        expression:  str,
+        variables:   dict[str, str] | None = None,
+        precision:   int                   = 50,
+        trace_level: str                   = "summary",
+    ) -> dict[str, Any]:
+        result = _calc(
+            expression  = expression,
+            variables   = variables,
+            precision   = precision,
+            trace_level = trace_level,
+        )
+        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+
+
 
 _register_core_tools()
 REGISTRY.register_post_processor(_hints_post_processor)
