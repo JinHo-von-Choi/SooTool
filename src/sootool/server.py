@@ -277,6 +277,7 @@ def _load_modules() -> None:
     import sootool.modules.stats  # noqa: F401
     import sootool.modules.tax  # noqa: F401
     import sootool.modules.units  # noqa: F401
+    import sootool.policy_mgmt.tools  # noqa: F401
     import sootool.skill_guide  # noqa: F401
 
 

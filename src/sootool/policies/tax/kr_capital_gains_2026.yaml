@@ -1,7 +1,10 @@
-sha256: "786f1ffcec7d8c6f655930af96afe1e3e47309d9837f6987b5f67c869fc751f1"
+sha256: "9e99442360793d3f0d1bbac1eb1d01b32badf3fa0a0109c558b7e8c697f3ede0"
 effective_date: "2026-01-01"
-notice_no: "기획재정부 고시 제2025-XXX호"
-source_url: "https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2310"
+notice_no: "소득세법 제95조·제104조 (법률 제21065호, 2025.10.1. 타법개정, 시행 2026.1.2.)"
+source_url: "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1019372661&chrClsCd=010202&ancYnChk="
+# 2026-04-23 verified: 장기보유특별공제(제95조 제2항) 및 양도소득 누진세
+# (제104조, 기본세율은 제55조 참조)는 법률 제21065호로 현행 유지.
+# 장기보유 공제율표(일반·1세대1주택) 및 누진구간 변경 없음.
 data:
   # 장기보유특별공제율 (소득세법 제95조 제2항)
   # 일반 부동산: 보유 3년~15년, 2%/년 (최대 30%)

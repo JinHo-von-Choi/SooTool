@@ -1,10 +1,35 @@
 [project]
 name = "sootool"
 version = "0.1.0"
-description = "Add your description here"
+description = "LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Decimal 전용 커널, 15개 계산 도메인 236개 기본 도구 + 10개 admin 정책 도구, 5종 전송(stdio/HTTP/SSE/WebSocket/Unix)."
 readme = "README.md"
+license = { file = "LICENSE" }
 authors = [
-    { name = "nirna", email = "jinho.von.choi@nerdvana.kr" }
+    { name = "최진호", email = "jinho.von.choi@nerdvana.kr" }
+]
+keywords = [
+    "mcp",
+    "llm",
+    "decimal",
+    "calculation",
+    "tax",
+    "finance",
+    "accounting",
+    "engineering",
+    "korean-tax",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Office/Business :: Financial :: Accounting",
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -24,6 +49,11 @@ dependencies = [
     "starlette>=0.47",
     "websockets>=14",
 ]
+
+[project.urls]
+Homepage   = "https://github.com/<placeholder>/SooTool"
+Repository = "https://github.com/<placeholder>/SooTool"
+Issues     = "https://github.com/<placeholder>/SooTool/issues"
 
 [project.scripts]
 sootool = "sootool.__main__:main"
