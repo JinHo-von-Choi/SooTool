@@ -97,3 +97,20 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - 연산자 오버로딩(`__add__`, `__sub__`, `__mul__`)은 결과에 동일 `rounding`, `unit` 전파.
 - 복합 연산 누적 오차 테스트(합산 후 절삭 vs 절삭 후 합산) 필수.
 - 원화 외 통화는 ISO 4217 소수점 규칙 기반 별도 클래스 추후 추가 가능.
+
+## ADR-014: 다중 전송 계층 지원
+
+결정:
+- SooTool은 stdio와 Streamable HTTP 두 전송을 1급 지원한다. 추가 전송(HTTP+SSE legacy, WebSocket, Unix socket)은 후속 마일스톤에서 순차 추가한다.
+- 전송 계층은 `src/sootool/transports/` 패키지로 격리된다. REGISTRY는 전송 계층을 인식하지 않는다.
+- 기본 네트워크 바인딩은 loopback(`127.0.0.1`). 외부 노출(`--host 0.0.0.0`)은 명시적 opt-in이며, `SOOTOOL_AUTH_TOKEN` 또는 `--auth-token` 미설정 시 기동을 거부한다.
+- Streamable HTTP는 Starlette 미들웨어 체인(RequestID → Logging → Auth → CORS)으로 감싼 ASGI 앱으로 노출한다.
+- 인증은 "nullable 검증기 리스트" 구조(`list[TokenValidator]`)로 작성하여 mTLS/OAuth2를 미들웨어 추가만으로 확장 가능하게 한다.
+- 다중 전송 동시 기동은 `asyncio.gather`로 오케스트레이션한다. 단일 REGISTRY 인스턴스를 공유하며 런타임에 불변이다.
+- `/healthz` 헬스체크 엔드포인트는 인증 없이 `{"status":"ok","tools":<int>,"version":"<pep621>","uptime_s":<int>}`를 반환한다.
+- stdio와 HTTP를 동시 기동할 때는 systemd/supervisor 구동임을 경고 로그로 안내한다.
+
+사유:
+- MCP 클라이언트 생태계가 스펙 버전별·구현별로 전송 요구가 갈라지며, 단일 전송 제공은 통합 비용을 사용자에게 전가한다.
+- 단일 REGISTRY 공유로 구현 복잡도가 `O(전송 수) + O(1)(공통 미들웨어)`로 억제된다.
+- 기본 loopback + 인증 필수 정책은 무인증 공용 노출 위험을 제거한다.

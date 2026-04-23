@@ -20,6 +20,8 @@ dependencies = [
     "scipy>=1.13",
     "statsmodels>=0.14.6",
     "workalendar>=17.0.0",
+    "uvicorn[standard]>=0.33",
+    "starlette>=0.47",
 ]
 
 [project.scripts]
