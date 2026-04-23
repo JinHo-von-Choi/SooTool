@@ -119,8 +119,14 @@ uv run python -m sootool --transports stdio,http,websocket
 
 ## Claude Code 연동
 
-저장소 루트의 `.mcp.json`을 그대로 두면 Claude Code가 자동 인식한다. 수동 등록:
+user-scope로 글로벌 등록 (권장, 어느 디렉토리에서든 호출 가능):
 ```
+claude mcp add --scope user sootool -- uv run --directory /path/to/SooTool python -m sootool
+```
+
+또는 프로젝트 스코프로 SooTool 저장소 내에서만:
+```
+cd SooTool
 claude mcp add sootool -- uv run python -m sootool
 ```
 
