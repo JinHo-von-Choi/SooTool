@@ -192,3 +192,37 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - ADR-011 의 결정론 약속은 응답 `results` 의 인덱스 순서에만 의존한다. 수집 순서를 변경해도 최종 재정렬 단계에서 입력 id 순으로 복원하면 invariant 는 보존된다. 회귀 테스트 `test_batch_deterministic_order_independent_of_completion` 이 이 성질을 감시한다.
 - `item_timeout_s` 를 루프 내 명시적 polling 으로 처리하면 개별 항목의 취소 가능성을 유지하면서도 `as_completed` 의 timeout 파라미터(배치 단위) 와 충돌하지 않는다. 추가적인 회귀 테스트 `test_batch_deterministic_wall_clock_bounded_by_max_item` 이 느린 선행 항목 시나리오에서 wall-clock 상한을 감시한다.
 
+## ADR-021: 결정적 재현성 인증 필드 (_meta.integrity)
+
+결정:
+- 모든 도구 응답에 `_meta.integrity` 블록을 자동 주입한다. 필드는 `input_hash`(canonical JSON sha256), `tool_version`, `sootool_version` 을 필수로 하고 정책을 실제로 소비한 호출에 한해 `policy_sha256`, `policy_source` (`<domain>/<name>/<year>` 형식) 를 추가한다.
+- Canonical JSON 은 `sort_keys=True`, `separators=(",", ":")` 규칙을 고정한다. Decimal 은 기존 `CalcTrace` 정규화 규칙(str 변환) 을 그대로 재사용하여 트레이스와 해시가 동일한 표현을 공유한다.
+- `REGISTRY.invoke` 진입 시 kwargs 를 스레드 로컬 컨텍스트에 스택 방식으로 저장·복원한다. `core.batch`·`core.pipeline` 처럼 invoke 를 중첩 호출하는 도구의 개별 결과도 동일 post-processor 경로에서 integrity 가 주입되며, 외부 프레임의 inputs/policy 가 복원되어 상호 간섭이 없다.
+- 정책 사용 감지는 `sootool.policy_mgmt.loader.load` 말미에서 `set_policy_meta(source, sha256, domain, key, year)` 을 호출해 스레드 로컬에 기록하는 훅으로 구현한다. 정책 비사용 도구(`core.*`, `finance.*` 중 정책 미참조 도구 등) 는 `policy_sha256` / `policy_source` 필드를 방출하지 않는다.
+- `_meta.integrity` 는 항상 `result` / `trace` 를 건드리지 않고 `_meta` 하위에만 추가한다. `_meta.hints` 와 공존하며, integrity post-processor 는 기존 `_meta` 에 병합되도록 구현해 다른 meta 블록을 훼손하지 않는다.
+- `sootool_version` 은 `importlib.metadata.version("sootool")` 을 프로세스 단위로 캐시한다. 패키지 미설치 개발 환경에서는 `0.0.0+unknown` 샌티넬을 반환하여 테스트와 smoke 실행을 방해하지 않는다.
+
+사유:
+- 트레이스 단독으로는 "같은 입력·같은 정책" 인지 확인하려면 inputs 필드를 수작업으로 재해시해야 했다. 해시를 도구 응답 자체에 포함시키면 LLM·사용자·회계 감사 절차 모두가 한 줄 비교로 재현성을 검증할 수 있다.
+- 정책 YAML 의 sha256 은 이미 `trace_ext.enrich_response` 가 top-level 과 trace 양쪽에 노출하고 있지만, 입력 해시가 누락되면 "동일 정책·다른 입력" 과 "동일 정책·동일 입력" 을 구분할 수 없다. `_meta.integrity` 블록이 두 축을 한 곳에 묶어 감사 로그로서의 가치를 높인다.
+- Key 순서 독립적 해시는 JSON 기반 MCP 프로토콜의 직렬화 순서가 클라이언트마다 달라도 동일한 재현성을 보장한다. `sort_keys=True` 는 canonical 규칙 중 가장 단순하면서 해시 충돌 공간을 늘리지 않는다.
+- 스레드 로컬 컨텍스트 방식을 택한 이유는 (1) 도구 함수 시그니처를 수정하지 않아도 되고 (2) 기존 post-processor 체인과 호환되며 (3) `core.batch` 병렬 실행에서도 각 워커 스레드가 독립된 프레임을 가질 수 있기 때문이다. 동일 스레드 내 중첩 invoke 는 stack-style save/restore 로 분리하여 외부 프레임이 내부 호출 이후에도 올바른 input_hash 를 계산할 수 있도록 보존한다.
+- `_meta` 병합 구현은 `_hints_post_processor` 가 `_meta` 존재 시 early-return 하는 기존 계약을 존중한다. integrity 는 hints 이후 실행되어 `_meta.hints` 와 `_meta.integrity` 가 공존하고, trace 엔리치로 이미 policy 메타를 주입한 도구(`tax.kr_income` 등) 도 추가 충돌 없이 integrity 블록을 갖는다.
+
+## ADR-022: symbolic 하이브리드 경계 (CE-M4)
+
+결정:
+- 신규 네임스페이스 `symbolic` 에 `symbolic.solve`·`symbolic.diff` 두 도구만 노출한다. 범위는 "기호 풀이·기호 미분 후 Decimal 재평가 브릿지" 로 제한하며, LaTeX 출력·적분·급수 전개 등 sympy 의 다른 표면은 본 ADR 범위 외(향후 별도 ADR 로만 확장) 이다.
+- 의존성 `sympy>=1.12` 는 기본 의존이 아닌 optional extra `[symbolic]` 로 선언한다. `uv pip install -e '.[symbolic]'` 또는 `uv sync --extra symbolic` 으로 활성화한다. sympy 미설치 환경에서 도구 호출 시 `SymbolicDependencyError` 로 친절한 설치 안내를 반환하고, 다른 도구 경로는 영향 없이 동작한다. 기본 배포 용량을 보존하기 위한 설계다.
+- 입력 수식(`equation` / `expression`) 은 sympy.sympify 에 도달하기 전에 `core.calc._parse` + `core.calc._count_and_validate` 를 통과한다. AST 화이트리스트(ADR-017 재사용) 가 `__import__`·`eval`·`exec`·`compile`·`open`·`Lambda`·`Attribute`·`Subscript`·`Comprehension`·`Starred`·`List`·`Set`·`Dict` 를 포함한 위험 노드를 1차 차단한다. sympify 호출은 `locals={}`, `rational=False` 고정으로 이름 해석 경로를 봉쇄한다.
+- 수치 경계는 ADR-001/008 을 승계한다. sympy 결과는 `evalf(50)` → `sympy.Float` → `mpmath.mpf` → `core.cast.mpmath_to_decimal` → Decimal 문자열. 중간에 Python `float` 타입을 경유하지 않는다. 유리수 해(`sympy.Rational`) 는 분자·분모를 정수로 꺼낸 뒤 Decimal 나눗셈으로 표현한다. 복소·기호 잔류 해는 `solutions` 배열에서 제외하고 `symbolic` 배열에만 문자열로 담는다.
+- 복잡도 상한은 expression 문자열 5000자(core.calc 3000자 기본보다 다소 넉넉하게 잡되 DoS 방어 수준 유지), AST 노드 한도는 core.calc 기본 300(환경변수 `SOOTOOL_CALC_MAX_NODES` 로 조정) 을 그대로 사용, sympy 평가 자체는 `signal.SIGALRM` 기반 5초 타임아웃으로 래핑한다. 타임아웃은 `DomainConstraintError` 로 변환하여 트레이스에 남긴다. SIGALRM 미지원 환경(Windows·비메인 스레드) 에서는 보호 없이 실행되며 이는 plan 의 Linux/POSIX 서버 타겟 제약을 반영한다.
+- 모든 응답에 `result`/`symbolic`/`trace` 세 축을 유지한다. `symbolic.solve` 는 `{solutions: [...], symbolic: ["x = ...", ...], trace}`, `symbolic.diff` 는 `{derivative: "...", numeric: "..." | null, trace}` 형식으로 고정한다. trace 는 CalcTrace 포맷으로 inputs·steps·output 을 채워 ADR-003(트레이스 의무) 을 지킨다.
+
+사유:
+- "sympy 래퍼는 고도 기호 엔진 대체 불가" 라는 외부 비판(A축 검토 기록) 을 수용하여, 본 마일스톤은 정책적 기호 풀이가 아닌 "기호 단계를 거쳐 Decimal 을 복구하는 브릿지" 로 범위를 조인다. 두 도구만 노출하는 것은 트레이스·정책 서명·재현성 계약을 유지 가능한 최소 표면이다.
+- AST 화이트리스트를 sympy 앞에 세우는 것은 sympify 단독으로는 임의 코드 실행 경로(예: `x.__class__.__base__.__subclasses__()`) 가 Python 객체 그래프를 통해 노출될 수 있기 때문이다. core.calc 의 화이트리스트를 재사용하면 허용 문법을 한 곳에서 감사할 수 있고, 확장 시 ADR-017 과 동일한 리뷰 절차를 따르게 된다.
+- optional extra 는 기본 배포의 용량·의존성 공격 표면을 보존하기 위함이다. sympy 는 내부적으로 mpmath 를 공유하지만(이미 기본 의존) sympy 자체의 순수 Python 패키지 크기와 릴리즈 주기가 기본 의존군과 다르다. opt-in 경로는 세무·금융 사용자가 기호 연산 비사용 시 불필요한 업데이트 노이즈를 피하게 한다.
+- evalf → mpf → Decimal 경로는 Phase 1 부터 지켜 온 "float 누수 금지" 원칙의 연장이다. sympy.Float 객체를 str 로 전환한 뒤 mpmath 컨텍스트(50자리) 에서 재파싱하면, Python float 의 IEEE-754 반올림이 트레이스 경계에 끼어들지 않는다.
+- 타임아웃을 SIGALRM 으로 도입한 이유는 sympy.solve 가 입력에 따라 비선형 시간으로 폭발할 수 있기 때문이다. 5초 상한은 일반적인 방정식·다항식·단순 초월 방정식에는 충분하고, 초과 시 사용자에게 "복잡한 symbolic 연산은 정책적 도메인 도구(tax.*, finance.*) 를 사용하라" 는 방향성을 강제한다.
+

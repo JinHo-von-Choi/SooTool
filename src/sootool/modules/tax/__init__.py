@@ -13,6 +13,7 @@ from sootool.modules.tax import (
     kr_inheritance,
     kr_local_income_tax,
     kr_rural_special_tax,
+    kr_simplified_vat,
     kr_withholding,
     progressive,
 )
@@ -28,4 +29,5 @@ __all__ = [
     "kr_local_income_tax",
     "kr_education_tax_add",
     "kr_rural_special_tax",
+    "kr_simplified_vat",
 ]

@@ -1,0 +1,11 @@
+sha256: "a03f8e0ca4867e99c03e0f148278944082a18b41b4bc7a470d7a6494d19f1982"
+effective_date: "2025-01-01"
+notice_no: "Texas Constitution Art. VIII § 24-a (No personal income tax)"
+source_url: "https://comptroller.texas.gov/taxes/"
+# 2026-04-23: 텍사스는 개인소득세 없음 (2019년 Proposition 4 헌법 수정).
+# has_income_tax=false 단일 플래그로 계산 경로를 우회. standard_deduction·
+# brackets는 비어 있다.
+data:
+  has_income_tax: false
+  standard_deduction: {}
+  brackets: {}

@@ -2,7 +2,7 @@
 name = "sootool"
 version = "0.1.1"
 # keep in sync with README first paragraph (ADR-019)
-description = "LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Decimal 전용 커널, 16개 계산 도메인 243개 기본 도구 + 10개 admin 정책 도구, 5종 전송(stdio/HTTP/SSE/WebSocket/Unix)."
+description = "LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Decimal 전용 커널, 18개 계산 도메인 254개 기본 도구 + 10개 admin 정책 도구, 5종 전송(stdio/HTTP/SSE/WebSocket/Unix)."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
@@ -50,6 +50,12 @@ dependencies = [
     "starlette>=0.47",
     "websockets>=14",
 ]
+
+[project.optional-dependencies]
+# CE-M4 symbolic 하이브리드 브릿지(ADR-022) 전용 extra. 기본 의존에 포함하면
+# 배포 용량이 늘기 때문에 opt-in 으로 유지한다. 미설치 시 symbolic.* 도구는
+# SymbolicDependencyError 로 친절히 안내한다.
+symbolic = ["sympy>=1.12"]
 
 [project.urls]
 Homepage   = "https://github.com/JinHo-von-Choi/SooTool"

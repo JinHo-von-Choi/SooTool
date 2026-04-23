@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Current master snapshot: 16 domains, 243 base tools, 10 admin policy-management tools, 5 transport modes.
+Current master snapshot (CE wave 완료 후): 16 domains, 243 base tools, 10 admin policy-management tools, 5 transport modes.
 
 ### Added
 - FB-M1 (P0 remediation): `scripts/count_tools.py` registry-backed single source for domain/tool counts; CI guard (ADR-019) gates README, `pyproject.toml`, and CHANGELOG numbers against the live REGISTRY.
@@ -20,6 +20,17 @@ Current master snapshot: 16 domains, 243 base tools, 10 admin policy-management 
 - `pyproject.toml` description resynced to match README first paragraph; annotated with "keep in sync" marker (ADR-019).
 - `core.batch` deterministic path now collects futures via `as_completed` and reorders by input id, shortening wall-clock to `max(item_time)` while preserving ADR-011 ordering invariant. `item_timeout_s` / `batch_timeout_s` are both enforced (ADR-020).
 - README tool-catalog table reflects the updated payroll (5), tax (10), and core (8) counts; running totals aligned to the current REGISTRY.
+
+### Added (CE-M2+M3+M4+M10)
+- CE-M2 한국 수직 심화: realestate.kr_local_property (광역 계수), tax.kr_simplified_vat (간이과세), payroll 의료비·교육비·기부금·주택차입이자 공제 4종 — 6 신규 도구 + 정책 YAML 3종.
+- CE-M3 결정적 재현성 인증: 모든 응답에 `_meta.integrity`(input_hash·policy_sha256·tool_version·sootool_version·policy_source) post-processor 자동 주입. ADR-021.
+- CE-M4 symbolic 하이브리드: symbolic.solve·symbolic.diff (sympy optional extra), AST 화이트리스트 + sympify locals={} 이중 경계, SIGALRM 5초 타임아웃. ADR-022.
+- CE-M10 글로벌 세법 1단계 tax_us: federal_income (7 brackets × 4 filing), capital_gains (LTCG + NIIT), state_tax (CA·NY·TX) — 3 신규 도구 + 정책 YAML 5종.
+
+### Changed
+- 도구 수 253 → 264 (base 243 → 254, admin 10 유지), 계산 도메인 16 → 18 (symbolic·tax_us 신설). 네임스페이스 18 → 20.
+- server.py _load_modules: tax_us·symbolic(optional) import 추가.
+- pyproject: [project.optional-dependencies] symbolic = ["sympy>=1.12"] 추가.
 
 ## [0.1.1] - 2026-04-24
 

@@ -1,0 +1,32 @@
+sha256: "d5ec35841a4e215f31c0d41576488fef92819ec1b665329bad830ab3b8e4ac9b"
+effective_date: "2025-01-01"
+notice_no: "IRS Rev. Proc. 2024-40 (LTCG 2025 thresholds) + IRC § 1411 (NIIT)"
+source_url: "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf"
+# 2026-04-23: Long-term capital gains tax 2025 tax year 3구간 (0%/15%/20%).
+# Filing status별 0%/15% 경계는 Rev. Proc. 2024-40, 15%/20% 상단은 동일 고시.
+# Net Investment Income Tax (IRC § 1411)은 고정 임계치(인플레이션 미연동).
+data:
+  ltcg_brackets:
+    single:
+      - {upper: 48350,   rate: 0.00}
+      - {upper: 533400,  rate: 0.15}
+      - {upper: null,    rate: 0.20}
+    married_joint:
+      - {upper: 96700,   rate: 0.00}
+      - {upper: 600050,  rate: 0.15}
+      - {upper: null,    rate: 0.20}
+    married_separate:
+      - {upper: 48350,   rate: 0.00}
+      - {upper: 300000,  rate: 0.15}
+      - {upper: null,    rate: 0.20}
+    head_of_household:
+      - {upper: 64750,   rate: 0.00}
+      - {upper: 566700,  rate: 0.15}
+      - {upper: null,    rate: 0.20}
+  niit:
+    rate: 0.038
+    thresholds:
+      single:            200000
+      married_joint:     250000
+      married_separate:  125000
+      head_of_household: 200000

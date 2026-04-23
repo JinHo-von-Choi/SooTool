@@ -71,16 +71,31 @@ class ToolRegistry:
     def invoke(self, full_name: str, **kwargs: Any) -> Any:
         if full_name not in self._tools:
             raise KeyError(full_name)
-        result = self._tools[full_name].fn(**kwargs)
-        if isinstance(result, dict) and "trace" in result:
-            for proc in self._post_processors:
-                try:
-                    result = proc(result, full_name)
-                except Exception:
-                    log.warning(
-                        "Post-processor %s failed for %s", proc, full_name, exc_info=True
-                    )
-        return result
+        # Capture the inputs for the integrity stamp before the tool runs and
+        # restore the previous context on exit. Stack-style save/restore is
+        # required because batch/pipeline tools recursively invoke() other
+        # tools — a naive reset would clobber the outer frame's context.
+        from sootool.core.audit import _INTEGRITY_CTX, set_current_inputs
+        prev_inputs = _INTEGRITY_CTX.inputs
+        prev_policy = _INTEGRITY_CTX.policy_meta
+        set_current_inputs(kwargs)
+        # Each nested call starts with a fresh policy slot; the previous
+        # frame's policy is restored in the finally block below.
+        _INTEGRITY_CTX.policy_meta = None
+        try:
+            result = self._tools[full_name].fn(**kwargs)
+            if isinstance(result, dict) and "trace" in result:
+                for proc in self._post_processors:
+                    try:
+                        result = proc(result, full_name)
+                    except Exception:
+                        log.warning(
+                            "Post-processor %s failed for %s", proc, full_name, exc_info=True
+                        )
+            return result
+        finally:
+            _INTEGRITY_CTX.inputs = prev_inputs
+            _INTEGRITY_CTX.policy_meta = prev_policy
 
 
 REGISTRY = ToolRegistry()

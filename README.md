@@ -10,7 +10,7 @@ Precision Calc MCP for LLM tool use.
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하고, 그 틀리는 작업을 한 번에 500건까지 결정적 병렬로 돌려 실무에 투입할 수 있게 만드는 정밀 계산 MCP 서버. Python 3.12 · Decimal 전용 커널 · 16 도메인 243 기본 도구 + 10 admin 도구 · `core.batch` 500 items 병렬 · `core.pipeline` DAG 체인 · 감사 트레이스 · 정책 YAML 외부화 · 5종 전송(stdio/HTTP/SSE/WebSocket/Unix).
+LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하고, 그 틀리는 작업을 한 번에 500건까지 결정적 병렬로 돌려 실무에 투입할 수 있게 만드는 정밀 계산 MCP 서버. Python 3.12 · Decimal 전용 커널 · 18 도메인 254 기본 도구 + 10 admin 도구 · `core.batch` 500 items 병렬 · `core.pipeline` DAG 체인 · 감사 트레이스 · 정책 YAML 외부화 · 5종 전송(stdio/HTTP/SSE/WebSocket/Unix).
 
 ## 왜 필요한가
 
@@ -130,7 +130,7 @@ cd SooTool
 claude mcp add sootool -- uv run python -m sootool
 ```
 
-## 도구 카탈로그 (243개 기본 + 10개 admin, 16 계산 도메인 + sootool 운영 도구)
+## 도구 카탈로그 (254개 기본 + 10개 admin, 18 계산 도메인 + sootool 운영 도구)
 
 |Namespace|Count|대표 도구|
 |-|-|-|

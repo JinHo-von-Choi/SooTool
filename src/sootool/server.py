@@ -139,6 +139,40 @@ def _hints_post_processor(response: dict[str, Any], tool_name: str) -> dict[str,
     return _inject_hints(response, tool_name, _get_session_id())
 
 
+
+def _integrity_post_processor(response: dict[str, Any], tool_name: str) -> dict[str, Any]:
+    """Inject a deterministic reproducibility stamp into ``_meta.integrity``.
+
+    Reads the in-flight tool kwargs and (optional) policy metadata from the
+    thread-local integrity context populated by ``REGISTRY.invoke`` and
+    ``policy_mgmt.loader.load``. Result and trace fields are never modified —
+    only ``_meta.integrity`` is added (ADR-011 / ADR-021 invariant).
+
+    ``sootool.skill_guide`` is skipped to keep the guide output minimal.
+    """
+    if tool_name == "sootool.skill_guide":
+        return response
+
+    from sootool.core.audit import _INTEGRITY_CTX, integrity_stamp
+    from sootool.core.registry import REGISTRY as _REG
+
+    entry = _REG._tools.get(tool_name)
+    tool_version = entry.version if entry is not None else "0.0.0"
+
+    stamp = integrity_stamp(
+        tool_name   = tool_name,
+        tool_version= tool_version,
+        inputs      = _INTEGRITY_CTX.inputs,
+        policy_meta = _INTEGRITY_CTX.policy_meta,
+    )
+
+    result = dict(response)
+    meta = dict(result.get("_meta", {}))
+    meta["integrity"] = stamp
+    result["_meta"] = meta
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Core tool registration (idempotent — only runs once per process)
 # ---------------------------------------------------------------------------
@@ -253,6 +287,7 @@ def _register_core_tools() -> None:
 
 _register_core_tools()
 REGISTRY.register_post_processor(_hints_post_processor)
+REGISTRY.register_post_processor(_integrity_post_processor)
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +310,12 @@ def _load_modules() -> None:
     import sootool.modules.realestate  # noqa: F401
     import sootool.modules.science  # noqa: F401
     import sootool.modules.stats  # noqa: F401
+    try:
+        import sootool.modules.symbolic  # noqa: F401
+    except ImportError:
+        pass  # optional extra: pip install 'sootool[symbolic]'
     import sootool.modules.tax  # noqa: F401
+    import sootool.modules.tax_us  # noqa: F401
     import sootool.modules.units  # noqa: F401
     import sootool.policy_mgmt.tools  # noqa: F401
     import sootool.skill_guide  # noqa: F401

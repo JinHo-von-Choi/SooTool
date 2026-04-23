@@ -1,0 +1,62 @@
+sha256: "acb1f29842050b6e3a3519d5e86a9f0ac5759785feffee2e58b3f1fde0aa830f"
+effective_date: "2025-01-01"
+notice_no: "California FTB 2025 Tax Rate Schedules (placeholder-verified)"
+source_url: "https://www.ftb.ca.gov/forms/2025/2025-540-booklet.html"
+# 2026-04-23: California 2025 주소득세 누진구간 (R&TC § 17041).
+# 9 basic brackets + 1% Mental Health Services Tax on income > $1M
+# (아래 데이터는 최상단에 13.3% 합산 구간으로 단순화).
+# MFJ/QSS brackets = single brackets의 2배. HoH는 별도 스케줄.
+# Standard deduction은 2025 FTB 기준: 5540 single/MFS, 11080 MFJ/HoH.
+# placeholder-verified: 최종 FTB 공시문 재확인 필요.
+data:
+  has_income_tax: true
+  standard_deduction:
+    single:             5540
+    married_joint:      11080
+    married_separate:   5540
+    head_of_household:  11080
+  brackets:
+    single:
+      - {upper: 10756,    rate: 0.01}
+      - {upper: 25499,    rate: 0.02}
+      - {upper: 40245,    rate: 0.04}
+      - {upper: 55866,    rate: 0.06}
+      - {upper: 70606,    rate: 0.08}
+      - {upper: 360659,   rate: 0.093}
+      - {upper: 432787,   rate: 0.103}
+      - {upper: 721314,   rate: 0.113}
+      - {upper: 1000000,  rate: 0.123}
+      - {upper: null,     rate: 0.133}
+    married_joint:
+      - {upper: 21512,    rate: 0.01}
+      - {upper: 50998,    rate: 0.02}
+      - {upper: 80490,    rate: 0.04}
+      - {upper: 111732,   rate: 0.06}
+      - {upper: 141212,   rate: 0.08}
+      - {upper: 721318,   rate: 0.093}
+      - {upper: 865574,   rate: 0.103}
+      - {upper: 1442628,  rate: 0.113}
+      - {upper: 2000000,  rate: 0.123}
+      - {upper: null,     rate: 0.133}
+    married_separate:
+      - {upper: 10756,    rate: 0.01}
+      - {upper: 25499,    rate: 0.02}
+      - {upper: 40245,    rate: 0.04}
+      - {upper: 55866,    rate: 0.06}
+      - {upper: 70606,    rate: 0.08}
+      - {upper: 360659,   rate: 0.093}
+      - {upper: 432787,   rate: 0.103}
+      - {upper: 721314,   rate: 0.113}
+      - {upper: 1000000,  rate: 0.123}
+      - {upper: null,     rate: 0.133}
+    head_of_household:
+      - {upper: 21527,    rate: 0.01}
+      - {upper: 51000,    rate: 0.02}
+      - {upper: 65744,    rate: 0.04}
+      - {upper: 81364,    rate: 0.06}
+      - {upper: 96107,    rate: 0.08}
+      - {upper: 490493,   rate: 0.093}
+      - {upper: 588593,   rate: 0.103}
+      - {upper: 980987,   rate: 0.113}
+      - {upper: 1000000,  rate: 0.123}
+      - {upper: null,     rate: 0.133}

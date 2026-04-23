@@ -1,0 +1,47 @@
+sha256: "6d6b1f0b174433d5bc517fd13515b5bdc6c88ca4c100cfb4cc95de61a728d80c"
+effective_date: "2025-01-01"
+notice_no: "IRS Rev. Proc. 2024-40 (Tax Year 2025, 2026 filing season)"
+source_url: "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf"
+# 2026-04-23: IRS 2025 tax year 연방 소득세 7구간 누진세 (Section 1).
+# 구간·세율은 Rev. Proc. 2024-40로 고시. standard_deduction은 사용자 계약상
+# 명시값(2024 참조치)을 보존하며, 2025 정식값(single 15000, MFJ 30000,
+# HOH 22500, MFS 15000)과 차이가 있음을 인지한 placeholder-verified 상태.
+data:
+  standard_deduction:
+    single:             14600
+    married_joint:      29200
+    married_separate:   14600
+    head_of_household:  21900
+  brackets:
+    single:
+      - {upper: 11925,   rate: 0.10}
+      - {upper: 48475,   rate: 0.12}
+      - {upper: 103350,  rate: 0.22}
+      - {upper: 197300,  rate: 0.24}
+      - {upper: 250525,  rate: 0.32}
+      - {upper: 626350,  rate: 0.35}
+      - {upper: null,    rate: 0.37}
+    married_joint:
+      - {upper: 23850,   rate: 0.10}
+      - {upper: 96950,   rate: 0.12}
+      - {upper: 206700,  rate: 0.22}
+      - {upper: 394600,  rate: 0.24}
+      - {upper: 501050,  rate: 0.32}
+      - {upper: 751600,  rate: 0.35}
+      - {upper: null,    rate: 0.37}
+    married_separate:
+      - {upper: 11925,   rate: 0.10}
+      - {upper: 48475,   rate: 0.12}
+      - {upper: 103350,  rate: 0.22}
+      - {upper: 197300,  rate: 0.24}
+      - {upper: 250525,  rate: 0.32}
+      - {upper: 375800,  rate: 0.35}
+      - {upper: null,    rate: 0.37}
+    head_of_household:
+      - {upper: 17000,   rate: 0.10}
+      - {upper: 64850,   rate: 0.12}
+      - {upper: 103350,  rate: 0.22}
+      - {upper: 197300,  rate: 0.24}
+      - {upper: 250500,  rate: 0.32}
+      - {upper: 626350,  rate: 0.35}
+      - {upper: null,    rate: 0.37}

@@ -1,0 +1,56 @@
+sha256: "e2880aaaa97b165bf4c58de17fee5dd055c0b6380d01f40b1717821c163d2481"
+effective_date: "2025-01-01"
+notice_no: "NY Tax Law § 601 (2025 rates, post-2022 extension through 2027)"
+source_url: "https://www.tax.ny.gov/pit/file/tax_tables.htm"
+# 2026-04-23: New York 2025 개인소득세 누진 9구간. Tax Law § 601(a)(1).
+# 최상단 10.9% surcharge는 2021~2027년 한시 운용 중.
+# Standard deduction은 NY IT-201 2025 지침 기준 placeholder-verified.
+# MFS/HoH 구간은 Single 구간과 동일 임시치 적용 (정식 공시 전 placeholder).
+data:
+  has_income_tax: true
+  standard_deduction:
+    single:             8000
+    married_joint:      16050
+    married_separate:   8000
+    head_of_household:  11200
+  brackets:
+    single:
+      - {upper: 8500,      rate: 0.04}
+      - {upper: 11700,     rate: 0.045}
+      - {upper: 13900,     rate: 0.0525}
+      - {upper: 80650,     rate: 0.055}
+      - {upper: 215400,    rate: 0.06}
+      - {upper: 1077550,   rate: 0.0685}
+      - {upper: 5000000,   rate: 0.0965}
+      - {upper: 25000000,  rate: 0.103}
+      - {upper: null,      rate: 0.109}
+    married_joint:
+      - {upper: 17150,     rate: 0.04}
+      - {upper: 23600,     rate: 0.045}
+      - {upper: 27900,     rate: 0.0525}
+      - {upper: 161550,    rate: 0.055}
+      - {upper: 323200,    rate: 0.06}
+      - {upper: 2155350,   rate: 0.0685}
+      - {upper: 5000000,   rate: 0.0965}
+      - {upper: 25000000,  rate: 0.103}
+      - {upper: null,      rate: 0.109}
+    married_separate:
+      - {upper: 8500,      rate: 0.04}
+      - {upper: 11700,     rate: 0.045}
+      - {upper: 13900,     rate: 0.0525}
+      - {upper: 80650,     rate: 0.055}
+      - {upper: 161550,    rate: 0.06}
+      - {upper: 1077550,   rate: 0.0685}
+      - {upper: 5000000,   rate: 0.0965}
+      - {upper: 25000000,  rate: 0.103}
+      - {upper: null,      rate: 0.109}
+    head_of_household:
+      - {upper: 12800,     rate: 0.04}
+      - {upper: 17650,     rate: 0.045}
+      - {upper: 20900,     rate: 0.0525}
+      - {upper: 107650,    rate: 0.055}
+      - {upper: 269300,    rate: 0.06}
+      - {upper: 1616450,   rate: 0.0685}
+      - {upper: 5000000,   rate: 0.0965}
+      - {upper: 25000000,  rate: 0.103}
+      - {upper: null,      rate: 0.109}

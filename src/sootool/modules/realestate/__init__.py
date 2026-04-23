@@ -7,6 +7,7 @@ from __future__ import annotations
 from sootool.modules.realestate import (
     acquisition_tax,
     kr_comprehensive,
+    kr_local_property,
     kr_property_tax,
     ratios,
     rental_yield,
@@ -20,4 +21,5 @@ __all__ = [
     "rental_yield",
     "kr_property_tax",
     "kr_comprehensive",
+    "kr_local_property",
 ]

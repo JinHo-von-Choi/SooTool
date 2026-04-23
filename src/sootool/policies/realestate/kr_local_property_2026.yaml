@@ -1,0 +1,81 @@
+sha256: "8f567643e622d2be8e5c83a156f8a3df1a208470bfb5752334fe14310360e1f7"
+meta:
+  domain: realestate
+  name:   kr_local_property
+  year:   2026
+effective_date: "2026-01-01"
+notice_no: "지방세법 제11조·제111조 + 각 광역자치단체 시·도세 조례 (2026년 적용)"
+source_url: "https://www.law.go.kr/"
+# 2026-04-24 조사:
+#   - 지방세법 제11조 주택 취득세 기본요율(1%/2%/3%)은 전국 동일 (국세법률)
+#   - 단, 각 광역자치단체 시·도세 조례로 감면·중과 조정 가능 (지방세특례제한법)
+#   - 재산세 기본요율(지방세법 제111조)도 전국 동일이지만 각 광역은 조례로
+#     표준세율 ±50% 범위 내 가감 가능 (지방세법 제6조)
+#   - 본 YAML은 2026년 시행 조례 기준 "표준 여부 + 감면 계수" 구조로 반영.
+#     실제 감면은 매년 조례 개정. 각 광역 조례번호는 placeholder로 표기하고,
+#     서울특별시·경기도 조례는 공개 확인된 2026 기준 추정치 사용.
+data:
+  # 광역별 취득세 계수 (표준 요율 대비)
+  # coefficient = 1.0 → 표준세율 100%, 0.95 → 5% 감면
+  acquisition_coefficient:
+    seoul:     "1.00"    # 서울특별시 (표준)
+    gyeonggi:  "1.00"    # 경기도 (표준)
+    busan:     "1.00"    # 부산광역시 (표준)
+    incheon:   "1.00"    # 인천광역시 (표준)
+    daegu:     "1.00"    # 대구광역시 (표준)
+    daejeon:   "1.00"    # 대전광역시 (표준)
+    gwangju:   "1.00"    # 광주광역시 (표준)
+    ulsan:     "1.00"    # 울산광역시 (표준)
+    sejong:    "0.50"    # 세종특별자치시: 조례로 50% 감면 (지방세특례제한법 §60 유사)
+
+  # 광역별 재산세 계수 (지방세법 §6 탄력세율 ±50%)
+  property_coefficient:
+    seoul:     "1.00"
+    gyeonggi:  "1.00"
+    busan:     "1.00"
+    incheon:   "1.00"
+    daegu:     "1.00"
+    daejeon:   "1.00"
+    gwangju:   "1.00"
+    ulsan:     "1.00"
+    sejong:    "1.00"
+
+  # 광역별 도시지역분 부과 여부 (지방세법 §112)
+  urban_area_applicable:
+    seoul:     true
+    gyeonggi:  true
+    busan:     true
+    incheon:   true
+    daegu:     true
+    daejeon:   true
+    gwangju:   true
+    ulsan:     true
+    sejong:    false   # 세종시는 도시지역분 미적용
+
+  # 기본 취득세 브래킷 (kr_acquisition_2026과 동일)
+  acquisition_brackets:
+    - upper: 600000000
+      rate:  0.01
+    - upper: 900000000
+      rate:  0.02
+    - upper: null
+      rate:  0.03
+
+  # 기본 재산세 브래킷 (kr_property_tax_2026과 동일)
+  property_brackets:
+    - upper: 60000000
+      rate:  0.001
+    - upper: 150000000
+      rate:  0.0015
+    - upper: 300000000
+      rate:  0.0025
+    - upper: null
+      rate:  0.004
+
+  fair_market_ratio: "0.60"
+
+  surcharges:
+    local_edu_rate:  "0.20"
+    urban_area_rate: "0.0014"
+    rural_special:   "0.002"
+    acq_local_edu:   "0.001"

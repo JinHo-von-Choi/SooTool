@@ -74,6 +74,26 @@ def _extract_year_from_doc(doc: dict[str, Any], yaml_path: Path) -> int:
     return 0
 
 
+def _record_policy_usage(
+    result: dict[str, Any],
+    domain: str,
+    key: str,
+    year: int,
+) -> None:
+    """Publish the loaded policy's sha256/source to the integrity context.
+
+    Invoked on every successful load() call (cache hit or miss). The integrity
+    post-processor reads this thread-local data to stamp ``policy_sha256`` and
+    ``policy_source`` on the response's ``_meta.integrity`` block.
+    """
+    from sootool.core.audit import set_policy_meta  # local import avoids cycle
+
+    pv     = result.get("policy_version", {})
+    sha    = pv.get("sha256")
+    source = result.get("source")
+    set_policy_meta(source, sha, domain=domain, key=key, year=year)
+
+
 def load(domain: str, key: str, year: int) -> dict[str, Any]:
     """Load policy with dual-store priority: override > package.
 
@@ -84,7 +104,9 @@ def load(domain: str, key: str, year: int) -> dict[str, Any]:
     cache_key = (domain, key, year)
     with _CACHE_LOCK:
         if cache_key in _CACHE:
-            return _CACHE[cache_key]
+            cached = _CACHE[cache_key]
+            _record_policy_usage(cached, domain, key, year)
+            return cached
 
     filename = f"{key}_{year}.yaml"
 
@@ -96,6 +118,7 @@ def load(domain: str, key: str, year: int) -> dict[str, Any]:
         log.debug("Policy %s/%s/%d loaded from override: %s", domain, key, year, override_path)
         with _CACHE_LOCK:
             _CACHE[cache_key] = result
+        _record_policy_usage(result, domain, key, year)
         return result
 
     # 2. Fall back to package directory
@@ -106,6 +129,7 @@ def load(domain: str, key: str, year: int) -> dict[str, Any]:
         log.debug("Policy %s/%s/%d loaded from package: %s", domain, key, year, package_path)
         with _CACHE_LOCK:
             _CACHE[cache_key] = result
+        _record_policy_usage(result, domain, key, year)
         return result
 
     # Neither found — collect supported years from both stores
