@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
+
+log = logging.getLogger("sootool.core.registry")
+
+PostProcessor = Callable[[dict[str, Any], str], dict[str, Any]]
 
 
 @dataclass
@@ -21,7 +26,8 @@ class ToolEntry:
 
 class ToolRegistry:
     def __init__(self) -> None:
-        self._tools: dict[str, ToolEntry] = {}
+        self._tools:           dict[str, ToolEntry]  = {}
+        self._post_processors: list[PostProcessor]   = []
 
     def tool(
         self,
@@ -51,10 +57,30 @@ class ToolRegistry:
     def list(self) -> list[ToolEntry]:
         return list(self._tools.values())
 
+    def register_post_processor(self, fn: PostProcessor) -> None:
+        """Register a post-processor applied to every invoke() result.
+
+        Post-processors are called only when the result is a dict containing
+        a "trace" key (ADR-011: result/trace are never modified; processors
+        must write exclusively to _meta).
+
+        Signature: fn(response: dict, tool_name: str) -> dict
+        """
+        self._post_processors.append(fn)
+
     def invoke(self, full_name: str, **kwargs: Any) -> Any:
         if full_name not in self._tools:
             raise KeyError(full_name)
-        return self._tools[full_name].fn(**kwargs)
+        result = self._tools[full_name].fn(**kwargs)
+        if isinstance(result, dict) and "trace" in result:
+            for proc in self._post_processors:
+                try:
+                    result = proc(result, full_name)
+                except Exception:
+                    log.warning(
+                        "Post-processor %s failed for %s", proc, full_name, exc_info=True
+                    )
+        return result
 
 
 REGISTRY = ToolRegistry()

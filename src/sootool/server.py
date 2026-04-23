@@ -125,6 +125,20 @@ def _inject_hints(
     return inject_meta(response, hints, stats)
 
 
+def _hints_post_processor(response: dict[str, Any], tool_name: str) -> dict[str, Any]:
+    """Post-processor adapter for REGISTRY.register_post_processor().
+
+    Skips sootool.skill_guide to avoid recursive noise.
+    Already-injected _meta (from domain tools that call _inject_hints directly)
+    is left untouched; this processor only runs when _meta is absent.
+    """
+    if tool_name == "sootool.skill_guide":
+        return response
+    if "_meta" in response:
+        return response
+    return _inject_hints(response, tool_name, _get_session_id())
+
+
 # ---------------------------------------------------------------------------
 # Core tool registration (idempotent — only runs once per process)
 # ---------------------------------------------------------------------------
@@ -158,8 +172,7 @@ def _register_core_tools() -> None:
         out = d_add(*decimals)
         trace.output(out)
         result = {"result": str(out), "trace": trace.to_dict()}
-        processed = _enforce_payload_limit(_apply_trace_level(result, trace_level))
-        return _inject_hints(processed, "core.add", _get_session_id(), trace_level)
+        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
 
     @REGISTRY.tool(namespace="core", name="sub", description="Decimal 뺄셈")
     def core_sub(a: str, b: str, trace_level: str = "summary") -> dict[str, Any]:
@@ -170,8 +183,7 @@ def _register_core_tools() -> None:
         out = d_sub(da, db)
         trace.output(out)
         result = {"result": str(out), "trace": trace.to_dict()}
-        processed = _enforce_payload_limit(_apply_trace_level(result, trace_level))
-        return _inject_hints(processed, "core.sub", _get_session_id(), trace_level)
+        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
 
     @REGISTRY.tool(namespace="core", name="mul", description="Decimal 곱셈")
     def core_mul(operands: list[str], trace_level: str = "summary") -> dict[str, Any]:
@@ -181,8 +193,7 @@ def _register_core_tools() -> None:
         out = d_mul(*decimals)
         trace.output(out)
         result = {"result": str(out), "trace": trace.to_dict()}
-        processed = _enforce_payload_limit(_apply_trace_level(result, trace_level))
-        return _inject_hints(processed, "core.mul", _get_session_id(), trace_level)
+        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
 
     @REGISTRY.tool(namespace="core", name="div", description="Decimal 나눗셈(분모 0 예외)")
     def core_div(a: str, b: str, trace_level: str = "summary") -> dict[str, Any]:
@@ -193,8 +204,7 @@ def _register_core_tools() -> None:
         out = d_div(da, db)
         trace.output(out)
         result = {"result": str(out), "trace": trace.to_dict()}
-        processed = _enforce_payload_limit(_apply_trace_level(result, trace_level))
-        return _inject_hints(processed, "core.div", _get_session_id(), trace_level)
+        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
 
     from sootool.core.batch import BatchExecutor  # noqa: PLC0415
 
@@ -216,6 +226,7 @@ def _register_core_tools() -> None:
 
 
 _register_core_tools()
+REGISTRY.register_post_processor(_hints_post_processor)
 
 
 # ---------------------------------------------------------------------------
