@@ -7,14 +7,29 @@ SUPPORTED_LOCALES = {"ko", "en"}
 _DEFAULT_LOCALE = "ko"
 
 
-def detect_locale(lang: str | None = None, accept_language: str | None = None) -> str:
-    """Resolve locale with priority: arg > Accept-Language > SOOTOOL_LOCALE > ko.
+def detect_locale(
+    lang: str | None = None,
+    accept_language: str | None = None,
+    session_locale: str | None = None,
+) -> str:
+    """Resolve locale with priority: arg > session > Accept-Language > SOOTOOL_LOCALE > ko.
 
     Only ko and en are supported; unknown locales fall back to ko.
+
+    Args:
+        lang:           Explicit caller-supplied language tag (highest priority).
+        accept_language: Raw Accept-Language HTTP header value.
+        session_locale:  Locale stored in SessionStore for the current session
+                         (populated by LocaleMiddleware from Accept-Language).
     """
     if lang is not None:
         normalized = _normalize(lang)
         return normalized if normalized in SUPPORTED_LOCALES else _DEFAULT_LOCALE
+
+    if session_locale is not None:
+        normalized = _normalize(session_locale)
+        if normalized in SUPPORTED_LOCALES:
+            return normalized
 
     if accept_language:
         candidate = _parse_accept_language(accept_language)

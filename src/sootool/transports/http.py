@@ -11,6 +11,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from sootool.middleware.auth import AuthMiddleware, BearerTokenValidator, TokenValidator
 from sootool.middleware.cors import build_cors_middleware
+from sootool.middleware.locale import LocaleMiddleware
 from sootool.middleware.logging import LoggingMiddleware
 from sootool.middleware.request_id import RequestIDMiddleware
 from sootool.observability.health import healthz
@@ -32,7 +33,6 @@ def _build_cors_origins(cli_origins: list[str]) -> list[str]:
     if env_val.strip():
         return [o.strip() for o in env_val.split(",") if o.strip()]
     return []
-
 
 def build_http_app(
     server: FastMCP,
@@ -58,6 +58,7 @@ def build_http_app(
 
     validators = _build_validators(auth_token)
     app = AuthMiddleware(app, validators)
+    app = LocaleMiddleware(app)
     app = LoggingMiddleware(app)
     app = RequestIDMiddleware(app)
 
