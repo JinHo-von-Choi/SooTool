@@ -1,0 +1,29 @@
+sha256: "335906fb6938c003c1551235ffef15c53e21fd2ed677dd5781dfc3b5dcca63bb"
+effective_date: "2026-01-01"
+notice_no: "법인세법 제55조 (2026년 기준)"
+source_url: "https://www.law.go.kr/법령/법인세법"
+data:
+  # 법인세 누진세율 (법인세법 제55조)
+  # 2억 이하 9%, 2억 초과~200억 이하 19%, 200억 초과~3000억 이하 21%, 3000억 초과 24%
+  brackets:
+    - upper: 200000000
+      rate: 0.09
+    - upper: 20000000000
+      rate: 0.19
+    - upper: 300000000000
+      rate: 0.21
+    - upper: null
+      rate: 0.24
+  # 최저한세율 (조특법 제132조)
+  # 중소기업 7%, 일반 법인 10%~17% (과세표준 구간별)
+  minimum_tax:
+    small:      "0.07"
+    general:    "0.10"
+    # 일반 법인의 경우 과세표준 100억 초과 12%, 1000억 초과 17% 로 세분화
+    general_brackets:
+      - upper: 10000000000
+        rate: 0.10
+      - upper: 100000000000
+        rate: 0.12
+      - upper: null
+        rate: 0.17

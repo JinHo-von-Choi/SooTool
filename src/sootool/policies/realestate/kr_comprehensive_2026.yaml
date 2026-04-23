@@ -1,0 +1,45 @@
+sha256: "c2a3094d78441ed87b0a50bc550430b2d6864bde2034e967942cb080d1fda684"
+effective_date: "2026-01-01"
+notice_no: "종합부동산세법 제8조~제9조"
+source_url: "https://www.law.go.kr/법령/종합부동산세법"
+data:
+  # 공정시장가액비율 (종부세법 시행령)
+  fair_market_ratio: "0.60"
+  # 기본 공제 (종부세법 제8조)
+  base_deduction:
+    one_house: 1200000000        # 1세대 1주택: 12억
+    multi_house: 900000000        # 다주택: 9억
+  # 1세대1주택 누진세율 (종부세법 제9조 제1항)
+  one_house_brackets:
+    - upper: 300000000
+      rate: 0.005
+    - upper: 600000000
+      rate: 0.007
+    - upper: 1200000000
+      rate: 0.010
+    - upper: 2500000000
+      rate: 0.013
+    - upper: 5000000000
+      rate: 0.015
+    - upper: 9400000000
+      rate: 0.020
+    - upper: null
+      rate: 0.027
+  # 다주택(3주택 이상) 누진세율
+  multi_house_brackets:
+    - upper: 300000000
+      rate: 0.005
+    - upper: 600000000
+      rate: 0.007
+    - upper: 1200000000
+      rate: 0.010
+    - upper: 2500000000
+      rate: 0.020
+    - upper: 5000000000
+      rate: 0.030
+    - upper: 9400000000
+      rate: 0.040
+    - upper: null
+      rate: 0.050
+  # 농어촌특별세: 종부세의 20%
+  rural_special_rate: "0.20"

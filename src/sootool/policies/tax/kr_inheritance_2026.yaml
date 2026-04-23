@@ -1,0 +1,23 @@
+sha256: "f2d621b8fbd8bde5356ff823cc898ae91352e844252c1d7eecb6ab0de3c6a245"
+effective_date: "2026-01-01"
+notice_no: "상속세 및 증여세법 제26조·제18조"
+source_url: "https://www.law.go.kr/법령/상속세및증여세법"
+data:
+  # 상속세 누진세율 (상속세및증여세법 제26조)
+  brackets:
+    - upper: 100000000
+      rate: 0.10
+    - upper: 500000000
+      rate: 0.20
+    - upper: 1000000000
+      rate: 0.30
+    - upper: 3000000000
+      rate: 0.40
+    - upper: null
+      rate: 0.50
+  # 기본 공제 (상속세및증여세법 제18조)
+  deductions:
+    lump_sum: 500000000         # 일괄공제 5억
+    spouse_min: 500000000        # 배우자 최소공제 5억
+    spouse_max: 3000000000       # 배우자 최대공제 30억
+    basic: 200000000             # 기초공제 2억

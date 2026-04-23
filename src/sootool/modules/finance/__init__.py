@@ -14,6 +14,22 @@ Tools:
 """
 from __future__ import annotations
 
-from sootool.modules.finance import bond, loan, metrics, option, tvm
+from sootool.modules.finance import (
+    bond,
+    derivatives,
+    loan,
+    metrics,
+    option,
+    risk,
+    tvm,
+)
 
-__all__ = ["bond", "loan", "metrics", "option", "tvm"]
+__all__ = [
+    "bond",
+    "loan",
+    "metrics",
+    "option",
+    "tvm",
+    "risk",
+    "derivatives",
+]

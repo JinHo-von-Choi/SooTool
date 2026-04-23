@@ -1,0 +1,25 @@
+sha256: "709386e0ccad79a9de7e6d46bd24ec39442ca5cc928e339949dcb91ffe1a5617"
+effective_date: "2026-01-01"
+notice_no: "상속세 및 증여세법 제56조·제53조"
+source_url: "https://www.law.go.kr/법령/상속세및증여세법"
+data:
+  # 증여세 누진세율 (상속과 동일 구간 구조)
+  brackets:
+    - upper: 100000000
+      rate: 0.10
+    - upper: 500000000
+      rate: 0.20
+    - upper: 1000000000
+      rate: 0.30
+    - upper: 3000000000
+      rate: 0.40
+    - upper: null
+      rate: 0.50
+  # 증여재산공제 (상속세및증여세법 제53조) — 10년 합산 기준
+  relationship_deduction:
+    spouse: 600000000            # 배우자 6억
+    lineal_ascendant: 50000000   # 직계존속 5000만 (미성년자 2000만)
+    lineal_ascendant_minor: 20000000
+    lineal_descendant: 50000000  # 직계비속 5000만
+    other_relative: 10000000     # 기타 친족 1000만
+    other: 0

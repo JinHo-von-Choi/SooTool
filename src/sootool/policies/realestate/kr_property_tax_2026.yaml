@@ -1,0 +1,22 @@
+sha256: "f51d2ce89cbf35c2a42897fef7f98bf321610c63f90efaf5dee736d4d2c920ae"
+effective_date: "2026-01-01"
+notice_no: "지방세법 제111조 (재산세)"
+source_url: "https://www.law.go.kr/법령/지방세법"
+data:
+  # 주택 재산세 (지방세법 제111조 제1항 제3호)
+  # 과세표준 = 공시가격 * 공정시장가액비율(60%)
+  fair_market_ratio: "0.60"
+  # 주택 누진세율 (과세표준 기준)
+  brackets:
+    - upper: 60000000
+      rate: 0.001
+    - upper: 150000000
+      rate: 0.0015
+    - upper: 300000000
+      rate: 0.0025
+    - upper: null
+      rate: 0.004
+  # 부가 과세
+  surcharges:
+    local_edu_rate: "0.20"       # 지방교육세: 재산세액의 20%
+    urban_area_rate: "0.0014"    # 도시지역분: 과세표준의 0.14%

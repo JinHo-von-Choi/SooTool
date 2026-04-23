@@ -1,0 +1,38 @@
+sha256: "05f2afff12778f5c0cbd2605c5a261fb7f6fd2a2b29d214b423985cb880f7a30"
+effective_date: "2026-01-01"
+notice_no: "국민연금·건강보험·고용보험·산재 2026년 요율 (보건복지부/고용노동부)"
+source_url: "https://www.nps.or.kr/jsppage/business/insure_cal/insure_cal_01.jsp"
+data:
+  # 2026년 4대보험 요율 (근로자 부담 기준)
+  # 참고: 2025년 미발표로 2024년 말~2025년 초 기준 적용, 외부 검증 필수
+  national_pension:
+    # 국민연금: 근로자 4.5%, 사용자 4.5% (총 9%)
+    # 기준소득월액 상·하한: 2025-07 기준 하한 370,000, 상한 5,900,000
+    employee_rate: "0.045"
+    employer_rate: "0.045"
+    base_min_monthly: 370000
+    base_max_monthly: 5900000
+  health_insurance:
+    # 건강보험: 근로자 3.545%, 사용자 3.545% (총 7.09%)
+    employee_rate: "0.03545"
+    employer_rate: "0.03545"
+    # 장기요양보험: 건강보험료의 12.95%
+    long_term_care_rate_of_health: "0.1295"
+  employment_insurance:
+    # 고용보험 (근로자 부담: 실업급여 0.9%)
+    employee_rate: "0.009"
+    # 사용자 부담은 사업장 규모별 상이: 단순 계산에서는 제외
+  industrial_accident:
+    # 산재보험: 전액 사용자 부담, 업종별 상이
+    # 근로자 부담 없음 → 표준 계산에서는 0
+    employee_rate: "0.0"
+  income_tax:
+    # 간이세액표 근사: 월급여 x 간이세율로 근사 (실무에서는 월급여표 대조)
+    # 본 도구에서는 kr_income 누진세율 기반 연환산 후 /12 로 처리 (trace에 명시)
+    reference_policy: "tax/kr_income_2026"
+  local_income_tax:
+    # 지방소득세: 소득세의 10%
+    rate_of_income_tax: "0.1"
+  non_taxable:
+    # 비과세: 월 식대 한도 (소득세법 시행령 제17조)
+    meal_monthly_cap: 200000

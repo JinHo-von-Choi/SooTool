@@ -4,6 +4,22 @@ Importing this package registers all accounting tools in REGISTRY.
 """
 from __future__ import annotations
 
-from sootool.modules.accounting import bookkeeping, depreciation, vat
+from sootool.modules.accounting import (
+    bookkeeping,
+    cashflow,
+    depreciation,
+    dupont,
+    income_statement,
+    ratios,
+    vat,
+)
 
-__all__ = ["bookkeeping", "depreciation", "vat"]
+__all__ = [
+    "bookkeeping",
+    "depreciation",
+    "vat",
+    "ratios",
+    "dupont",
+    "cashflow",
+    "income_statement",
+]
