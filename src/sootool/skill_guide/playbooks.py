@@ -89,6 +89,7 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
     },
     {
         "id": "policy_annual_update",
+        "scenario": "연간 세법 개정 → policy_propose → policy_activate 로 정책 YAML 갱신",
         "title": "연간 세법 개정 정책 업데이트",
         "description": "고시문 확인 후 policy_propose → policy_activate 워크플로우로 정책 YAML을 갱신한다.",
         "steps": [
@@ -101,6 +102,7 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
     },
     {
         "id": "policy_hotfix_rollback",
+        "scenario": "오적용된 override 정책 즉시 롤백 → 패키지 기본값 복원",
         "title": "긴급 롤백 — 오적용된 정책 원상 복구",
         "description": "잘못 활성화된 override 정책을 즉시 롤백하여 패키지 기본값으로 복원한다.",
         "steps": [
@@ -112,6 +114,7 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
     },
     {
         "id": "policy_portability",
+        "scenario": "정책 번들 export → import 로 환경 간 이식",
         "title": "정책 번들 내보내기/가져오기 (환경 이전)",
         "description": "policy_export로 서명된 번들을 생성하고 policy_import로 다른 환경에 이식한다.",
         "steps": [
@@ -209,6 +212,7 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
     },
     {
         "id": "policy_annual_update",
+        "scenario": "Annual tax law update -> policy_propose -> policy_activate to refresh YAML",
         "title": "Annual Tax Law Policy Update",
         "description": "After reviewing official notices, update a policy YAML via policy_propose → policy_activate workflow.",
         "steps": [
@@ -221,6 +225,7 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
     },
     {
         "id": "policy_hotfix_rollback",
+        "scenario": "Revert misapplied override policy -> restore package default",
         "title": "Emergency Rollback — Revert Misapplied Policy",
         "description": "Immediately roll back a wrongly activated override policy to restore the package default.",
         "steps": [
@@ -232,6 +237,7 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
     },
     {
         "id": "policy_portability",
+        "scenario": "policy_export signed bundle -> policy_import in another environment",
         "title": "Policy Bundle Export/Import (Environment Migration)",
         "description": "Export a signed bundle with policy_export and import it into another environment with policy_import.",
         "steps": [
