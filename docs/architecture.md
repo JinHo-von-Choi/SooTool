@@ -179,6 +179,20 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - 수동 동기화는 사람 개입마다 드리프트가 재발한다. REGISTRY 를 단일 소스로 삼고 CI 에서 기계적으로 대조하면 릴리즈 이전에 오차가 발견되며, 배포 후 사후 패치(0.1.1 hotfix) 필요성을 제거한다.
 - `core`·`sootool` 을 계산 도메인에서 분리하는 것은 외부 사용자 관점의 "계산 능력" 정의와 내부 아키텍처의 "운영 표면" 정의를 충돌 없이 유지하기 위한 결정이다.
 
+### Appendix — base_tools 공식 규범 (2026-04-24)
+
+`scripts/count_tools.py`가 보고하는 `base_tools`는 다음 공식으로 고정한다.
+
+```
+base_tools = total_tools − policy_tools
+```
+
+policy_tools 는 `sootool` 네임스페이스에서 `policy_` 접두어를 갖는 10개 도구의 합계(read-only 6 + admin-gated 4). admin_policy_tools 는 policy_tools 의 서브셋이며 `_require_admin()`을 호출하는 4개 도구(policy_propose·policy_activate·policy_rollback·policy_import)로 별도 집계한다.
+
+CI(`.github/workflows/ci.yml`의 Tool count single source guard step)는 REGISTRY 실측 total·policy·admin 값을 계산한 뒤 README·pyproject·CHANGELOG 선언 문자열과 일치하는지 grep 4종 + `--assert-total`·`--assert-base`·`--assert-domains`·`--assert-policy`·`--assert-admin` 5종 단언을 모두 통과시켜야 한다.
+
+이 규범을 변경하려면 ADR-019 개정이 선행되어야 한다.
+
 ## ADR-020: core.batch deterministic 재정렬 전략
 
 결정:
@@ -225,4 +239,48 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - optional extra 는 기본 배포의 용량·의존성 공격 표면을 보존하기 위함이다. sympy 는 내부적으로 mpmath 를 공유하지만(이미 기본 의존) sympy 자체의 순수 Python 패키지 크기와 릴리즈 주기가 기본 의존군과 다르다. opt-in 경로는 세무·금융 사용자가 기호 연산 비사용 시 불필요한 업데이트 노이즈를 피하게 한다.
 - evalf → mpf → Decimal 경로는 Phase 1 부터 지켜 온 "float 누수 금지" 원칙의 연장이다. sympy.Float 객체를 str 로 전환한 뒤 mpmath 컨텍스트(50자리) 에서 재파싱하면, Python float 의 IEEE-754 반올림이 트레이스 경계에 끼어들지 않는다.
 - 타임아웃을 SIGALRM 으로 도입한 이유는 sympy.solve 가 입력에 따라 비선형 시간으로 폭발할 수 있기 때문이다. 5초 상한은 일반적인 방정식·다항식·단순 초월 방정식에는 충분하고, 초과 시 사용자에게 "복잡한 symbolic 연산은 정책적 도메인 도구(tax.*, finance.*) 를 사용하라" 는 방향성을 강제한다.
+
+## ADR-023: Release Gate, Timeout Contracts, Optional Extras Matrix
+
+컨텍스트:
+0.1.1~0.1.2 릴리스 기간 동안 세 종류의 구조적 갭이 누적됐다.
+
+1. 릴리스 게이트 부재: CE-M4 이후 CI 가 `uv sync --frozen` 에 `--extra symbolic` 누락으로 만성 red 였으나, master push 와 tag push 를 가로막는 상태 체크가 없어 CI red 상태에서 두 차례 릴리스가 진행됐다. 0.1.2 는 publish 빌드 잡에서 같은 이유로 실패하여 PyPI 업로드가 스킵됐다.
+2. 시간 축 제어의 선언-실장 갭: `BatchExecutor.batch_timeout_s`/`item_timeout_s`, `PipelineExecutor.step_timeout_s`/`pipeline_timeout_s`, `symbolic/_bridge._EVAL_TIMEOUT_S` 네 시간 계약이 필드·상수로 선언되었으나 실행 경로에서 실제 wall-clock 을 구속하지 않았다. 2067개 기존 테스트는 값·순서 불변만 검증하고 시간 축 계약은 검증하지 않았다.
+3. Optional Extras 설치 매트릭스 공백: `symbolic` extra 가 optional 임에도 기본 설치(`uv sync --frozen`) 에서 symbolic 테스트가 어떻게 처리되는지 CI 가 검증하지 않았다. 따라서 "extra 없이도 sootool 이 import 가능한가" 라는 필수 계약이 회귀로 깨져도 감지되지 않았다.
+
+결정:
+
+R1. 릴리스 게이트 (Release Gate)
+- master 브랜치에 GitHub branch protection rule "Require status checks to pass before merging" 을 활성화하고 필수 status check 로 `Test (Python 3.12 / extras=none)`, `Test (Python 3.12 / extras=symbolic)`, `Test (Python 3.12 / extras=all)` 세 개를 지정한다.
+- 로컬 릴리스 프로세스의 사전 조건으로 `make release-preflight` 를 둔다. `scripts/release_preflight.py` 가 stdlib `urllib.request` 로 GitHub API 를 호출하여 현재 master commit 의 CI run `conclusion` 이 `"success"` 일 때만 exit 0 을 반환한다.
+- 릴리스 절차는 `docs/release.md` 에 명문화된다.
+
+R2. 시간 축 계약 (Timeout Contracts)
+- 다음 계약은 `tests/core/test_timeout_contracts.py` 의 7 테스트 케이스로 실제 wall-clock 구속을 증명해야 한다.
+  - `BatchExecutor.batch_timeout_s` — batch 수준 wall-clock 상한.
+  - `BatchExecutor.item_timeout_s` — 개별 아이템 wall-clock 상한.
+  - `PipelineExecutor.step_timeout_s` — step 수준 wall-clock 상한.
+  - `PipelineExecutor.pipeline_timeout_s` — 파이프라인 수준 wall-clock 상한(초과 시 후속 step 은 `status="skipped"` + `error.type="PipelineTimeout"`).
+  - `symbolic/_bridge._EVAL_TIMEOUT_S` — 메인 스레드 SIGALRM 경로와 비메인 스레드 `ThreadPoolExecutor` watchdog 경로 양쪽에서 강제.
+- 실행 계약 변경이 필요하면 해당 테스트 파일의 tolerance(`SOOTOOL_TIMEOUT_TOLERANCE`) 와 본 ADR 을 함께 개정한다.
+
+R3. Optional Extras 매트릭스 (Optional Extras Matrix)
+- `pyproject.toml` `[project.optional-dependencies]` 에 `all = ["sootool[symbolic]"]` 메타 extra 를 유지한다. 새 extra 가 추가되면 `all` 에 누적된다.
+- `.github/workflows/ci.yml` matrix 를 `extras: ["none", "symbolic", "all"]` 3종으로 확장하여 각 조합에서 전체 pytest 스위트가 pass 해야 한다.
+- `import sootool` 과 `from sootool.server import _load_modules; _load_modules()` 는 sympy 설치 없이도 성공해야 한다 (`extras=none` 매트릭스가 이 계약을 방어).
+- `tests/modules/symbolic/test_*.py` 는 상단에 `pytest.importorskip("sympy")` 를 두어 extras=none 환경에서 자동 스킵되도록 한다.
+
+결과:
+- R1·R2·R3 가 성립하면 (가) CI red 위 릴리스 재발 방지, (나) timeout 관련 리팩터의 회귀 방어, (다) Optional extra 회귀의 CI 즉시 감지가 확보된다.
+- 개발자 동선: 시간 계약을 바꾸면 `test_timeout_contracts.py` 도 바꾸고 본 ADR 을 개정한다. Optional extra 를 추가하면 `all` 에도 추가하고 매트릭스를 갱신한다. 릴리스 전 `make release-preflight` 가 선행된다.
+
+상태: 수용됨(Accepted). 2026-04-24.
+
+관련 아티팩트:
+- 플랜: `docs/plans/2026-04-24-release-quality-improvements.md`
+- 구현 커밋: 본 ADR 과 함께 반영되는 릴리스 품질 개선 PR
+- 테스트: `tests/core/test_timeout_contracts.py`
+- 스크립트: `scripts/release_preflight.py`, `scripts/count_tools.py`(`--assert-base` 포함)
+- 워크플로: `.github/workflows/ci.yml` (extras matrix), `.github/workflows/publish-pypi.yml` (attestation)
 

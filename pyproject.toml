@@ -56,6 +56,8 @@ dependencies = [
 # 배포 용량이 늘기 때문에 opt-in 으로 유지한다. 미설치 시 symbolic.* 도구는
 # SymbolicDependencyError 로 친절히 안내한다.
 symbolic = ["sympy>=1.12"]
+# 모든 extra를 한 번에 설치하는 convenience extra. 향후 extra 추가 시 여기에 누적한다.
+all = ["sootool[symbolic]"]
 
 [project.urls]
 Homepage   = "https://github.com/JinHo-von-Choi/SooTool"

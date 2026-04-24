@@ -1620,6 +1620,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "sympy" },
+]
 symbolic = [
     { name = "sympy" },
 ]
@@ -1649,6 +1652,7 @@ requires-dist = [
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "scipy", specifier = ">=1.13" },
+    { name = "sootool", extras = ["symbolic"], marker = "extra == 'all'" },
     { name = "starlette", specifier = ">=0.47" },
     { name = "statsmodels", specifier = ">=0.14.6" },
     { name = "sympy", marker = "extra == 'symbolic'", specifier = ">=1.12" },
@@ -1656,7 +1660,7 @@ requires-dist = [
     { name = "websockets", specifier = ">=14" },
     { name = "workalendar", specifier = ">=17.0.0" },
 ]
-provides-extras = ["symbolic"]
+provides-extras = ["symbolic", "all"]
 
 [package.metadata.requires-dev]
 dev = [

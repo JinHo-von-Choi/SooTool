@@ -21,6 +21,10 @@ jobs:
   build:
     name: Build distributions
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,6 +55,18 @@ jobs:
           uv run python -c "from sootool import __version__; print('version =', __version__)"
           ls -la dist/
 
+      - name: Generate build provenance attestation
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: 'dist/*'
+
+      - name: Upload attestation bundle to Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}"             dist/*.sigstore.bundle --clobber 2>/dev/null || true
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -79,6 +95,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist/
+          attestations: true
 
   publish-testpypi:
     name: Publish to TestPyPI

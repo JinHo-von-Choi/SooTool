@@ -6,6 +6,8 @@ from decimal import Decimal
 
 import pytest
 
+pytest.importorskip("sympy")
+
 import sootool.modules.symbolic  # noqa: F401
 from sootool.core.errors import (
     DisallowedOperationError,

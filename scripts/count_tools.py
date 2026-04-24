@@ -147,6 +147,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--assert-domains", type=int, help="계산 도메인 수 단언")
     parser.add_argument("--assert-admin", type=int, help="admin 정책 도구 수 단언")
     parser.add_argument("--assert-policy", type=int, help="정책 도구 수 단언")
+    parser.add_argument("--assert-base", type=int, help="base 도구 수 단언 (total - policy_tools)")
+    parser.add_argument(
+        "--assert-namespaces",
+        type=str,
+        default=None,
+        help='네임스페이스별 도구 수 JSON 단언 예: \'{"finance":15,"tax":10}\'',
+    )
     parser.add_argument(
         "--tests",
         action="store_true",
@@ -194,6 +201,22 @@ def main(argv: list[str] | None = None) -> int:
             f"policy_tools={snapshot['policy_tools']} "
             f"!= expected {args.assert_policy}"
         )
+    if args.assert_base is not None and snapshot["base_tools"] != args.assert_base:
+        failures.append(
+            f"base_tools={snapshot['base_tools']} != expected {args.assert_base}"
+        )
+    if args.assert_namespaces is not None:
+        try:
+            expected = json.loads(args.assert_namespaces)
+        except json.JSONDecodeError as e:
+            failures.append(f"--assert-namespaces JSON parse error: {e}")
+        else:
+            for ns, exp_count in expected.items():
+                actual = snapshot["namespaces"].get(ns)
+                if actual != exp_count:
+                    failures.append(
+                        f"namespace[{ns}]={actual} != expected {exp_count}"
+                    )
 
     if failures:
         print("\nassertion 실패:", file=sys.stderr)

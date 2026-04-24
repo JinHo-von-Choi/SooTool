@@ -11,12 +11,13 @@ permissions:
 
 jobs:
   test:
-    name: Test (Python ${{ matrix.python-version }})
+    name: Test (Python ${{ matrix.python-version }} / extras=${{ matrix.extras }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.12"]
+        extras: ["none", "symbolic", "all"]
 
     steps:
       - name: Checkout
@@ -29,7 +30,12 @@ jobs:
           enable-cache: true
 
       - name: Sync dependencies
-        run: uv sync --frozen --extra symbolic
+        run: |
+          if [ "${{ matrix.extras }}" = "none" ]; then
+            uv sync --frozen
+          else
+            uv sync --frozen --extra ${{ matrix.extras }}
+          fi
 
       - name: Ruff
         run: uv run ruff check src/sootool tests scripts
@@ -60,7 +66,9 @@ jobs:
           uv run python scripts/count_tools.py \
             --assert-total "$TOTAL" \
             --assert-domains "$DOMAINS" \
-            --assert-policy "$POLICY"
+            --assert-policy "$POLICY" \
+            --assert-base "$BASE" \
+            --assert-admin 4
 
       - name: MCP smoke (stdio)
         run: uv run python scripts/mcp_smoke_test.py
