@@ -12,7 +12,10 @@
 from __future__ import annotations
 
 import signal
+import threading
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 from contextlib import contextmanager
 from decimal import Decimal
 from typing import Any
@@ -133,11 +136,26 @@ def _time_limit(seconds: int) -> Any:
 def run_symbolic(op: Callable[[], Any]) -> Any:
     """sympy 연산을 timeout 과 ImportError 안내로 감싸 실행한다."""
     _require_sympy()
+    is_main = threading.current_thread() is threading.main_thread()
+    has_alarm = hasattr(signal, "SIGALRM")
+    if is_main and has_alarm:
+        try:
+            with _time_limit(_EVAL_TIMEOUT_S):
+                return op()
+        except _EvalTimeout as exc:
+            raise DomainConstraintError(str(exc)) from exc
+    pool = ThreadPoolExecutor(max_workers=1)
     try:
-        with _time_limit(_EVAL_TIMEOUT_S):
-            return op()
-    except _EvalTimeout as exc:
-        raise DomainConstraintError(str(exc)) from exc
+        fut = pool.submit(op)
+        try:
+            return fut.result(timeout=_EVAL_TIMEOUT_S)
+        except FuturesTimeout as exc:
+            fut.cancel()
+            raise DomainConstraintError(
+                f"sympy evaluation exceeded {_EVAL_TIMEOUT_S}s",
+            ) from exc
+    finally:
+        pool.shutdown(wait=False, cancel_futures=True)
 
 
 def sympify_safe(expression: str) -> Any:

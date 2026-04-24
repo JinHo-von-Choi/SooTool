@@ -5,6 +5,8 @@ import threading
 import time
 import uuid
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass
 from graphlib import CycleError, TopologicalSorter
 from typing import Any
@@ -179,56 +181,105 @@ class PipelineExecutor:
                 if i < from_step_idx and step_id in seed_completed:
                     skip_ids.add(step_id)
 
-        for step_id in order:
-            step = by_id[step_id]
+        pool = ThreadPoolExecutor(max_workers=1)
+        try:
+            pipeline_deadline_hit = False
 
-            if step_id in skip_ids:
-                # Reuse seeded result
-                step_results[step_id] = {
-                    "id":     step_id,
-                    "tool":   step["tool"],
-                    "status": "ok",
-                    "result": completed[step_id]["result"],
-                    "elapsed_ms": 0,
-                    "reused": True,
-                }
-                continue
+            for step_id in order:
+                step = by_id[step_id]
 
-            deps_failed = [
-                d for d in graph[step_id]
-                if step_results.get(d, {}).get("status") not in ("ok",) and d not in skip_ids
-            ]
-            if deps_failed:
-                step_results[step_id] = {
-                    "id":    step_id,
-                    "tool":  step["tool"],
-                    "status": "skipped",
-                    "error": {"type": "DependencyFailed", "message": f"deps: {deps_failed}"},
-                }
-                continue
+                # Remaining steps after a pipeline timeout are marked skipped
+                if pipeline_deadline_hit:
+                    step_results[step_id] = {
+                        "id":    step_id,
+                        "tool":  step["tool"],
+                        "status": "skipped",
+                        "error": {
+                            "type":    "PipelineTimeout",
+                            "message": f"pipeline_timeout_s={self.pipeline_timeout_s}",
+                        },
+                    }
+                    continue
 
-            try:
-                resolved_args = _resolve_refs(step.get("args", {}), completed)
-                t0 = time.monotonic()
-                res = self.registry.invoke(step["tool"], **resolved_args)
-                step_results[step_id] = {
-                    "id":         step_id,
-                    "tool":       step["tool"],
-                    "status":     "ok",
-                    "result":     res,
-                    "elapsed_ms": int((time.monotonic() - t0) * 1000),
-                }
-                completed[step_id] = {"result": res}
-            except Exception as e:
-                step_results[step_id] = {
-                    "id":    step_id,
-                    "tool":  step["tool"],
-                    "status": "error",
-                    "error": {"type": type(e).__name__, "message": str(e)},
-                }
+                # Check pipeline-level deadline before executing this step
+                if (time.monotonic() - started) >= self.pipeline_timeout_s:
+                    pipeline_deadline_hit = True
+                    step_results[step_id] = {
+                        "id":    step_id,
+                        "tool":  step["tool"],
+                        "status": "timeout",
+                        "error": {
+                            "type":    "PipelineTimeout",
+                            "message": f"pipeline_timeout_s={self.pipeline_timeout_s}",
+                        },
+                        "elapsed_ms": int((time.monotonic() - started) * 1000),
+                    }
+                    continue
+
+                if step_id in skip_ids:
+                    # Reuse seeded result
+                    step_results[step_id] = {
+                        "id":         step_id,
+                        "tool":       step["tool"],
+                        "status":     "ok",
+                        "result":     completed[step_id]["result"],
+                        "elapsed_ms": 0,
+                        "reused":     True,
+                    }
+                    continue
+
+                deps_failed = [
+                    d for d in graph[step_id]
+                    if step_results.get(d, {}).get("status") not in ("ok",) and d not in skip_ids
+                ]
+                if deps_failed:
+                    step_results[step_id] = {
+                        "id":    step_id,
+                        "tool":  step["tool"],
+                        "status": "skipped",
+                        "error": {"type": "DependencyFailed", "message": f"deps: {deps_failed}"},
+                    }
+                    continue
+
+                try:
+                    resolved_args = _resolve_refs(step.get("args", {}), completed)
+                    t0 = time.monotonic()
+                    fut = pool.submit(self.registry.invoke, step["tool"], **resolved_args)
+                    try:
+                        res = fut.result(timeout=self.step_timeout_s)
+                    except FuturesTimeout:
+                        fut.cancel()
+                        step_results[step_id] = {
+                            "id":    step_id,
+                            "tool":  step["tool"],
+                            "status": "timeout",
+                            "error": {
+                                "type":    "TimeoutError",
+                                "message": f"step_timeout_s={self.step_timeout_s}",
+                            },
+                            "elapsed_ms": int((time.monotonic() - t0) * 1000),
+                        }
+                        continue
+                    step_results[step_id] = {
+                        "id":         step_id,
+                        "tool":       step["tool"],
+                        "status":     "ok",
+                        "result":     res,
+                        "elapsed_ms": int((time.monotonic() - t0) * 1000),
+                    }
+                    completed[step_id] = {"result": res}
+                except Exception as e:
+                    step_results[step_id] = {
+                        "id":    step_id,
+                        "tool":  step["tool"],
+                        "status": "error",
+                        "error": {"type": type(e).__name__, "message": str(e)},
+                    }
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
         total_ms = int((time.monotonic() - started) * 1000)
-        all_ok  = all(r["status"] in ("ok",) for r in step_results.values())
+        all_ok  = all(r["status"] == "ok" for r in step_results.values())
         any_ok  = any(r["status"] == "ok" for r in step_results.values())
         status  = "ok" if all_ok else ("failed" if not any_ok else "partial")
 
@@ -248,11 +299,11 @@ class PipelineExecutor:
             _PIPELINE_SNAPSHOTS[pipeline_id] = snapshot
 
         return {
-            "status":       status,
-            "steps":        step_results,
+            "status":        status,
+            "steps":         step_results,
             "total_time_ms": total_ms,
-            "order":        order,
-            "pipeline_id":  pipeline_id,
+            "order":         order,
+            "pipeline_id":   pipeline_id,
         }
 
 

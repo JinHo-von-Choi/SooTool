@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 from typing import Protocol
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -19,7 +20,7 @@ class BearerTokenValidator:
         self._expected = expected
 
     def validate(self, token: str) -> bool:
-        return token == self._expected
+        return hmac.compare_digest(token.encode("utf-8"), self._expected.encode("utf-8"))
 
 
 class AuthMiddleware(BaseHTTPMiddleware):

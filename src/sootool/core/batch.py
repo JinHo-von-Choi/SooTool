@@ -35,7 +35,10 @@ class BatchExecutor:
         results: dict[str, dict[str, Any]] = {}
         item_started_at: dict[str, float] = {}
 
-        with ThreadPoolExecutor(max_workers=workers) as pool:
+        # wait=False + cancel_futures=True: 타임아웃 처리 완료 후 실행 중 worker 를 분리하여
+        # pool.__exit__ 의 blocking shutdown 으로 인한 wall-clock 초과를 방지한다.
+        pool = ThreadPoolExecutor(max_workers=workers)
+        try:
             futures: dict[Future[Any], str] = {}
             for it in items:
                 submit_t0 = time.monotonic()
@@ -130,6 +133,8 @@ class BatchExecutor:
                         "error":      {"type": type(e).__name__, "message": str(e)},
                         "elapsed_ms": int((time.monotonic() - t0) * 1000),
                     }
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
         total_ms = int((time.monotonic() - started) * 1000)
 

@@ -86,7 +86,7 @@ def _load_registry_snapshot() -> dict[str, Any]:
         "operational_namespaces":    len(operational_namespaces),
         "policy_tools":              policy_tools_count,
         "admin_policy_tools":        admin_tools_count,
-        "base_tools":                total - admin_tools_count,
+        "base_tools":                total - policy_tools_count,
         "namespaces":                dict(sorted(namespace_counts.items())),
         "calculation_namespace_list": calculation_namespaces,
         "operational_namespace_list": operational_namespaces,
@@ -131,7 +131,7 @@ def _print_human(snapshot: dict[str, Any], test_count: int | None) -> None:
         f"admin-gated 정책 도구: {snapshot['admin_policy_tools']} "
         f"({', '.join(snapshot['admin_tool_names'])})"
     )
-    print(f"기본 도구(= 전체 - admin): {snapshot['base_tools']}")
+    print(f"기본 도구(= 전체 - policy): {snapshot['base_tools']}")
     if test_count is not None:
         print(f"pytest 수집 테스트: {test_count}")
     print("\n네임스페이스별 도구 수:")
