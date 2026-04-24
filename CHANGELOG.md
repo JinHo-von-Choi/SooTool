@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-04-24
+
+Release quality uplift. `docs/plans/2026-04-24-release-quality-improvements.md` 계획의 P0~P2 전 항목 반영. 기능 도구 추가 없음. REGISTRY 수치 0.1.3과 동일(18 domains, 254 base tools, 10 admin policy-management tools, 5 transport modes).
+
+### Added
+- `scripts/release_preflight.py` — stdlib `urllib.request`로 GitHub Actions API를 호출하여 현재 master commit의 CI `conclusion="success"`를 사전 검증하는 릴리스 게이트. `gh` CLI 의존 없음(snap gh의 cgroup 제약 회피). 토큰 해석 순서 `GH_TOKEN` → `GITHUB_TOKEN` → `~/.config/gh/hosts.yml` → `~/snap/gh/current/.config/gh/hosts.yml`. 403/5xx 지수 백오프 2회.
+- `scripts/draft_changelog.py` — git log + REGISTRY 스냅샷 기반 `[Unreleased]` 초안 자동 생성. Conventional Commits 매핑(feat·fix·chore·docs·refactor·perf·test·build·ci·style·security → Added·Fixed·Changed·Security·Unclassified). `--since`/`--until`/`--write` 지원.
+- `tests/core/test_timeout_contracts.py` — 7 케이스 시간 축 계약 테스트. `BatchExecutor.batch_timeout_s`·`item_timeout_s`, `PipelineExecutor.step_timeout_s`·`pipeline_timeout_s`, `symbolic _EVAL_TIMEOUT_S`(메인 스레드 SIGALRM 경로 + 비메인 스레드 ThreadPoolExecutor watchdog 경로)의 실제 wall-clock 구속을 실측. `SOOTOOL_TIMEOUT_TOLERANCE` 환경변수로 CI flake 방지.
+- `docs/release.md` — 9단계 릴리스 절차 문서. master CI green 사전 검증부터 PyPI 반영 확인까지. branch protection required status check 3종(`Test (Python 3.12 / extras=none|symbolic|all)`) 안내.
+- `SECURITY.md` — 공급망 신뢰 검증 3경로 문서화: `gh attestation verify`, `sigstore verify identity`, GitHub Attestations 브라우저 페이지.
+- `docs/architecture.md` ADR-023 "Release Gate, Timeout Contracts, Optional Extras Matrix" — R1(릴리스 게이트), R2(시간 축 계약 7 테스트), R3(optional extras 매트릭스) 3개 계약을 규범화. ADR-018 번호는 CLI 서브커맨드 계획 예약 존중.
+- `docs/architecture.md` ADR-019 Appendix — `base_tools = total_tools − policy_tools` 공식을 규범으로 고착. CI 5종 단언(total·base·domains·policy·admin) 명시.
+
+### Changed
+- `Makefile`: `release-preflight`, `draft-changelog` 두 타깃 추가.
+- `scripts/count_tools.py`: `--assert-base`, `--assert-namespaces` 옵션 추가. human print 라벨 `= 전체 - policy`로 이미 정렬된 base 공식을 CLI 단언으로도 강제.
+- `.github/workflows/ci.yml`: matrix 확장 `extras: [none, symbolic, all]`. `Sync dependencies` step이 extras 값에 따라 `uv sync --frozen` 또는 `uv sync --frozen --extra <n>`으로 분기. Tool count guard step에 `--assert-base "$BASE"`·`--assert-admin 4` 추가. job name이 `Test (Python 3.12 / extras=<n>)` 세 개로 분리되며 branch protection required status checks도 3종으로 변경해야 한다.
+- `.github/workflows/publish-pypi.yml`: build 잡 permissions에 `id-token: write`·`attestations: write`·`contents: read` 명시. `actions/attest-build-provenance@v1` step(`subject-path: 'dist/*'`) 추가. `pypa/gh-action-pypi-publish@release/v1`의 `attestations: true` 활성화. release 이벤트 시 sigstore bundle을 GitHub Release asset으로 업로드(`gh release upload ... dist/*.sigstore.bundle --clobber`).
+- `pyproject.toml`: `[project.optional-dependencies]`에 `all = ["sootool[symbolic]"]` 메타 extra 추가. 향후 extra는 `all`에 누적.
+- `tests/modules/symbolic/test_diff.py`·`test_solve.py`: `pytest.importorskip("sympy")` 상단 삽입. `extras=none` 환경에서 자동 skip되어 `import sootool` 의 sympy-free 계약을 방어.
+
+### Fixed
+- 0.1.1·0.1.2 릴리스가 CI red 상태에서 진행되고 0.1.2는 publish 빌드 잡 실패로 PyPI 업로드가 스킵됐던 원인을 구조적으로 차단: `release_preflight.py` + branch protection + extras matrix 3종 CI 검증으로 "우회 허용" 경로를 제거.
+- `BatchExecutor`/`PipelineExecutor`/`symbolic _bridge`의 timeout이 필드만 존재하고 강제력이 없었던 선언-실장 갭을 실제 wall-clock 계약 테스트로 회귀 방어.
+
+### Notes
+- branch protection rule에 required status checks로 `Test (Python 3.12 / extras=none)`, `Test (Python 3.12 / extras=symbolic)`, `Test (Python 3.12 / extras=all)` 세 개를 GitHub UI에서 추가하는 것이 ADR-023 R1 완성의 마지막 수동 조치. 코드 변경으로는 불가.
+
+[0.1.4]: https://github.com/JinHo-von-Choi/SooTool/releases/tag/v0.1.4
+
 ## [0.1.3] - 2026-04-24
 
 Infrastructure hotfix for the 0.1.2 release: the GitHub Actions CI and
