@@ -32,7 +32,7 @@ jobs:
           enable-cache: true
 
       - name: Sync dependencies
-        run: uv sync --frozen
+        run: uv sync --frozen --extra symbolic
 
       - name: Run full test suite
         run: uv run pytest -q

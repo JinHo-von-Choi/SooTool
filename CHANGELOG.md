@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-04-24
+
+Infrastructure hotfix for the 0.1.2 release: the GitHub Actions CI and
+Publish-to-PyPI workflows were running `uv sync --frozen` without the
+`symbolic` optional extra, so every `tests/modules/symbolic/*` case failed
+with `ModuleNotFoundError: No module named 'sympy'` and the PyPI build job
+never finished. No functional changes to tools, policies, or transports
+relative to 0.1.2.
+
+### Changed
+- `.github/workflows/ci.yml`: `uv sync --frozen` → `uv sync --frozen --extra symbolic` so the Python 3.12 matrix installs `sympy>=1.12` and the symbolic test suite can execute.
+- `.github/workflows/publish-pypi.yml`: same extra added to the build job, unblocking the Trusted Publishing path for future releases.
+
+### Fixed
+- Repaired the release pipeline broken since CE-M4 (symbolic module) introduction: 0.1.1 and 0.1.2 CI runs had been red because the optional extra was never wired into the workflows.
+
+[0.1.3]: https://github.com/JinHo-von-Choi/SooTool/releases/tag/v0.1.3
+
 ## [0.1.2] - 2026-04-24
 
 Current master snapshot: 18 domains, 254 base tools, 10 admin policy-management tools, 5 transport modes.
