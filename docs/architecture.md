@@ -367,7 +367,7 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 
 결정:
 - `sootool.sdk` 는 MCP 서버를 거치지 않고 같은 도구를 파이썬 함수로 호출한다. 호출은 `REGISTRY.invoke` 단일 경로를 거치므로 결과, 영수증(`_meta.integrity`), 정책 `as_of`, 오류(`SooToolError` 예외)가 MCP 와 같다.
-- 서버와 SDK 가 공유하는 실행 기반(핵심 도구 등록, 힌트·영수증 후처리, 도메인 모듈 로드)을 `sootool.runtime` 으로 분리했다. 이 모듈은 `mcp` 패키지를 가져오지 않는다. SDK 는 네임스페이스를 처음 쓸 때 해당 도메인만 불러온다(도메인 하나 약 0.5초, MCP 서버 전체 약 2.2~2.6초).
+- 서버와 SDK 가 공유하는 실행 기반(핵심 도구 등록, 힌트·영수증 후처리, 도메인 모듈 로드)을 `sootool.runtime` 으로 분리했다. 이 모듈은 `mcp` 패키지를 가져오지 않는다. SDK 는 네임스페이스를 처음 쓸 때 해당 도메인만 불러온다(첫 호출까지 약 0.35~0.5초, MCP 서버 전체 기동 약 1.7~2.0초, 개발 환경 실측).
 - 숫자 인자는 문자열 숫자를 받는 파라미터에서만 정수, Decimal, 부동소수를 받아 문자열로 바꾼다(`sootool.core.coerce` 를 MCP 경계와 공유). 부동소수는 `_meta.input_coerced` 로 알린다. `year: int` 같은 타입 지정 파라미터와 중첩 호출 인자(`core.batch` 의 `args`)는 바꾸지 않는다.
 - 모든 도구는 도구별 TypedDict 로 결과를 선언한다(`sootool.core.result_types` 의 기반 타입 상속). MCP 에는 `outputSchema` 로, SDK 에는 타입 선언 파일(`sdk/_typed.py`, `scripts/gen_sdk_stubs.py` 가 생성하고 시험이 최신 여부를 검사)로 공개한다. 공개 `outputSchema` 는 공통 외피(`_meta`, `trace`, 정책 출처)를 줄여 `tools/list` 응답 크기를 제한한다(전체 프로파일 600KB 미만을 시험으로 고정).
 - 시험 중 모든 `REGISTRY.invoke` 결과를 선언 타입으로 검증한다(`tests/conftest.py`). 선언과 실제 응답이 어긋나면 해당 도구를 호출하는 모든 시험이 실패한다.

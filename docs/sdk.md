@@ -22,7 +22,7 @@ net["net"]
 ```
 
 - 네임스페이스(`tax`, `payroll`, `realestate`, `finance`, `stats` 등)는 처음 쓸 때 해당 도메인만 불러온다. `mcp` 패키지를
-  가져오지 않으므로 도메인 하나를 쓰는 데 약 0.5초가 든다.
+  가져오지 않으므로 도메인 하나를 불러와 첫 호출까지 약 0.35~0.5초가 든다.
 - 결과는 MCP 응답과 같은 구조다. 계산 결과 필드, `trace`, `_meta.integrity` 가 있고 정책 도구는 적용된 정책의 출처와 근거
   조문(`policy_citations`)이 함께 온다.
 - 오류는 `sootool.core.errors.SooToolError` 계열 예외로 발생한다(`InvalidInputError`, `DivisionByZeroError`,
@@ -65,5 +65,5 @@ reveal_type(tax.kr_income(taxable_income=1, year=2026)["tax"])   # str
 | 호출 경로 | 서버를 거쳐 `REGISTRY.invoke` | `REGISTRY.invoke` 직접 |
 | 오류 | `isError` 결과와 오류 계약 | 예외 |
 | 인자 검증 | 입력 스키마(pydantic) | 시그니처 바인딩 후 도구 내부 검증 |
-| 기동 비용 | 서버 프로세스(약 2.2~2.6초) | 도메인 import(약 0.5초) |
+| 기동 비용 | 서버 프로세스(약 1.7~2.0초) | 도메인 import 후 첫 호출(약 0.35~0.5초) |
 | 쓰기 도구(정책 관리) | 관리자 모드와 범위 필요 | 같은 관리자 게이트(`SOOTOOL_ADMIN_MODE`) |
