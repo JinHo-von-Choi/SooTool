@@ -80,3 +80,8 @@ def test_realistic_queries_find_the_intended_tool_in_the_top_three(query, expect
 def test_alias_match_outranks_a_weak_description_match():
     hits = search_tools(REGISTRY, "양도세", limit=5)
     assert hits[0]["name"] in {"tax.capital_gains_kr", "realestate.kr_transfer_tax"}
+
+
+def test_every_tool_has_search_aliases():
+    missing = [e.full_name for e in REGISTRY.list() if e.full_name not in ALIASES]
+    assert not missing, missing
