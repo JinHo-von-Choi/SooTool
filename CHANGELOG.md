@@ -14,8 +14,13 @@ REGISTRY 수치는 0.1.4와 동일(18 domains, 254 base tools, 10 admin policy-m
 - `sootool.core.limits`: 도구 호출 단위 입력 한도의 단일 출처. 환경변수 `SOOTOOL_LIMIT_<이름>`으로 조정. 초과 입력은 `InputLimitError`(`DomainConstraintError` 하위)로 계산 전에 거부한다.
 - 한도 적용 도구: `probability.factorial`·`nCr`·`nPr`, `crypto.is_prime`, `finance.loan_schedule`·`irr`, `math.integrate_simpson`·`integrate_gauss_legendre`, `datetime.add_business_days`, `core.calc`(precision), `stats.bootstrap_ci`, `pm.monte_carlo_schedule`.
 
+- 모든 도구에 MCP 어노테이션(`readOnlyHint`, `idempotentHint`, `openWorldHint`)을 선언했다. 정책 쓰기 도구 4종은 `readOnlyHint=false`이며 덮어쓰기 성격의 3종에 `destructiveHint`를 선언한다. `REGISTRY.tool`에 `read_only`, `destructive`, `idempotent` 인자를 추가했다.
+- 정책 번들 서명 시험(서명·검증 왕복, 변조 탐지, 잘못된 키 입력, import 연동) 추가.
+
 ### Changed
 
+- 설명이 짧던 도구 23종의 설명을 입력 형식, 단위, 반환 필드까지 보강했다.
+- `cryptography`를 직접 의존성으로 선언했다. 서명 검증은 잘못된 키·서명 입력을 `SignatureVerificationError`로, 잘못된 개인 키를 `InvalidInputError`로 반환한다.
 - MCP 노출 경로가 `REGISTRY.invoke`를 거치도록 정리했다. 모든 MCP 응답에 `_meta.integrity`와 `_meta.hints`가 일관되게 포함된다.
 - `mcp[cli]` 의존 범위를 `>=1.27,<2`로 지정했다.
 - `_meta.integrity.input_hash`가 기본값 인자를 채운 정규화 입력으로 계산된다. 직접 호출과 MCP 호출, 기본값 생략과 명시 호출이 같은 해시를 갖는다.
