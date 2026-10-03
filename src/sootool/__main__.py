@@ -7,7 +7,7 @@ import os
 import sys
 
 from sootool.observability.log_format import JsonFormatter
-from sootool.server import _load_modules, build_server
+from sootool.server import DEFAULT_PROFILE, PROFILES, _load_modules, build_server
 
 _VALID_TRANSPORTS = {"stdio", "http", "sse-legacy", "websocket", "unix"}
 
@@ -128,6 +128,16 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="force_socket",
         help="Remove stale Unix socket file on startup instead of refusing to start",
     )
+    parser.add_argument(
+        "--profile",
+        choices=PROFILES,
+        default=None,
+        dest="profile",
+        help=(
+            "Tool exposure profile. full: every tool. lean: search/describe/call facade only "
+            f"(smaller context cost). Also: SOOTOOL_PROFILE. Default: {DEFAULT_PROFILE}."
+        ),
+    )
     parser.add_argument("--log-format", choices=["json", "text"], default="json", dest="log_format")
     parser.add_argument(
         "--log-level",
@@ -138,8 +148,15 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _resolve_profile(args: argparse.Namespace) -> str:
+    profile = getattr(args, "profile", None) or os.environ.get("SOOTOOL_PROFILE") or DEFAULT_PROFILE
+    if profile not in PROFILES:
+        sys.exit(f"ERROR: unknown profile {profile!r} (valid: {', '.join(PROFILES)})")
+    return profile
+
+
 async def _run(transports: list[str], args: argparse.Namespace) -> None:
-    server = build_server()
+    server = build_server(profile=_resolve_profile(args))
 
     from sootool.transports.http import HttpTransport
     from sootool.transports.sse_legacy import SseLegacyTransport

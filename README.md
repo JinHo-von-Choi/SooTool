@@ -119,6 +119,14 @@ uv run python -m sootool --transports stdio,http,websocket
 
 기본 바인딩은 `127.0.0.1`. 외부 노출은 `--host 0.0.0.0` + Bearer 토큰이 의무다(ADR-014).
 
+노출 프로파일(`--profile` 또는 `SOOTOOL_PROFILE`):
+```
+uv run python -m sootool --profile full   # 기본값, 모든 도구 노출
+uv run python -m sootool --profile lean   # sootool.search, describe, call, skill_guide 만 노출
+```
+
+`lean`은 전체 도구 정의를 컨텍스트에 싣지 않는다. 에이전트는 `sootool.search`로 도구를 찾고 `sootool.describe`로 파라미터를 확인한 뒤 `sootool.call`로 실행한다. 호출 결과의 trace와 `_meta.integrity`는 도구를 직접 호출한 결과와 같다. `sootool.call`은 읽기 전용 도구만 실행하며 정책 쓰기 도구는 `full`에서 사용한다.
+
 ## Claude Code 연동
 
 user-scope로 글로벌 등록 (권장, 어느 디렉토리에서든 호출 가능):

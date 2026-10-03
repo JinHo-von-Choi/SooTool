@@ -375,15 +375,52 @@ def _annotations_for(entry: ToolEntry) -> ToolAnnotations:
     )
 
 
-def build_server() -> FastMCP:
-    server = FastMCP("sootool", instructions=_SOOTOOL_INSTRUCTIONS)
+_LEAN_INSTRUCTIONS = """\
+SooTool은 LLM이 직접 계산해서는 안 되는 요청(산수, 세액, 통계, 날짜 차이 등)을
+100% 결정론적 Decimal 경로로 대체합니다. 프롬프트 내 직접 산술을 금지합니다.
+
+도구 수가 많아 세 개의 진입 도구만 노출합니다.
+1. sootool.search(query)로 도구를 찾는다.
+2. sootool.describe(name)로 파라미터를 확인한다.
+3. sootool.call(name, arguments)로 실행하고 trace 를 사용자에게 제시한다.
+세금·부동산은 year 인자가 필수입니다. sootool.skill_guide()로 활용 가이드를 볼 수 있습니다.
+"""
+
+PROFILES = ("full", "lean")
+DEFAULT_PROFILE = "full"
+
+
+def _add_registry_tool(server: FastMCP, entry: ToolEntry) -> None:
+    server.add_tool(
+        _bind_to_registry(entry),
+        name        = entry.full_name,
+        description = entry.description,
+        annotations = _annotations_for(entry),
+    )
+
+
+def build_server(profile: str = DEFAULT_PROFILE) -> FastMCP:
+    """프로파일에 따라 노출 도구를 구성한 서버를 만든다.
+
+    full: 등록된 모든 도구를 노출한다.
+    lean: 검색·설명·호출 파사드 3종과 skill_guide 만 노출해 컨텍스트 비용을 줄인다.
+    """
+    if profile not in PROFILES:
+        raise ValueError(f"알 수 없는 프로파일: {profile!r} (허용: {', '.join(PROFILES)})")
+
+    if profile == "full":
+        server = FastMCP("sootool", instructions=_SOOTOOL_INSTRUCTIONS)
+        for entry in REGISTRY.list():
+            _add_registry_tool(server, entry)
+        return server
+
+    from sootool.facade import register_facade  # noqa: PLC0415
+
+    server = FastMCP("sootool", instructions=_LEAN_INSTRUCTIONS)
+    register_facade(server)
     for entry in REGISTRY.list():
-        server.add_tool(
-            _bind_to_registry(entry),
-            name        = entry.full_name,
-            description = entry.description,
-            annotations = _annotations_for(entry),
-        )
+        if entry.full_name == "sootool.skill_guide":
+            _add_registry_tool(server, entry)
     return server
 
 

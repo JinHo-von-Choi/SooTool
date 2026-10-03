@@ -18,6 +18,8 @@ REGISTRY 수치는 0.1.4와 동일(18 domains, 254 base tools, 10 admin policy-m
 - 정책 번들 서명 시험(서명·검증 왕복, 변조 탐지, 잘못된 키 입력, import 연동) 추가.
 - 공식 MCP Registry 등록 준비: `server.json`, README의 `mcp-name` 표식, 버전 일치 검사 시험, 릴리스 절차 문서.
 - `sootool.core.lazy`: 무거운 의존 모듈의 지연 로딩 프록시.
+- 노출 프로파일 `--profile {full,lean}`(환경변수 `SOOTOOL_PROFILE`). `lean`은 `sootool.search`, `sootool.describe`, `sootool.call`, `sootool.skill_guide` 4종만 노출한다(`tools/list` 약 2.4KB, `full`은 약 173KB). 기본값은 `full`이며 동작이 바뀌지 않는다.
+- `sootool.core.catalog`: 도구 검색(결정적 점수 순위), 설명, 인자 검증.
 
 ### Changed
 
