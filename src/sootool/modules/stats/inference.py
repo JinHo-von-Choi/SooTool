@@ -42,7 +42,10 @@ def _adjust_p(p: float, tail: str) -> float:
 @REGISTRY.tool(
     namespace="stats",
     name="ttest_one_sample",
-    description="일표본 t-검정 (vs 모집단 평균 비교).",
+    description=(
+        "일표본 t-검정: 표본 평균과 모집단 평균 popmean 을 비교한다. tail 은 two, less, greater. "
+        "t, df, p_value, ci_95 를 반환한다."
+    ),
     version="1.0.0",
 )
 def stats_ttest_one_sample(
@@ -172,7 +175,10 @@ def stats_ttest_two_sample(
 @REGISTRY.tool(
     namespace="stats",
     name="ttest_paired",
-    description="짝지은 t-검정 (대응표본, 전후 비교 등).",
+    description=(
+        "대응표본 t-검정(전후 비교 등). a 와 b 는 같은 길이의 숫자 문자열 목록, "
+        "tail 은 two, less, greater. t, df, p_value, ci_95 를 반환한다."
+    ),
     version="1.0.0",
 )
 def stats_ttest_paired(
@@ -231,7 +237,10 @@ def stats_ttest_paired(
 @REGISTRY.tool(
     namespace="stats",
     name="chi_square_independence",
-    description="카이제곱 독립성 검정 (분할표).",
+    description=(
+        "카이제곱 독립성 검정(분할표). observed 는 관측 빈도의 2차원 숫자 문자열 행렬. "
+        "chi2, df, p_value, expected 를 반환한다."
+    ),
     version="1.0.0",
 )
 def stats_chi_square_independence(

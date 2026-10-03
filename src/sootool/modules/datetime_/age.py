@@ -21,7 +21,10 @@ def _parse_date(s: str) -> date:
 @REGISTRY.tool(
     namespace="datetime",
     name="age",
-    description="만나이 계산. 생일 이전/이후 경계 정확 처리.",
+    description=(
+        "만나이(한국 법정 연령) 계산. 생일 당일에 나이가 증가하며 년·월·일을 반환한다. "
+        "reference_date 를 생략하면 오늘(UTC) 기준."
+    ),
     version="1.0.0",
 )
 def age(

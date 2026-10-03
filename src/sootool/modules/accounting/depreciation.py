@@ -21,7 +21,10 @@ def _parse_policy(rounding: str) -> RoundingPolicy:
 @REGISTRY.tool(
     namespace="accounting",
     name="depreciation_straight_line",
-    description="정액법 감가상각 스케줄 계산.",
+    description=(
+        "정액법 감가상각 스케줄. 연 감가비 = (취득원가 - 잔존가치) / 내용연수. "
+        "연도별 감가상각비와 기말 장부가를 반환한다."
+    ),
     version="1.0.0",
 )
 def depreciation_straight_line(
@@ -198,7 +201,10 @@ def depreciation_declining_balance(
 @REGISTRY.tool(
     namespace="accounting",
     name="depreciation_units_of_production",
-    description="생산량비례법 감가상각 스케줄 계산.",
+    description=(
+        "생산량비례법 감가상각 스케줄. 기간 감가비 = (취득원가 - 잔존가치) / 총생산량 * 기간 생산량. "
+        "기간별 감가상각비와 기말 장부가를 반환한다."
+    ),
     version="1.0.0",
 )
 def depreciation_units_of_production(

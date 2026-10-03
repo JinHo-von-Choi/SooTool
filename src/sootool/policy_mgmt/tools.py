@@ -209,6 +209,8 @@ def policy_validate(
         "Draft is not yet activated."
     ),
     version="1.0.0",
+    read_only=False,
+    idempotent=False,
 )
 def policy_propose(
     domain:               str,
@@ -297,6 +299,9 @@ def policy_propose(
         "[Admin] Promote a draft to the override store, invalidate cache, and record audit log."
     ),
     version="1.0.0",
+    read_only=False,
+    destructive=True,
+    idempotent=False,
 )
 def policy_activate(draft_id: str) -> dict[str, Any]:
     """Activate a previously proposed draft."""
@@ -371,6 +376,9 @@ def policy_activate(draft_id: str) -> dict[str, Any]:
         "[Admin] Remove the override file for a policy, reverting to the package default."
     ),
     version="1.0.0",
+    read_only=False,
+    destructive=True,
+    idempotent=False,
 )
 def policy_rollback(domain: str, name: str, year: int) -> dict[str, Any]:
     """Remove override for domain/name/year, reverting to the package default."""
@@ -484,6 +492,9 @@ def policy_export(
         "Optional ed25519 signature verification."
     ),
     version="1.0.0",
+    read_only=False,
+    destructive=True,
+    idempotent=False,
 )
 def policy_import(
     bundle:             dict[str, Any],

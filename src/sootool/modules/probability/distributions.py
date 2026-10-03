@@ -577,7 +577,7 @@ def exponential_cdf(x: str, rate: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="exponential_ppf",
-    description="지수분포 역CDF: x = -ln(1-q)/λ.",
+    description="지수분포 역CDF(분위수) x = -ln(1-q)/λ. q 는 0 이상 1 미만의 확률, rate 는 λ.",
     version="1.0.0",
 )
 def exponential_ppf(q: str, rate: str) -> dict[str, Any]:
@@ -625,7 +625,7 @@ def lognormal_pdf(x: str, mu: str = "0", sigma: str = "1") -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="lognormal_cdf",
-    description="로그정규분포 CDF. Φ((ln x - μ)/σ).",
+    description="로그정규분포 CDF = Φ((ln x - μ)/σ). x 는 양수, mu 와 sigma 는 ln x 의 평균과 표준편차(기본 0, 1).",
     version="1.0.0",
 )
 def lognormal_cdf(x: str, mu: str = "0", sigma: str = "1") -> dict[str, Any]:
@@ -717,7 +717,7 @@ def chi_square_cdf(x: str, df: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="chi_square_ppf",
-    description="카이제곱분포 역CDF.",
+    description="카이제곱분포 역CDF(분위수). q 는 0~1 사이 확률, df 는 자유도.",
     version="1.0.0",
 )
 def chi_square_ppf(q: str, df: str) -> dict[str, Any]:
@@ -764,7 +764,7 @@ def f_pdf(x: str, dfn: str, dfd: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="f_cdf",
-    description="F 분포 CDF. scipy.stats.f.cdf.",
+    description="F 분포 CDF (scipy.stats.f.cdf). x 는 0 이상, dfn 은 분자 자유도, dfd 는 분모 자유도.",
     version="1.0.0",
 )
 def f_cdf(x: str, dfn: str, dfd: str) -> dict[str, Any]:
@@ -787,7 +787,7 @@ def f_cdf(x: str, dfn: str, dfd: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="f_ppf",
-    description="F 분포 역CDF.",
+    description="F 분포 역CDF(분위수). q 는 0~1 사이 확률, dfn 은 분자 자유도, dfd 는 분모 자유도.",
     version="1.0.0",
 )
 def f_ppf(q: str, dfn: str, dfd: str) -> dict[str, Any]:

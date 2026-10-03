@@ -35,7 +35,7 @@ _HALF    = Decimal("0.5")
 @REGISTRY.tool(
     namespace="engineering",
     name="mech_stress",
-    description="응력 σ = F / A (Pa = N/m²).",
+    description="응력 σ = F / A. force 는 힘(N), area 는 단면적(m²), 결과는 Pa(N/m²).",
     version="1.0.0",
 )
 def mech_stress(force: str, area: str) -> dict[str, Any]:
@@ -64,7 +64,7 @@ def mech_stress(force: str, area: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="engineering",
     name="mech_strain",
-    description="변형률 ε = ΔL / L (무차원).",
+    description="선형 변형률 ε = ΔL / L (무차원). delta_length 와 original_length 는 같은 길이 단위.",
     version="1.0.0",
 )
 def mech_strain(delta_length: str, original_length: str) -> dict[str, Any]:

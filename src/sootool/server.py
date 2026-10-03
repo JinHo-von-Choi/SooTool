@@ -8,6 +8,7 @@ from decimal import Decimal
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
@@ -200,7 +201,7 @@ def _register_core_tools() -> None:
         return
     _CORE_TOOLS_REGISTERED = True
 
-    @REGISTRY.tool(namespace="core", name="add", description="Decimal 가감산(정밀)")
+    @REGISTRY.tool(namespace="core", name="add", description="Decimal 정밀 덧셈. operands(숫자 문자열 목록)의 합을 result 문자열로 반환하며 float 로 변환하지 않는다.")
     def core_add(operands: list[str], trace_level: str = "summary") -> dict[str, Any]:
         trace = CalcTrace(tool="core.add", formula="sum(operands)")
         decimals = [D(x) for x in operands]
@@ -210,7 +211,7 @@ def _register_core_tools() -> None:
         result = {"result": str(out), "trace": trace.to_dict()}
         return _enforce_payload_limit(_apply_trace_level(result, trace_level))
 
-    @REGISTRY.tool(namespace="core", name="sub", description="Decimal 뺄셈")
+    @REGISTRY.tool(namespace="core", name="sub", description="Decimal 정밀 뺄셈 a - b. a 와 b 는 숫자 문자열.")
     def core_sub(a: str, b: str, trace_level: str = "summary") -> dict[str, Any]:
         trace = CalcTrace(tool="core.sub", formula="a-b")
         da, db = D(a), D(b)
@@ -221,7 +222,7 @@ def _register_core_tools() -> None:
         result = {"result": str(out), "trace": trace.to_dict()}
         return _enforce_payload_limit(_apply_trace_level(result, trace_level))
 
-    @REGISTRY.tool(namespace="core", name="mul", description="Decimal 곱셈")
+    @REGISTRY.tool(namespace="core", name="mul", description="Decimal 정밀 곱셈. operands(숫자 문자열 목록)의 곱을 result 문자열로 반환한다.")
     def core_mul(operands: list[str], trace_level: str = "summary") -> dict[str, Any]:
         trace = CalcTrace(tool="core.mul", formula="prod(operands)")
         decimals = [D(x) for x in operands]
@@ -231,7 +232,7 @@ def _register_core_tools() -> None:
         result = {"result": str(out), "trace": trace.to_dict()}
         return _enforce_payload_limit(_apply_trace_level(result, trace_level))
 
-    @REGISTRY.tool(namespace="core", name="div", description="Decimal 나눗셈(분모 0 예외)")
+    @REGISTRY.tool(namespace="core", name="div", description="Decimal 정밀 나눗셈 a / b. a 와 b 는 숫자 문자열이며 b 가 0 이면 오류를 반환한다.")
     def core_div(a: str, b: str, trace_level: str = "summary") -> dict[str, Any]:
         trace = CalcTrace(tool="core.div", formula="a/b")
         da, db = D(a), D(b)
@@ -244,19 +245,19 @@ def _register_core_tools() -> None:
 
     from sootool.core.batch import BatchExecutor  # noqa: PLC0415
 
-    @REGISTRY.tool(namespace="core", name="batch", description="독립 연산 N개 병렬 실행")
+    @REGISTRY.tool(namespace="core", name="batch", description="서로 독립인 도구 호출 N개를 병렬 실행한다. 결과는 입력 id 순서로 정렬되며 item_timeout_s 와 batch_timeout_s 가 적용된다.")
     def core_batch(items: list[dict[str, Any]], max_workers: int = 16, item_timeout_s: float = 10.0, batch_timeout_s: float = 60.0, deterministic: bool = True) -> dict[str, Any]:
         ex = BatchExecutor(registry=REGISTRY, max_workers=max_workers, item_timeout_s=item_timeout_s, batch_timeout_s=batch_timeout_s, deterministic=deterministic)
         return ex.run(items=items)
 
     from sootool.core.pipeline import PipelineExecutor, resume_pipeline
 
-    @REGISTRY.tool(namespace="core", name="pipeline", description="DAG 의존 연산")
+    @REGISTRY.tool(namespace="core", name="pipeline", description="의존 관계(DAG)를 가진 도구 호출을 순서대로 실행하고 앞 단계 결과를 뒤 단계 입력으로 전달한다. step_timeout_s 와 pipeline_timeout_s 가 적용된다.")
     def core_pipeline(steps: list[dict[str, Any]], step_timeout_s: float = 2.0, pipeline_timeout_s: float = 30.0) -> dict[str, Any]:
         ex = PipelineExecutor(registry=REGISTRY, step_timeout_s=step_timeout_s, pipeline_timeout_s=pipeline_timeout_s)
         return ex.run(steps=steps)
 
-    @REGISTRY.tool(namespace="core", name="pipeline_resume", description="파이프라인 부분 재실행")
+    @REGISTRY.tool(namespace="core", name="pipeline_resume", description="이전 core.pipeline 실행을 pipeline_id 로 지정하고 from_step 단계부터 다시 실행한다.")
     def core_pipeline_resume(pipeline_id: str, from_step: str) -> dict[str, Any]:
         return resume_pipeline(pipeline_id, from_step, REGISTRY)
 
@@ -353,10 +354,36 @@ def _bind_to_registry(entry: ToolEntry) -> Callable[..., Any]:
     return bound
 
 
+def _annotations_for(entry: ToolEntry) -> ToolAnnotations:
+    """도구 동작 특성을 MCP 어노테이션으로 변환한다.
+
+    계산 도구는 외부 상태를 바꾸지 않는 읽기 전용이다. 정책 쓰기 도구만 readOnlyHint=False 이며
+    destructiveHint 로 덮어쓰기 성격을 구분한다. 어노테이션은 클라이언트에 주는 힌트이고 접근
+    통제는 admin 게이트가 담당한다.
+    """
+    if entry.read_only:
+        return ToolAnnotations(
+            readOnlyHint    = True,
+            idempotentHint  = entry.idempotent,
+            openWorldHint   = False,
+        )
+    return ToolAnnotations(
+        readOnlyHint    = False,
+        destructiveHint = entry.destructive,
+        idempotentHint  = entry.idempotent,
+        openWorldHint   = False,
+    )
+
+
 def build_server() -> FastMCP:
     server = FastMCP("sootool", instructions=_SOOTOOL_INSTRUCTIONS)
     for entry in REGISTRY.list():
-        server.add_tool(_bind_to_registry(entry), name=entry.full_name, description=entry.description)
+        server.add_tool(
+            _bind_to_registry(entry),
+            name        = entry.full_name,
+            description = entry.description,
+            annotations = _annotations_for(entry),
+        )
     return server
 
 

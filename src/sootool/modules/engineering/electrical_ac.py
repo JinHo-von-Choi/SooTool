@@ -275,7 +275,7 @@ def rlc_time_constant(
 @REGISTRY.tool(
     namespace="engineering",
     name="lc_resonant_frequency",
-    description="LC 공진 주파수 f = 1 / (2π√(LC)).",
+    description="LC 공진 주파수 f0 = 1 / (2π√(LC)). inductance 는 인덕턴스(H), capacitance 는 정전용량(F), 결과는 Hz.",
     version="1.0.0",
 )
 def lc_resonant_frequency(inductance: str, capacitance: str) -> dict[str, Any]:

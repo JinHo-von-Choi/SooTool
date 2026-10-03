@@ -50,7 +50,7 @@ def gcd(a: str, b: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="crypto",
     name="lcm",
-    description="두 정수의 최소공배수(LCM)를 반환합니다.",
+    description="두 정수(문자열)의 최소공배수(LCM). 큰 정수도 정확히 계산한다.",
     version="1.0.0",
 )
 def lcm(a: str, b: str) -> dict[str, Any]:

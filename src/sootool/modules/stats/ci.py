@@ -39,7 +39,10 @@ def _ci_mean_from_array(
 @REGISTRY.tool(
     namespace="stats",
     name="ci_mean",
-    description="표본 평균의 신뢰구간 계산 (t-분포 기반).",
+    description=(
+        "표본 평균의 신뢰구간(t-분포 기반). values 는 숫자 문자열 목록, confidence 기본 0.95. "
+        "mean, lower, upper 를 반환한다."
+    ),
     version="1.0.0",
 )
 def stats_ci_mean(

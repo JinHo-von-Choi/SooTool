@@ -40,6 +40,9 @@ class ToolEntry:
     fn:          Callable[..., Any]
     version:     str                = "1.0.0"
     deprecated:  dict[str, Any] | None = None
+    read_only:   bool               = True
+    destructive: bool               = False
+    idempotent:  bool               = True
 
     @property
     def full_name(self) -> str:
@@ -59,6 +62,9 @@ class ToolRegistry:
         description: str       = "",
         version:     str       = "1.0.0",
         deprecated:  dict[str, Any] | None = None,
+        read_only:   bool      = True,
+        destructive: bool      = False,
+        idempotent:  bool      = True,
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
         def deco(fn: Callable[..., Any]) -> Callable[..., Any]:
             entry = ToolEntry(
@@ -68,6 +74,9 @@ class ToolRegistry:
                 fn=fn,
                 version=version,
                 deprecated=deprecated,
+                read_only=read_only,
+                destructive=destructive,
+                idempotent=idempotent,
             )
             if entry.full_name in self._tools:
                 raise ValueError(f"도구 중복 등록: {entry.full_name}")
