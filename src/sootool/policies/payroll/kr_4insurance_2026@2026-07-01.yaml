@@ -1,6 +1,6 @@
-sha256: "bf28c573037f8776fc415536f2eca1c96fb5c2d54d81921840bfa4279860bfad"
-effective_date: "2026-01-01"
-effective_to: "2026-06-30"
+sha256: "da9c988a07d8d67176b8d7e16d8a5af6143e1d62921a3d9d8c64ed11020004eb"
+effective_date: "2026-07-01"
+effective_to: "2026-10-31"
 status: enacted
 notice_no: "국민연금법 부칙(법률 제20903호) 제4조제1항; 국민건강보험법 시행령 제44조제1항(대통령령 제35931호); 노인장기요양보험법 시행령 제4조(대통령령 제35987호); 보건복지부고시 제2025-222호"
 source_url: "https://www.nps.or.kr/pnsgdnc/newgdnc/getOHAE0001M1.do?pstId=ZZ202600000000000147"
@@ -18,7 +18,7 @@ citations:
     url: "https://www.law.go.kr/법령/국민연금법시행령"
     note: "소득월액에서 천원 미만을 버림, 하한액보다 적으면 하한액·상한액보다 많으면 상한액. 적용기간 매년 7월~다음 해 6월"
   - law: "국민연금공단 공지(2026년도 국민연금 기준소득월액 상·하한액 조정 안내)"
-    article: "적용기간 2025.7.1.~2026.6.30. 하한액 400,000원, 상한액 6,370,000원"
+    article: "적용기간 2026.7.1.~2027.6.30. 하한액 410,000원, 상한액 6,590,000원 (종전 400,000원, 6,370,000원)"
     url: "https://www.nps.or.kr/pnsgdnc/newgdnc/getOHAE0001M1.do?pstId=ZZ202600000000000147"
   - law: "국민건강보험법"
     article: "제69조제6항, 제73조제1항, 제76조제1항"
@@ -61,14 +61,14 @@ citations:
     url: "https://www.law.go.kr/법령/지방세법"
     note: "원천징수하는 소득세의 100분의 10을 개인지방소득세로 특별징수. 2026.1.1. 시행본"
 data:
-  # 2026년 1월~6월 4대보험 근로자 부담 기준
+  # 2026년 7월~10월 4대보험 근로자 부담 기준
   national_pension:
     # 사업장가입자 기여금·사용자 부담금 각 4.75% (합계 9.5%)
     employee_rate: "0.0475"
     employer_rate: "0.0475"
-    # 기준소득월액 하한·상한 (적용기간 2025.7.1.~2026.6.30.)
-    base_min_monthly: 400000
-    base_max_monthly: 6370000
+    # 기준소득월액 하한·상한 (적용기간 2026.7.1.~2027.6.30.)
+    base_min_monthly: 410000
+    base_max_monthly: 6590000
     # 소득월액 천원 미만 버림 (시행령 제5조제1항)
     base_truncation_unit: 1000
   health_insurance:

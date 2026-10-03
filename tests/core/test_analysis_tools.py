@@ -96,11 +96,13 @@ def test_gross_from_net_is_the_smallest_salary_reaching_the_target(net):
 
 
 def test_gross_from_net_follows_the_policy_arguments():
-    plain = REGISTRY.invoke("payroll.kr_gross_from_net", net_monthly="3000000", year=2026)
-    dated = REGISTRY.invoke("payroll.kr_gross_from_net", net_monthly="3000000", year=2026, as_of="2026-06-01")
-    assert plain["gross"] == dated["gross"]
-    assert dated["policy_effective_date"] == "2026-01-01"
-    assert dated["_meta"]["integrity"]["input_hash"] != plain["_meta"]["integrity"]["input_hash"]
+    june    = REGISTRY.invoke("payroll.kr_gross_from_net", net_monthly="3000000", year=2026, as_of="2026-06-15")
+    early   = REGISTRY.invoke("payroll.kr_gross_from_net", net_monthly="3000000", year=2026, as_of="2026-06-01")
+    august  = REGISTRY.invoke("payroll.kr_gross_from_net", net_monthly="3000000", year=2026, as_of="2026-08-01")
+    assert june["gross"] == early["gross"]
+    assert early["policy_effective_date"] == "2026-01-01"
+    assert august["policy_effective_date"] == "2026-07-01"
+    assert early["_meta"]["integrity"]["input_hash"] != june["_meta"]["integrity"]["input_hash"]
 
 
 def test_gross_from_net_rejects_non_positive_targets():

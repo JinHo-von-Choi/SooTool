@@ -1,4 +1,11 @@
-"""Tests for payroll.kr_year_end_tax_settlement."""
+"""Tests for payroll.kr_year_end_tax_settlement.
+
+Author: 최진호
+Modified: 2026-10-03
+
+기대값은 소득세법 제47조제1항(근로소득공제, 한도 2천만원), 제50조제1항, 제55조제1항,
+제59조제1항·제2항(근로소득세액공제와 한도), 제59조의4제9항제1호(표준세액공제 13만원)에서 계산했다.
+"""
 from __future__ import annotations
 
 from decimal import Decimal
@@ -22,9 +29,31 @@ class TestYearEndBasic:
         assert Decimal(r["labor_deduction"]) == Decimal("12750000.00")
         assert Decimal(r["taxable_income"])  == Decimal("45750000.00")
         assert Decimal(r["computed_tax"])    == Decimal("5602500")
-        assert Decimal(r["decided_tax"])     == Decimal("5472500")
+        # 근로소득세액공제: 715,000 + (5,602,500 - 1,300,000) x 30% = 2,005,750,
+        # 한도 max(740,000 - (60,000,000 - 33,000,000) x 8/1000, 660,000) = 660,000
+        assert Decimal(r["labor_income_tax_credit"]) == Decimal("660000")
+        assert Decimal(r["decided_tax"])     == Decimal("4812500")
         assert r["status"] == "additional"
         assert Decimal(r["refund"]) < Decimal("0")
+
+    def test_labor_credit_low_tax_rate_55(self):
+        """총급여 20,000,000: 근로소득공제 7,500,000 + 5,000,000 x 15% = 8,250,000,
+        과세표준 20,000,000 - 8,250,000 - 1,500,000 = 10,250,000, 산출세액 615,000,
+        근로소득세액공제 615,000 x 55% = 338,250 (한도 740,000), 결정세액 615,000 - 338,250 - 130,000 = 146,750."""
+        r = call(annual_gross="20000000", prepaid_tax="0", year=2026)
+        assert Decimal(r["computed_tax"]) == Decimal("615000")
+        assert Decimal(r["labor_income_tax_credit"]) == Decimal("338250")
+        assert Decimal(r["decided_tax"]) == Decimal("146750")
+
+    def test_labor_credit_limit_above_120m(self):
+        """총급여 150,000,000: 한도 max(500,000 - (150,000,000 - 120,000,000)/2, 200,000) = 200,000."""
+        r = call(annual_gross="150000000", prepaid_tax="0", year=2026)
+        assert Decimal(r["labor_income_tax_credit"]) == Decimal("200000")
+
+    def test_labor_deduction_cap_20m(self):
+        """총급여 400,000,000: 14,750,000 + 300,000,000 x 2% = 20,750,000 > 한도 20,000,000."""
+        r = call(annual_gross="400000000", prepaid_tax="0", year=2026)
+        assert Decimal(r["labor_deduction"]) == Decimal("20000000")
 
     def test_overpaid_refund(self):
         r = call(annual_gross="30000000", prepaid_tax="5000000", year=2026)

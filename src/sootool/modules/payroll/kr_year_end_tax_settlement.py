@@ -2,16 +2,19 @@
 
 Author: 최진호
 Date: 2026-04-24
+Modified: 2026-10-03
 
-연말정산 환급/추가납부 간이 모델 (소득세법 제47조·제50조·제55조):
+연말정산 환급/추가납부 간이 모델 (소득세법 제47조·제50조·제55조·제59조·제59조의4):
 
-  1. 근로소득공제 계산 (kr_withholding 정책 재사용)
+  1. 근로소득공제 계산 (kr_withholding 정책 재사용, 공제액 한도 2천만원)
   2. 기본공제 = 본인 + 부양가족 * 150만원
-  3. 표준세액공제 또는 산정세액공제 중 선택 (본 모델은 표준세액공제 13만원)
-  4. 과세표준 = 연간급여 - 근로소득공제 - 기본공제
-  5. 산출세액 = progressive(과세표준)
-  6. 결정세액 = max(0, 산출세액 - 세액공제)
-  7. 환급액 = 기납부세액 - 결정세액 (양수: 환급, 음수: 추가납부)
+  3. 과세표준 = 연간급여 - 근로소득공제 - 기본공제 - 추가공제
+  4. 산출세액 = progressive(과세표준)
+  5. 근로소득세액공제 (제59조): 산출세액 130만원 이하 55%, 초과분은 71만5천원 + 초과액 30%.
+     총급여액 구간별 한도(74만원, 66만원, 50만원, 20만원 하한 산식)를 넘지 못한다.
+  6. 표준세액공제 13만원 (제59조의4제9항제1호)
+  7. 결정세액 = max(0, 산출세액 - 근로소득세액공제 - 표준세액공제 - 추가세액공제)
+  8. 환급액 = 기납부세액 - 결정세액 (양수: 환급, 음수: 추가납부)
 """
 from __future__ import annotations
 
@@ -31,15 +34,44 @@ from sootool.policy_mgmt.trace_ext import enrich_response
 
 STANDARD_TAX_CREDIT = Decimal("130000")
 
+# 근로소득세액공제 (소득세법 제59조제1항)
+_LABOR_CREDIT_THRESHOLD = Decimal("1300000")
+_LABOR_CREDIT_LOW_RATE  = Decimal("0.55")
+_LABOR_CREDIT_BASE      = Decimal("715000")
+_LABOR_CREDIT_HIGH_RATE = Decimal("0.30")
+
+
+def _labor_income_tax_credit_limit(total_salary: Decimal) -> Decimal:
+    """근로소득세액공제 한도 (소득세법 제59조제2항, 총급여액 구간별)."""
+    if total_salary <= Decimal("33000000"):
+        return Decimal("740000")
+    if total_salary <= Decimal("70000000"):
+        limit = Decimal("740000") - (total_salary - Decimal("33000000")) * Decimal("8") / Decimal("1000")
+        return max(limit, Decimal("660000"))
+    if total_salary <= Decimal("120000000"):
+        limit = Decimal("660000") - (total_salary - Decimal("70000000")) / Decimal("2")
+        return max(limit, Decimal("500000"))
+    limit = Decimal("500000") - (total_salary - Decimal("120000000")) / Decimal("2")
+    return max(limit, Decimal("200000"))
+
+
+def _labor_income_tax_credit(computed_tax: Decimal, total_salary: Decimal) -> Decimal:
+    """근로소득세액공제 (소득세법 제59조제1항·제2항)."""
+    if computed_tax <= _LABOR_CREDIT_THRESHOLD:
+        credit = computed_tax * _LABOR_CREDIT_LOW_RATE
+    else:
+        credit = _LABOR_CREDIT_BASE + (computed_tax - _LABOR_CREDIT_THRESHOLD) * _LABOR_CREDIT_HIGH_RATE
+    return min(credit, _labor_income_tax_credit_limit(total_salary))
+
 
 @REGISTRY.tool(
     namespace="payroll",
     name="kr_year_end_tax_settlement",
     description=(
         "한국 연말정산 환급/추가납부 계산. 근로소득공제·기본공제·"
-        "표준세액공제 기반 간이 모델."
+        "근로소득세액공제·표준세액공제 기반 간이 모델."
     ),
-    version="1.0.0",
+    version="2.0.0",
     policy=True,
 )
 def payroll_kr_year_end_tax_settlement(
@@ -62,7 +94,7 @@ def payroll_kr_year_end_tax_settlement(
 
     Returns:
         {annual_gross, labor_deduction, personal_deduction, taxable_income,
-         computed_tax, tax_credit, decided_tax, prepaid_tax, refund, status,
+         computed_tax, labor_income_tax_credit, tax_credit, decided_tax, prepaid_tax, refund, status,
          policy_version, trace}
         status: "refund" | "additional" | "settled"
     """
@@ -71,7 +103,8 @@ def payroll_kr_year_end_tax_settlement(
         formula=(
             "과세표준 = 연간급여 - 근로소득공제 - 기본공제 - 추가공제; "
             "산출세액 = progressive(과세표준); "
-            "결정세액 = max(0, 산출세액 - 표준세액공제 - 추가세액공제); "
+            "근로소득세액공제 = min(산출세액 기준 55%/30% 산식, 총급여 구간별 한도); "
+            "결정세액 = max(0, 산출세액 - 근로소득세액공제 - 표준세액공제 - 추가세액공제); "
             "환급액 = 기납부세액 - 결정세액"
         ),
     )
@@ -96,6 +129,7 @@ def payroll_kr_year_end_tax_settlement(
     wh_doc      = policy_load("tax", "kr_withholding", year)
     wh_data     = wh_doc["data"]
     labor_brkts = wh_data["labor_income_deduction_brackets"]
+    labor_cap   = wh_data.get("labor_income_deduction_cap")
     personal_ded_unit = D(str(wh_data["personal_deduction"]))
 
     # 세율 구간은 kr_income 정책 사용 (설계: 단일 소스)
@@ -111,7 +145,9 @@ def payroll_kr_year_end_tax_settlement(
     trace.input("extra_tax_credits", extra_tax_credits)
     trace.input("policy_version",    pv)
 
-    labor_ded      = _calc_labor_income_deduction(gross, labor_brkts)
+    labor_ded      = _calc_labor_income_deduction(
+        gross, labor_brkts, None if labor_cap is None else D(str(labor_cap)),
+    )
     personal_total = personal_ded_unit * Decimal(str(dependents))
 
     taxable = gross - labor_ded - personal_total - extra_ded
@@ -122,7 +158,8 @@ def payroll_kr_year_end_tax_settlement(
         taxable, brackets, RoundingPolicy.HALF_UP, 0
     )
 
-    tax_credit = STANDARD_TAX_CREDIT + extra_credit
+    labor_credit = _labor_income_tax_credit(computed_tax, gross)
+    tax_credit   = labor_credit + STANDARD_TAX_CREDIT + extra_credit
     decided    = computed_tax - tax_credit
     if decided < Decimal("0"):
         decided = Decimal("0")
@@ -140,6 +177,7 @@ def payroll_kr_year_end_tax_settlement(
     trace.step("personal_deduction",  str(personal_total))
     trace.step("taxable_income",      str(taxable))
     trace.step("computed_tax",        str(computed_tax))
+    trace.step("labor_income_tax_credit", str(labor_credit))
     trace.step("tax_credit",          str(tax_credit))
     trace.step("decided_tax",         str(decided))
     trace.step("breakdown",           breakdown)
@@ -151,6 +189,7 @@ def payroll_kr_year_end_tax_settlement(
         "personal_deduction": str(personal_total),
         "taxable_income":     str(taxable),
         "computed_tax":       str(computed_tax),
+        "labor_income_tax_credit": str(labor_credit),
         "tax_credit":         str(tax_credit),
         "decided_tax":        str(decided),
         "prepaid_tax":        str(prepaid),

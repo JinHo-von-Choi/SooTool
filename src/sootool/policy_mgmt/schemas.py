@@ -399,6 +399,85 @@ class KrDsrLtvPolicyData(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Payroll: 4대보험
+# ---------------------------------------------------------------------------
+
+class NationalPensionRates(BaseModel):
+    employee_rate: Decimal
+    employer_rate: Decimal
+    base_min_monthly: Decimal
+    base_max_monthly: Decimal
+    base_truncation_unit: Decimal = Decimal("1")
+
+    @field_validator("employee_rate", "employer_rate")
+    @classmethod
+    def rate_range(cls, v: Decimal) -> Decimal:
+        return _unit_rate(v)
+
+    @model_validator(mode="after")
+    def bounds_ordered(self) -> NationalPensionRates:
+        if not (Decimal("0") < self.base_min_monthly <= self.base_max_monthly):
+            raise ValueError("national_pension requires 0 < base_min_monthly <= base_max_monthly")
+        if self.base_truncation_unit <= 0:
+            raise ValueError("base_truncation_unit must be positive")
+        return self
+
+
+class HealthInsuranceRates(BaseModel):
+    employee_rate: Decimal
+    employer_rate: Decimal
+    long_term_care_rate_of_health: Decimal
+    premium_min_monthly_total: Decimal | None = None
+    premium_max_monthly_total: Decimal | None = None
+
+    @field_validator("employee_rate", "employer_rate", "long_term_care_rate_of_health")
+    @classmethod
+    def rate_range(cls, v: Decimal) -> Decimal:
+        return _unit_rate(v)
+
+    @model_validator(mode="after")
+    def bounds_ordered(self) -> HealthInsuranceRates:
+        if self.employee_rate + self.employer_rate <= 0:
+            raise ValueError("health_insurance employee_rate + employer_rate must be positive")
+        lo, hi = self.premium_min_monthly_total, self.premium_max_monthly_total
+        if lo is not None and hi is not None and not (Decimal("0") <= lo <= hi):
+            raise ValueError("health_insurance requires 0 <= premium_min_monthly_total <= premium_max_monthly_total")
+        return self
+
+
+class EmployeeRate(BaseModel):
+    employee_rate: Decimal
+
+    @field_validator("employee_rate")
+    @classmethod
+    def rate_range(cls, v: Decimal) -> Decimal:
+        return _unit_rate(v)
+
+
+class LocalIncomeTaxRate(BaseModel):
+    rate_of_income_tax: Decimal
+
+    @field_validator("rate_of_income_tax")
+    @classmethod
+    def rate_range(cls, v: Decimal) -> Decimal:
+        return _unit_rate(v)
+
+
+class NonTaxableCaps(BaseModel):
+    meal_monthly_cap: Decimal
+
+
+class KrFourInsurancePolicyData(BaseModel):
+    national_pension: NationalPensionRates
+    health_insurance: HealthInsuranceRates
+    employment_insurance: EmployeeRate
+    industrial_accident: EmployeeRate
+    local_income_tax: LocalIncomeTaxRate
+    non_taxable: NonTaxableCaps
+    income_tax: dict[str, str] | None = None
+
+
+# ---------------------------------------------------------------------------
 # Domain schema registry
 # ---------------------------------------------------------------------------
 
@@ -411,6 +490,9 @@ _DOMAIN_SCHEMAS: dict[str, dict[str, type[BaseModel]]] = {
     "realestate": {
         "kr_acquisition": KrAcquisitionPolicyData,
         "kr_dsr_ltv":     KrDsrLtvPolicyData,
+    },
+    "payroll": {
+        "kr_4insurance": KrFourInsurancePolicyData,
     },
 }
 

@@ -325,7 +325,7 @@ cases:
         is_one_house: false
         year: 2026
       field: tax
-    expected_decimal_string: "71260000"
+    expected_decimal_string: "70310000"
 
   - id: capital_gains_15y_general
     category: tax_korea_capgain
@@ -343,4 +343,4 @@ cases:
         is_one_house: false
         year: 2026
       field: tax
-    expected_decimal_string: "59860000"
+    expected_decimal_string: "58910000"

@@ -17,8 +17,8 @@ def call(**kwargs):
 
 
 class TestHourlyBasic:
-    def test_minimum_wage_2026(self):
-        # 2026년 최저시급 10,030 기준 환산
+    def test_hourly_10030_conversion(self):
+        # 시급 10,030 x 209시간
         r = call(hourly_wage="10030", year=2026)
         assert Decimal(r["monthly_gross"]) == Decimal("2096270")  # 10030*209
         assert Decimal(r["net"]) < Decimal(r["monthly_gross"])
@@ -42,10 +42,17 @@ class TestHourlyBasic:
         assert "taxes" in r
 
     def test_high_wage_insurance_cap_propagates(self):
-        # 매우 높은 시급 — kr_salary 국민연금 상한 적용 확인
+        # 매우 높은 시급: kr_salary 국민연금 기준소득월액 상한 적용 확인
         r = call(hourly_wage="200000", year=2026)
         np_ = Decimal(r["insurances"]["national_pension"])
-        assert np_ == Decimal("265500")  # 5,900,000 * 0.045 (10원 버림)
+        assert np_ == Decimal("313025")  # 6,590,000 * 0.0475 (2026.7.1. 이후 상한)
+        r = call(hourly_wage="200000", year=2026, as_of="2026-05-01")
+        assert Decimal(r["insurances"]["national_pension"]) == Decimal("302575")  # 6,370,000 * 0.0475
+
+    def test_children_8_20_passed_to_salary(self):
+        """15,000 x 200 = 3,000,000: 간이세액표 3,000~3,020천원, 가족 4명 26,690, 자녀 1명 차감 20,830."""
+        r = call(hourly_wage="15000", year=2026, monthly_hours="200", num_dependents=4, children_8_20=1)
+        assert Decimal(r["taxes"]["income_tax"]) == Decimal("5860")
 
 
 class TestHourlyValidation:

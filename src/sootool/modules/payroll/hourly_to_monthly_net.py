@@ -2,6 +2,7 @@
 
 Author: 최진호
 Date: 2026-04-24
+Modified: 2026-10-03
 
   1. 월급여 = 시급 * 월 환산시간 (주 40시간 법정근로 기준 209시간)
   2. 주휴수당 포함 209h (주 40h * 4.345주 + 주휴 8h * 4.345주 ≈ 209h)
@@ -30,7 +31,7 @@ DEFAULT_MONTHLY_HOURS = Decimal("209")  # 주 40h 법정 기준
         "시급 → 월급(주 40h, 월 209h 환산) → 실수령액. "
         "kr_salary와 연계하여 4대보험·세액 공제 반영."
     ),
-    version="1.0.0",
+    version="1.1.0",
     policy=True,
 )
 def payroll_hourly_to_monthly_net(
@@ -39,6 +40,7 @@ def payroll_hourly_to_monthly_net(
     monthly_hours:  str  = "209",
     meal_allowance: str  = "0",
     num_dependents: int  = 1,
+    children_8_20:  int  = 0,
 ) -> dict[str, Any]:
     """Convert an hourly wage to monthly gross and net pay.
 
@@ -47,7 +49,8 @@ def payroll_hourly_to_monthly_net(
         year:           과세연도
         monthly_hours:  월 환산시간 (기본 209, 주 40h + 주휴 환산)
         meal_allowance: 월 식대(원, 비과세 한도까지만 공제)
-        num_dependents: 부양가족 수(본인 포함)
+        num_dependents: 간이세액표 공제대상가족 수(본인 포함)
+        children_8_20:  공제대상가족 중 8세 이상 20세 이하 자녀 수(기본 0)
 
     Returns:
         {hourly_wage, monthly_hours, monthly_gross, net, insurances, taxes,
@@ -57,7 +60,7 @@ def payroll_hourly_to_monthly_net(
         tool="payroll.hourly_to_monthly_net",
         formula=(
             "월급 = 시급 * 월환산시간; "
-            "net = payroll.kr_salary(월급, year, meal_allowance, num_dependents)"
+            "net = payroll.kr_salary(월급, year, meal_allowance, num_dependents, children_8_20)"
         ),
     )
 
@@ -76,6 +79,7 @@ def payroll_hourly_to_monthly_net(
     trace.input("monthly_hours",  monthly_hours)
     trace.input("meal_allowance", meal_allowance)
     trace.input("num_dependents", num_dependents)
+    trace.input("children_8_20",  children_8_20)
 
     monthly_gross_raw = wage * hours
     monthly_gross     = round_apply(monthly_gross_raw, 0, RoundingPolicy.DOWN)
@@ -85,6 +89,7 @@ def payroll_hourly_to_monthly_net(
         year           = year,
         meal_allowance = meal_allowance,
         num_dependents = num_dependents,
+        children_8_20  = children_8_20,
     )
 
     trace.step("monthly_gross",       str(monthly_gross))
