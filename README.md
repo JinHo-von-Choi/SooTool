@@ -172,7 +172,7 @@ out["tax"]                              # "6240000"
 out["_meta"]["integrity"]["input_hash"]  # 재실행 검증용 영수증
 ```
 
-자세한 내용과 샌드박스 레시피는 `docs/sdk.md`, 호환 약속과 폐기 절차는 `docs/stability.md`.
+자세한 내용과 샌드박스 레시피는 `docs/sdk.md`, 호환 약속과 폐기 절차는 `docs/stability.md`, 서명된 외부 정책 팩은 `docs/external_policy_packs.md`.
 
 ## 도구 카탈로그 (272개 기본 + 10개 admin, 18 계산 도메인 + sootool 운영 도구)
 

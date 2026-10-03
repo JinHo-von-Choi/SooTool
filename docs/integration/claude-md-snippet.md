@@ -28,6 +28,14 @@
 | 이전 결과를 다음 계산에 주입 | core.pipeline |
 | "채권 수익률", "듀레이션" | finance.bond_ytm / bond_duration |
 | "옵션 가격", "그릭스" | finance.black_scholes |
+| "근로장려금" | tax.kr_eitc |
+| "종합소득세 신고", "금융소득 종합과세" | tax.kr_comprehensive_income_tax |
+| "증권거래세", "연금소득", "자동차세", "등록면허세" | tax.kr_securities_transaction / kr_pension_income / kr_vehicle_tax / kr_registration_license_tax |
+| "연장·야간·휴일수당", "주휴수당", "최저임금" | payroll.kr_overtime_pay / kr_weekly_holiday_pay / kr_minimum_wage_check |
+| "국민연금 수령액", "소득월액보험료" | payroll.kr_national_pension_benefit / kr_health_income_premium |
+| "세후에서 세전 역산" | payroll.kr_gross_from_net / core.solve_for |
+| "청약 가점" | realestate.kr_subscription_score |
+| "미국 급여세", "FICA" | tax_us.fica |
 
 ### 안티패턴 (절대 금지)
 - 프롬프트 내 `3 + 5 = 8` 직접 서술 후 검증 생략

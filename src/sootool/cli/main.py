@@ -7,6 +7,7 @@
     sootool batch -f items.json          sootool pipeline -f steps.json
     sootool receipt verify --tool T --arguments JSON --receipt FILE [--public-key B64]
     sootool policy list|show|history|export ...  (쓰기: propose|activate|rollback|import, 관리자 모드 필요)
+    sootool pack build|verify|install ...        (서명된 외부 정책 팩, install 은 관리자 모드 필요)
     sootool skill-guide [--section S] [--lang ko|en]
     sootool version
 
@@ -32,7 +33,7 @@ from sootool.core.catalog import describe_tool, resolve_tool, search_tools
 from sootool.core.errors import InvalidInputError, SooToolError
 from sootool.core.registry import REGISTRY
 
-SUBCOMMANDS = frozenset({"call", "tools", "batch", "pipeline", "receipt", "policy", "skill-guide", "version"})
+SUBCOMMANDS = frozenset({"call", "tools", "batch", "pipeline", "receipt", "policy", "pack", "skill-guide", "version"})
 
 _ADMIN_ENV = "SOOTOOL_ADMIN_MODE"
 _POLICY_READ_TOOLS = {
@@ -145,6 +146,24 @@ def _cmd_policy(args: argparse.Namespace) -> int:
     return _emit(_invoke(tool, raw), args.format)
 
 
+def _cmd_pack(args: argparse.Namespace) -> int:
+    from sootool.policy_mgmt import packs
+
+    if args.action == "build":
+        manifest = _read_json(args.manifest)
+        bundles  = [_read_json(path) for path in args.bundle]
+        print(json.dumps(packs.build_pack(manifest, bundles), ensure_ascii=False, indent=2))
+        return codes.OK
+    pack = _read_json(args.file)
+    if args.action == "verify":
+        return _emit({"verified": True, "bundles": packs.verify_pack(pack, args.public_key)}, args.format)
+    if not _is_admin():
+        raise AdminDenied(f"정책 팩 설치는 쓰기 작업입니다. {_ADMIN_ENV}=1 로 관리자 모드를 켜세요.")
+    results = packs.install_pack(pack, args.public_key)
+    _emit({"installed": all(r["installed"] for r in results), "bundles": results}, args.format)
+    return codes.OK if all(r["installed"] for r in results) else codes.TOOL_ERROR
+
+
 def _cmd_skill_guide(args: argparse.Namespace) -> int:
     raw: dict[str, Any] = {"section": args.section}
     if args.lang:
@@ -221,6 +240,17 @@ def _build_parser() -> argparse.ArgumentParser:
     policy.add_argument("--arg", action="append", default=[], metavar="이름=값")
     policy.add_argument("--format", choices=FORMATS, default=argparse.SUPPRESS)
     policy.set_defaults(handler=_cmd_policy)
+
+    pack = commands.add_parser("pack", help="서명된 외부 정책 팩 생성, 검증, 설치")
+    pack_actions = pack.add_subparsers(dest="action", required=True)
+    pack_build = pack_actions.add_parser("build", help="번들 파일들을 서명된 팩으로 묶는다(SOOTOOL_POLICY_KEY_FILE 필요)")
+    pack_build.add_argument("--manifest", required=True, help="name, version, publisher 를 가진 JSON 파일")
+    pack_build.add_argument("--bundle", action="append", required=True, help="policy_export 번들 JSON 파일(여러 번 지정)")
+    for name, helptext in (("verify", "팩 서명과 번들 서명을 검증한다"), ("install", "검증 뒤 번들을 가져온다(관리자 모드)")):
+        sub = with_format(pack_actions.add_parser(name, help=helptext))
+        sub.add_argument("file", help="팩 JSON 파일 또는 -")
+        sub.add_argument("--public-key", required=True, help="제공자의 base64 ed25519 공개 키")
+    pack.set_defaults(handler=_cmd_pack)
 
     guide = commands.add_parser("skill-guide", help="에이전트 활용 가이드")
     guide.add_argument("--section", default="all", choices=("all", "triggers", "examples", "anti_patterns", "playbooks"))

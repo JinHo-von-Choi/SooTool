@@ -3,6 +3,23 @@
 글로벌 확장(로드맵 C3)은 정확성 검수 인력이 병목이므로, 프로젝트가 모든 국가의 세법을 직접 유지하지 않고 서명된 외부 팩으로
 수용하는 구조를 기준으로 한다. 이 문서는 현재 구현으로 가능한 범위와 불가능한 범위, 수용 조건을 정리한다.
 
+## 팩 형식과 명령
+
+팩은 JSON 파일이며 `format`(1), `manifest`(`name`, `version`, `publisher`, 선택 `description`), `bundles`(서명된 정책 번들 목록),
+`signature`(manifest 와 번들 해시 목록 전체에 대한 ed25519 서명)를 가진다.
+
+```bash
+# 제공자: 번들을 만들고(policy_export, 서명 키는 SOOTOOL_POLICY_KEY_FILE) 팩으로 묶는다
+sootool pack build --manifest manifest.json --bundle income.json --bundle gift.json > kr-sample.pack.json
+
+# 받는 쪽: 제공자의 공개 키로 검증한 뒤 설치한다(설치는 관리자 모드, 번들마다 policy_import 의 검증과 감사 기록을 거친다)
+sootool pack verify kr-sample.pack.json --public-key <base64>
+SOOTOOL_ADMIN_MODE=1 sootool pack install kr-sample.pack.json --public-key <base64>
+```
+
+manifest, 번들 내용, 번들 목록 중 무엇이든 바뀌거나 빠지면 팩 서명 검증이 실패하고, 다른 키로 서명된 팩은 거부된다.
+구현은 `src/sootool/policy_mgmt/packs.py`, 시험은 `tests/policy_mgmt/test_packs.py`.
+
 ## 현재 가능한 것
 
 정책 팩은 기존 도구가 읽는 정책 YAML 의 묶음이다. 이미 구현된 장치로 외부에서 제공받은 팩을 안전하게 들일 수 있다.
@@ -19,7 +36,7 @@
 ## 현재 불가능한 것
 
 - 새 국가의 계산 로직(도구 코드)을 외부에서 들이는 것. 도구 코드는 이 저장소의 모듈이며, 플러그인 진입점(entry points)은
-  구현하지 않았다. 팩은 기존 도구의 정책 데이터만 교체하거나 추가한다(예: `tax_us` 의 주별 정책 파일).
+  의도적으로 두지 않았다(검수되지 않은 코드를 서명만으로 실행하게 되기 때문이다). 팩은 기존 도구의 정책 데이터만 교체하거나 추가한다(예: `tax_us` 의 주별 정책 파일).
 - 한국 정책 파일이 쓰는 스키마와 다른 구조의 정책. 새 구조는 도구 코드와 스키마(`policy_mgmt/schemas.py`)를 함께 추가해야 한다.
 
 ## 수용 조건

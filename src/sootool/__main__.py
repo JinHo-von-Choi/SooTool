@@ -179,9 +179,16 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _resolve_profile(args: argparse.Namespace) -> str:
-    profile = getattr(args, "profile", None) or os.environ.get("SOOTOOL_PROFILE") or DEFAULT_PROFILE
+    requested = getattr(args, "profile", None) or os.environ.get("SOOTOOL_PROFILE")
+    profile   = requested or DEFAULT_PROFILE
     if profile not in PROFILES:
         sys.exit(f"ERROR: unknown profile {profile!r} (valid: {', '.join(PROFILES)})")
+    if requested is None:
+        logging.getLogger("sootool").warning(
+            "Tool exposure profile was not specified, using %r. A future major release will default to 'lean' "
+            "(search/describe/call facade); pass --profile full (or SOOTOOL_PROFILE=full) to keep exposing every tool.",
+            profile,
+        )
     return profile
 
 

@@ -46,11 +46,11 @@ def generate() -> str:
     lines = [_HEADER.format(total=len(specs), namespaces=len(by_namespace))]
     for namespace, items in by_namespace.items():
         lines.append(f"\n## {namespace} ({len(items)})\n")
-        lines.append("|도구|버전|정확도|정책|읽기 전용|설명|")
-        lines.append("|-|-|-|-|-|-|")
+        lines.append("|도구|버전|since|비용|정확도|정책|읽기 전용|설명|")
+        lines.append("|-|-|-|-|-|-|-|-|")
         for spec in items:
             lines.append(
-                f"|{spec.name}|{spec.version}|{spec.exactness}|{'예' if spec.policy else ''}|"
+                f"|{spec.name}|{spec.version}|{spec.since}|{spec.cost}|{spec.exactness}|{'예' if spec.policy else ''}|"
                 f"{'예' if spec.read_only else '아니오'}|{_summary(spec.description)}|"
             )
     return "\n".join(lines) + "\n"

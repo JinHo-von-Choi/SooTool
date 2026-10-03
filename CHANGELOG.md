@@ -42,6 +42,7 @@ REGISTRY 수치: 18 domains, 272 base tools, 10 admin policy-management tools (0
 - 도구 결과 스키마: 모든 도구가 도구별 TypedDict 로 결과 구조를 선언하고 `outputSchema` 로 공개한다(`sootool.core.result_types`). 시험 중 모든 도구 호출의 결과를 선언한 타입으로 검증한다. 공개 스키마는 공통 외피(`_meta`, `trace`, 정책 출처)를 줄여 `tools/list` 응답을 약 0.4MB 로 유지한다.
 - 응답 `_meta.input_coerced`: JSON 부동소수로 받은 문자열 숫자 인자가 배정밀도 표기로 바뀐 경우 인자 이름과 변환값을 알린다.
 - 정책 시행일별 버전 파일: 4대보험(2026-07-01, 2026-11-01), 간이세액표(2026-03-01 자녀 세액공제), 최저임금(2027), 양도소득세와 종합부동산세 등 2027 개정안(proposed).
+- 외부 정책 팩(`sootool pack build|verify|install`): 서명된 정책 번들 묶음을 만들고 검증하고 설치한다. 팩 서명과 번들 서명을 모두 검증하며 설치는 `policy_import` 의 관리자 게이트와 감사 기록을 거친다. 모델은 `docs/external_policy_packs.md`.
 - 라이브러리 인터페이스 `sootool.sdk`(ADR-028): MCP 서버 없이 같은 도구를 파이썬 함수로 호출한다. 결과, 영수증, 정책 `as_of`, 오류 계약이 MCP 와 같고 도구별 결과 타입 선언(`sdk/_typed.py`)으로 타입 검사가 된다. 실행 기반을 `sootool.runtime`(mcp 비의존)으로 분리해 도메인 하나를 불러와 첫 호출까지 약 0.35~0.5초가 든다. pint 단위 레지스트리를 첫 사용 때 만들어 단위 변환을 쓰지 않는 호출과 서버 기동 비용을 줄였다(서버 전체 기동 약 2.2~2.6초에서 약 1.7~2.0초). 코드 실행 환경 레시피는 `docs/sdk.md`.
 - 도구 메타데이터 조회 지점 `ToolSpec`(`sootool.core.toolspec`): 엔진, 정확도 등급(exact, high_precision, approximate, depends_on_children, not_numeric), 별칭, 결과 타입, 파라미터를 한 구조로 모은다. `sootool.describe` 가 `exactness` 를 함께 반환한다. 도구 전체 목록 `docs/tool_catalog.md` 는 레지스트리에서 생성하며 README 표의 도구 수와 함께 시험으로 검사한다.
 - 폐기 예고 표기: 도구 정의의 `deprecated`(대체 도구, 제거 예정 버전)가 도구 목록 설명 앞부분, `describe` 결과, 응답 `_meta.deprecated` 에 나타난다. 호환 약속과 폐기 절차는 `docs/stability.md`.

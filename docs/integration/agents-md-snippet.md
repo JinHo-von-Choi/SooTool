@@ -31,6 +31,14 @@ Call `sootool.skill_guide()` at session start to internalize the trigger table.
 | Chained calculation (A feeds B feeds C) | core.pipeline |
 | Bond YTM or duration | finance.bond_ytm / bond_duration |
 | Option pricing (Black-Scholes) | finance.black_scholes |
+| Korean EITC (earned income tax credit) | tax.kr_eitc |
+| Korean comprehensive income tax filing flow | tax.kr_comprehensive_income_tax |
+| Securities transaction tax, pension income tax, vehicle tax, registration license tax | tax.kr_securities_transaction / kr_pension_income / kr_vehicle_tax / kr_registration_license_tax |
+| Overtime, weekly holiday pay, minimum wage check | payroll.kr_overtime_pay / kr_weekly_holiday_pay / kr_minimum_wage_check |
+| National pension benefit, income-based health premium | payroll.kr_national_pension_benefit / kr_health_income_premium |
+| Gross salary from target net pay | payroll.kr_gross_from_net / core.solve_for |
+| Housing subscription score | realestate.kr_subscription_score |
+| US payroll tax (FICA, SECA) | tax_us.fica |
 
 ### Anti-patterns (prohibited)
 

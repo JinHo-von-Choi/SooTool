@@ -28,6 +28,49 @@ EXACTNESS: Final[dict[str, str]] = {
 }
 
 
+# 도구가 처음 들어간 버전. 표에 없는 도구는 0.1.0 부터 있었다. 새 도구를 추가할 때 이 표에 한 줄을 더한다.
+BASELINE_VERSION: Final = "0.1.0"
+SINCE: Final[dict[str, str]] = {
+    "sootool.verify_receipt":               "0.2.0",
+    "core.solve_for":                       "0.2.0",
+    "core.compare":                         "0.2.0",
+    "core.explain":                         "0.2.0",
+    "payroll.kr_gross_from_net":            "0.2.0",
+    "tax_us.fica":                          "0.2.0",
+    "tax.kr_eitc":                          "0.2.0",
+    "tax.kr_securities_transaction":        "0.2.0",
+    "tax.kr_pension_income":                "0.2.0",
+    "tax.kr_vehicle_tax":                   "0.2.0",
+    "tax.kr_registration_license_tax":      "0.2.0",
+    "tax.kr_comprehensive_income_tax":      "0.2.0",
+    "realestate.kr_subscription_score":     "0.2.0",
+    "payroll.kr_overtime_pay":              "0.2.0",
+    "payroll.kr_weekly_holiday_pay":        "0.2.0",
+    "payroll.kr_minimum_wage_check":        "0.2.0",
+    "payroll.kr_national_pension_benefit":  "0.2.0",
+    "payroll.kr_health_income_premium":     "0.2.0",
+}
+
+# 비용 등급: light 는 상수 시간 계산, heavy 는 반복, 시뮬레이션, 기호 계산, 다건 실행으로 시간이 입력 크기에 따라 늘어난다.
+HEAVY_TOOLS: Final = frozenset({
+    "core.batch", "core.pipeline", "core.pipeline_resume", "core.solve_for", "core.compare",
+    "pm.monte_carlo_schedule", "stats.bootstrap_ci", "symbolic.solve", "symbolic.diff",
+    "finance.irr", "finance.bond_ytm", "finance.loan_schedule", "math.fft", "math.ifft",
+    "probability.factorial", "probability.nCr", "probability.nPr", "crypto.is_prime", "crypto.modpow",
+})
+
+# 네임스페이스별 분류 태그(검색, 문서 분류용).
+NAMESPACE_TAGS: Final[dict[str, tuple[str, ...]]] = {
+    "accounting": ("finance", "accounting"), "core": ("arithmetic", "meta"), "crypto": ("math", "number-theory"),
+    "datetime": ("date", "calendar"), "engineering": ("engineering", "science"), "finance": ("finance",),
+    "geometry": ("math", "geometry"), "math": ("math", "numerical"), "medical": ("medical", "clinical"),
+    "payroll": ("labor", "tax", "korea"), "pm": ("project-management",), "probability": ("statistics", "probability"),
+    "realestate": ("real-estate", "tax", "korea"), "science": ("science",), "sootool": ("meta", "policy"),
+    "stats": ("statistics",), "symbolic": ("math", "symbolic"), "tax": ("tax", "korea"), "tax_us": ("tax", "us"),
+    "units": ("units", "conversion"),
+}
+
+
 @dataclass(frozen=True)
 class ParameterSpec:
     name:     str
@@ -51,8 +94,20 @@ class ToolSpec:
     engine:      str
     exactness:   str
     result_type: str | None
+    since:       str
+    cost:        str
+    tags:        tuple[str, ...]
     aliases:     tuple[str, ...]
     parameters:  tuple[ParameterSpec, ...]
+
+
+def _tags(entry: ToolEntry) -> tuple[str, ...]:
+    tags = list(NAMESPACE_TAGS.get(entry.namespace, ()))
+    if entry.policy:
+        tags.append("policy")
+    if not entry.read_only:
+        tags.append("admin")
+    return tuple(dict.fromkeys(tags))
 
 
 def tool_spec(entry: ToolEntry) -> ToolSpec:
@@ -82,6 +137,9 @@ def tool_spec(entry: ToolEntry) -> ToolSpec:
         engine      = engine,
         exactness   = EXACTNESS[engine],
         result_type = None if declared is None else getattr(declared, "__name__", str(declared)),
+        since       = SINCE.get(entry.full_name, BASELINE_VERSION),
+        cost        = "heavy" if entry.full_name in HEAVY_TOOLS else "light",
+        tags        = _tags(entry),
         aliases     = ALIASES.get(entry.full_name, ()),
         parameters  = parameters,
     )
