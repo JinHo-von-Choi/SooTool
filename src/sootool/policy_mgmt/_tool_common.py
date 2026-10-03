@@ -13,9 +13,12 @@ import yaml
 from sootool.core.request_context import SCOPE_POLICY_WRITE, has_scope
 from sootool.policy_mgmt import loader
 from sootool.policy_mgmt.paths import (
+    contained_path,
     ensure_private_dir,
     get_override_policy_dir,
     get_package_policy_dir,
+    safe_component,
+    safe_iso_date,
 )
 
 log = logging.getLogger("sootool.policy_mgmt.tools")
@@ -67,10 +70,13 @@ def _atomic_write_yaml(yaml_path: Path, content: str) -> None:
 
 def _target_path(domain: str, name: str, year: int, yaml_content: str) -> Path:
     """새 정책 문서를 저장할 덮어쓰기 경로. 시행일이 다른 새 버전이면 ``@<시행일>`` 이 붙는다."""
+    safe_component(domain, "domain")
+    safe_component(name, "name")
     doc       = yaml.safe_load(yaml_content)
-    effective = str(doc.get("effective_date", "")) if isinstance(doc, dict) else ""
-    filename  = loader.version_filename(domain, name, year, effective) if effective else f"{name}_{year}.yaml"
-    return get_override_policy_dir() / domain / filename
+    raw       = doc.get("effective_date", "") if isinstance(doc, dict) else ""
+    effective = safe_iso_date(raw, "effective_date") if raw not in ("", None) else ""
+    filename  = loader.version_filename(domain, name, int(year), effective) if effective else f"{name}_{int(year)}.yaml"
+    return contained_path(get_override_policy_dir(), get_override_policy_dir() / domain / filename)
 
 
 def _existing_sha256(domain: str, filename: str) -> str | None:

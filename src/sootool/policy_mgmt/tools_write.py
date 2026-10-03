@@ -24,6 +24,7 @@ from sootool.policy_mgmt._tool_common import (
 from sootool.policy_mgmt.diff import diff_policies
 from sootool.policy_mgmt.paths import (
     get_override_policy_dir,
+    safe_component,
 )
 from sootool.policy_mgmt.validators import validate_policy
 
@@ -55,6 +56,8 @@ def policy_propose(
     err = _require_admin()
     if err:
         return err
+    safe_component(domain, "domain")
+    safe_component(name, "name")
 
     # Load previous year data for YoY diff if available
     prev_data = None
@@ -133,6 +136,12 @@ def policy_activate(draft_id: str) -> dict[str, Any]:
         return err
 
     draft_meta = drafts.load_draft(draft_id)
+    if (draft_meta.get("validation") or {}).get("status") == "error":
+        return {
+            "error":      "validation_failed",
+            "message":    "검증에 실패한 초안은 활성화할 수 없습니다. 오류를 고쳐 다시 제안하세요.",
+            "validation": draft_meta["validation"],
+        }
     domain = draft_meta["domain"]
     name   = draft_meta["name"]
     year   = draft_meta["year"]
@@ -202,6 +211,8 @@ def policy_rollback(domain: str, name: str, year: int, effective_date: str = "")
     if err:
         return err
 
+    safe_component(domain, "domain")
+    safe_component(name, "name")
     override_dir = get_override_policy_dir() / domain
     candidates: list[tuple[Path, str]] = []
     if override_dir.is_dir():

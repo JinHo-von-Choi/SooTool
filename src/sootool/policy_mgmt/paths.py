@@ -7,12 +7,49 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import stat
+from datetime import date
 from pathlib import Path
 
-from sootool.core.errors import UnsafeDirectoryError
+from sootool.core.errors import InvalidInputError, UnsafeDirectoryError
 
 log = logging.getLogger("sootool.policy_mgmt.paths")
+
+
+_SAFE_COMPONENT = re.compile(r"[A-Za-z0-9_]{1,64}")
+_SAFE_ID        = re.compile(r"[A-Za-z0-9_-]{1,80}")
+
+
+def safe_component(value: object, label: str) -> str:
+    """파일 이름의 일부가 되는 값(영역, 정책 이름)이 영문, 숫자, 밑줄만 쓰는지 확인한다."""
+    if not isinstance(value, str) or _SAFE_COMPONENT.fullmatch(value) is None:
+        raise InvalidInputError(f"{label} 는 영문, 숫자, 밑줄 1~64자여야 합니다.")
+    return value
+
+
+def safe_id(value: object, label: str) -> str:
+    """초안 식별자가 영문, 숫자, 밑줄, 하이픈만 쓰는지 확인한다."""
+    if not isinstance(value, str) or _SAFE_ID.fullmatch(value) is None:
+        raise InvalidInputError(f"{label} 는 영문, 숫자, 밑줄, 하이픈 1~80자여야 합니다.")
+    return value
+
+
+def safe_iso_date(value: object, label: str) -> str:
+    """ISO 날짜(YYYY-MM-DD) 문자열로 정규화한다. 날짜 형식이 아니면 거부한다."""
+    if isinstance(value, date):
+        return value.isoformat()
+    try:
+        return date.fromisoformat(str(value)).isoformat()
+    except ValueError as exc:
+        raise InvalidInputError(f"{label} 는 YYYY-MM-DD 형식이어야 합니다.") from exc
+
+
+def contained_path(base: Path, candidate: Path) -> Path:
+    """candidate 가 base 아래에 있는지 확인하고 반환한다."""
+    if not candidate.resolve().is_relative_to(base.resolve()):
+        raise InvalidInputError("정책 저장 경로가 허용된 디렉터리를 벗어납니다.")
+    return candidate
 
 
 def _xdg_data_home() -> Path:

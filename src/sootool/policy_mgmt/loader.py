@@ -27,6 +27,7 @@ from typing import Any
 import yaml
 
 from sootool.core.errors import (
+    InvalidInputError,
     PolicyFormatError,
     PolicyNotEnactedError,
     PolicyNotInEffectError,
@@ -38,7 +39,11 @@ from sootool.policies import (
     _compute_sha256,
     _find_supported_years,
 )
-from sootool.policy_mgmt.paths import get_override_policy_dir, get_package_policy_dir
+from sootool.policy_mgmt.paths import (
+    get_override_policy_dir,
+    get_package_policy_dir,
+    safe_component,
+)
 
 log = logging.getLogger("sootool.policy_mgmt.loader")
 
@@ -186,9 +191,21 @@ def _record_policy_usage(
     )
 
 
+def _is_safe_key(domain: str, key: str) -> bool:
+    """영역과 정책 이름이 저장소 경로로 쓸 수 있는 형식인지 반환한다."""
+    try:
+        safe_component(domain, "domain")
+        safe_component(key, "key")
+    except InvalidInputError:
+        return False
+    return True
+
+
 def _discover(domain: str, key: str, year: int) -> list[_Version]:
     """두 저장소에서 (domain, key, year) 의 모든 버전 파일을 읽는다. 같은 파일 이름은 override 가 우선."""
     found: dict[str, tuple[Path, str]] = {}
+    if not _is_safe_key(domain, key):
+        return []
     for source, base in (("package", get_package_policy_dir()), ("override", get_override_policy_dir())):
         directory = base / domain
         if not directory.is_dir():
@@ -244,7 +261,7 @@ def version_filename(domain: str, key: str, year: int, effective_date: str) -> s
 
 def _unsupported(domain: str, key: str, year: int) -> UnsupportedPolicyError:
     supported: set[int] = set()
-    for base in (get_package_policy_dir(), get_override_policy_dir()):
+    for base in (get_package_policy_dir(), get_override_policy_dir()) if _is_safe_key(domain, key) else ():
         directory = base / domain
         if directory.exists():
             supported.update(_find_supported_years(directory, key))

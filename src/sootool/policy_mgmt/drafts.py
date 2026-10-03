@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from sootool.policy_mgmt.paths import ensure_private_dir, get_draft_dir
+from sootool.policy_mgmt.paths import ensure_private_dir, get_draft_dir, safe_id
 
 log = logging.getLogger("sootool.policy_mgmt.drafts")
 
@@ -29,11 +29,11 @@ def _ensure_draft_dir(draft_dir: Path) -> None:
 
 
 def _draft_meta_path(draft_dir: Path, draft_id: str) -> Path:
-    return draft_dir / f"{draft_id}.meta.json"
+    return draft_dir / f"{safe_id(draft_id, 'draft_id')}.meta.json"
 
 
 def _draft_yaml_path(draft_dir: Path, draft_id: str) -> Path:
-    return draft_dir / f"{draft_id}.yaml"
+    return draft_dir / f"{safe_id(draft_id, 'draft_id')}.yaml"
 
 
 def save_draft(
