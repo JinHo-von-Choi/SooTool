@@ -1669,12 +1669,15 @@ symbolic = [
 ]
 
 [package.dev-dependencies]
-dev = [
+bench = [
     { name = "anthropic" },
     { name = "google-genai" },
+    { name = "openai" },
+]
+dev = [
+    { name = "httpx" },
     { name = "hypothesis" },
     { name = "mypy" },
-    { name = "openai" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
@@ -1704,12 +1707,15 @@ requires-dist = [
 provides-extras = ["symbolic", "all"]
 
 [package.metadata.requires-dev]
-dev = [
+bench = [
     { name = "anthropic", specifier = ">=0.96.0" },
     { name = "google-genai", specifier = ">=1.73.1" },
+    { name = "openai", specifier = ">=2.32.0" },
+]
+dev = [
+    { name = "httpx", specifier = ">=0.28" },
     { name = "hypothesis", specifier = ">=6.152.1" },
     { name = "mypy", specifier = ">=1.20.2" },
-    { name = "openai", specifier = ">=2.32.0" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "ruff", specifier = ">=0.15.11" },

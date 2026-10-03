@@ -18,6 +18,7 @@ from sootool.core.audit import CalcTrace
 from sootool.core.cast import decimal_to_float64, float64_to_decimal_str
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 
 _SIG = 12
@@ -46,6 +47,7 @@ def fft(samples: list[str]) -> dict[str, Any]:
         tool="math.fft",
         formula="X_k = Σ_{n=0}^{N-1} x_n * exp(-2πi k n / N)",
     )
+    ensure_max("FFT_SAMPLES", len(samples), "samples")
     arr = _to_float_array(samples, "samples")
     if arr.size < 2:
         raise InvalidInputError("samples는 최소 2개 이상이어야 합니다.")
@@ -88,6 +90,7 @@ def ifft(
     )
     if not isinstance(bins, list) or not bins:
         raise InvalidInputError("bins는 비어있지 않은 리스트여야 합니다.")
+    ensure_max("FFT_SAMPLES", len(bins), "bins")
 
     complex_arr = np.empty(len(bins), dtype=np.complex128)
     for i, b in enumerate(bins):

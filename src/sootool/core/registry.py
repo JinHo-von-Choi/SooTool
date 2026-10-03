@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from sootool.core.errors import InvalidInputError
+from sootool.core.limits import validate_argument_sizes
 
 log =logging.getLogger("sootool.core.registry")
 
@@ -119,6 +120,7 @@ class ToolRegistry:
     def invoke(self, full_name: str, **kwargs: Any) -> Any:
         if full_name not in self._tools:
             raise KeyError(full_name)
+        validate_argument_sizes(kwargs)
         # Capture the inputs for the integrity stamp before the tool runs and
         # restore the previous context on exit. Stack-style save/restore is
         # required because batch/pipeline tools recursively invoke() other

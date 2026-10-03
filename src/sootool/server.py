@@ -6,6 +6,7 @@ from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
 
+from mcp.server.caching import CacheableMethod, CacheHint
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
@@ -405,6 +406,12 @@ SooTool은 LLM이 직접 계산해서는 안 되는 요청(산수, 세액, 통�
 PROFILES = ("full", "lean")
 DEFAULT_PROFILE = "full"
 
+# 도구 목록은 프로세스 수명 동안 바뀌지 않고 모든 인증 맥락에서 같으므로 공유 캐시를 허용한다.
+TOOLS_LIST_TTL_MS = 3_600_000
+_CACHE_HINTS: dict[CacheableMethod, CacheHint] = {
+    "tools/list": CacheHint(ttl_ms=TOOLS_LIST_TTL_MS, scope="public"),
+}
+
 
 def _add_registry_tool(server: MCPServer, entry: ToolEntry) -> None:
     server.add_tool(
@@ -428,15 +435,16 @@ def build_server(profile: str = DEFAULT_PROFILE, *, expose_writes: bool = True) 
         raise ValueError(f"알 수 없는 프로파일: {profile!r} (허용: {', '.join(PROFILES)})")
 
     if profile == "full":
-        server = SooToolServer("sootool", instructions=_SOOTOOL_INSTRUCTIONS)
-        for entry in REGISTRY.list():
+        server = SooToolServer("sootool", instructions=_SOOTOOL_INSTRUCTIONS, cache_hints=_CACHE_HINTS)
+        # 결정적 순서(이름 오름차순): 클라이언트 캐시와 프롬프트 캐시 적중률을 위해 등록 순서와 무관하게 고정한다.
+        for entry in sorted(REGISTRY.list(), key=lambda e: e.full_name):
             if entry.read_only or expose_writes:
                 _add_registry_tool(server, entry)
         return server
 
     from sootool.facade import register_facade  # noqa: PLC0415
 
-    server = SooToolServer("sootool", instructions=_LEAN_INSTRUCTIONS)
+    server = SooToolServer("sootool", instructions=_LEAN_INSTRUCTIONS, cache_hints=_CACHE_HINTS)
     register_facade(server)
     for entry in REGISTRY.list():
         if entry.full_name == "sootool.skill_guide":

@@ -93,3 +93,30 @@ def test_every_registered_tool_is_listed(server):
 def test_payload_is_json_serializable(server):
     out = _call(server, "core.add", {"operands": ["1", "2"]})
     json.dumps(out)
+
+
+# --- 목록 캐시 힌트와 결정적 순서 (MCP 2026-07-28) ---
+
+def test_tools_list_declares_ttl_and_public_scope(server):
+    from mcp.client import Client
+
+    async def fetch():
+        async with Client(server) as client:
+            return await client.list_tools()
+
+    result = asyncio.run(fetch())
+    assert result.ttl_ms == 3_600_000
+    assert result.cache_scope == "public"
+
+
+def test_tools_are_listed_in_name_order(server):
+    names = [t.name for t in asyncio.run(server.list_tools())]
+    assert names == sorted(names)
+
+
+def test_tool_listing_is_identical_across_server_instances():
+    from sootool import server as S
+
+    first  = [t.name for t in asyncio.run(S.build_server().list_tools())]
+    second = [t.name for t in asyncio.run(S.build_server().list_tools())]
+    assert first == second

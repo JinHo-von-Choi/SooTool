@@ -20,6 +20,7 @@ from sootool.core.audit import CalcTrace
 from sootool.core.cast import decimal_to_float64, float64_to_decimal_str
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 
 _SIG = 12
@@ -51,6 +52,7 @@ def polynomial_roots(coefficients: list[str]) -> dict[str, Any]:
     coefs_dec = _parse_coefs(coefficients)
     if len(coefs_dec) < 2:
         raise InvalidInputError("근을 찾으려면 최소 degree=1 (계수 2개) 이상이어야 합니다.")
+    ensure_max("POLYNOMIAL_DEGREE", len(coefs_dec) - 1, "degree")
     if coefs_dec[0] == D("0"):
         raise InvalidInputError("최고 차수 계수는 0이 될 수 없습니다.")
 

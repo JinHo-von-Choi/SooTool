@@ -15,6 +15,7 @@ from typing import Any
 from sootool.core.engines import engine_of
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import ToolEntry, ToolRegistry
+from sootool.core.tool_aliases import ALIASES
 
 _TOKEN_RE        = re.compile(r"[0-9A-Za-z가-힣]+")
 _SUMMARY_CHARS   = 120
@@ -27,10 +28,27 @@ _NAME_TOKEN_SCORE     = 8
 _NAME_SUBSTRING_SCORE = 4
 _DESC_TOKEN_SCORE     = 2
 _DESC_SUBSTRING_SCORE = 1
+_ALIAS_EXACT_SCORE    = 50
+_ALIAS_TOKEN_SCORE    = 6
+_ALIAS_PHRASE_SCORE   = 10
 
 
 def _tokens(text: str) -> list[str]:
     return [t.lower() for t in _TOKEN_RE.findall(text)]
+
+
+def _alias_score(entry: ToolEntry, query: str, query_tokens: list[str]) -> int:
+    """별칭 일치 점수. 별칭 전체 일치, 별칭 문구 포함, 토큰 일치를 순서대로 높게 본다."""
+    score = 0
+    for alias in ALIASES.get(entry.full_name, ()):
+        text = alias.lower()
+        if query == text:
+            return _ALIAS_EXACT_SCORE
+        if text in query or query in text:
+            score += _ALIAS_PHRASE_SCORE
+        alias_tokens = set(_tokens(text))
+        score += _ALIAS_TOKEN_SCORE * sum(1 for tok in query_tokens if tok in alias_tokens)
+    return score
 
 
 def _score(entry: ToolEntry, query: str, query_tokens: list[str]) -> int:
@@ -40,7 +58,7 @@ def _score(entry: ToolEntry, query: str, query_tokens: list[str]) -> int:
     name_tokens = set(_tokens(entry.full_name))
     desc_lower  = entry.description.lower()
     desc_tokens = set(_tokens(entry.description))
-    score = 0
+    score = _alias_score(entry, query, query_tokens)
     for tok in query_tokens:
         if tok in name_tokens:
             score += _NAME_TOKEN_SCORE

@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import os
-from typing import Final
+from typing import Any, Final
 
 from sootool.core.errors import InputLimitError
 
@@ -24,6 +24,14 @@ _DEFAULTS: Final[dict[str, int]] = {
     "BUSINESS_DAYS_SPAN":     100_000,
     "CALC_PRECISION":         10_000,
     "SOLVER_ITERATIONS":      10_000,
+    "MATRIX_DIM":             200,
+    "POLYNOMIAL_DEGREE":      256,
+    "FFT_SAMPLES":            65_536,
+    "CRYPTO_DIGITS":          2_048,
+    "ARG_STRING_CHARS":       100_000,
+    "ARG_LIST_ITEMS":         100_000,
+    "ARG_DEPTH":              16,
+    "ARG_NODES":              1_000_000,
 }
 
 
@@ -45,3 +53,40 @@ def ensure_max(name: str, value: int, field: str | None = None) -> None:
     cap = limit(name)
     if abs(value) > cap:
         raise InputLimitError(field or name.lower(), cap, value)
+
+
+def validate_argument_sizes(arguments: dict[str, Any]) -> None:
+    """도구 인자 전체의 크기를 검사한다.
+
+    문자열 길이, 목록·객체 원소 수, 중첩 깊이, 전체 노드 수가 한도를 넘으면 InputLimitError 를
+    낸다. 도구별 한도(``ensure_max``)와 별개로 모든 호출 경로(stdio, 네트워크, 프로세스 내,
+    batch 와 pipeline 의 중첩 호출)에 같은 상한을 적용해 처리량을 가장 바깥에서 묶는다.
+    """
+    max_string = limit("ARG_STRING_CHARS")
+    max_items  = limit("ARG_LIST_ITEMS")
+    max_depth  = limit("ARG_DEPTH")
+    max_nodes  = limit("ARG_NODES")
+
+    nodes = 0
+    stack: list[tuple[str, Any, int]] = [(key, value, 1) for key, value in arguments.items()]
+    while stack:
+        path, value, depth = stack.pop()
+        nodes += 1
+        if nodes > max_nodes:
+            raise InputLimitError("arguments", max_nodes, nodes)
+        if isinstance(value, str):
+            if len(value) > max_string:
+                raise InputLimitError(path, max_string, len(value))
+        elif isinstance(value, (list, tuple)):
+            if depth > max_depth:
+                raise InputLimitError(path, max_depth, depth)
+            if len(value) > max_items:
+                raise InputLimitError(path, max_items, len(value))
+            child = f"{path}[]"
+            stack.extend((child, item, depth + 1) for item in value)
+        elif isinstance(value, dict):
+            if depth > max_depth:
+                raise InputLimitError(path, max_depth, depth)
+            if len(value) > max_items:
+                raise InputLimitError(path, max_items, len(value))
+            stack.extend((f"{path}.{key}", item, depth + 1) for key, item in value.items())

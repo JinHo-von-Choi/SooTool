@@ -65,7 +65,7 @@ export SOOTOOL_BENCH_GOOGLE_MODEL="gemini-2.5-pro"
 SDK 설치 (프로젝트 의존성에는 포함되지 않음):
 
 ```
-uv pip install openai anthropic google-genai
+uv sync --group bench
 ```
 
 ### 2. 실행

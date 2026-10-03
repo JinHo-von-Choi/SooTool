@@ -123,6 +123,7 @@ def count_business_days(
     )
     start_d = _parse_date(start)
     end_d   = _parse_date(end)
+    ensure_max("BUSINESS_DAYS_SPAN", (end_d - start_d).days, "end - start (days)")
 
     if end_d < start_d:
         raise InvalidInputError("end는 start 이후여야 합니다.")

@@ -8,6 +8,7 @@ from sootool.core.audit import CalcTrace
 from sootool.core.errors import InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.modules.crypto._ints import parse_int
 
 
 def _miller_rabin_witness(n: int, a: int) -> bool:
@@ -110,10 +111,7 @@ def is_prime(n: str, k: int = 20) -> dict[str, Any]:
     trace.input("n", n)
     trace.input("k", k)
 
-    try:
-        ni = int(n)
-    except (ValueError, TypeError) as exc:
-        raise InvalidInputError(f"n 은 정수 문자열이어야 합니다: {n!r}") from exc
+    ni = parse_int(n, "n")
 
     if k < 1:
         raise InvalidInputError(f"k 는 1 이상이어야 합니다: {k}")

@@ -9,11 +9,17 @@ import numpy as np
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 
 
 def _parse_matrix(M: list[list[str]], name: str) -> list[list[Decimal]]:
     """Parse a matrix of string values to Decimal."""
+    if isinstance(M, list):
+        ensure_max("MATRIX_DIM", len(M), f"{name}.rows")
+        for row in M:
+            if isinstance(row, list):
+                ensure_max("MATRIX_DIM", len(row), f"{name}.columns")
     try:
         result = []
         for row in M:

@@ -13,13 +13,9 @@ from typing import Any
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.modules.crypto._ints import parse_int
 
-
-def _parse_int(value: str, name: str) -> int:
-    try:
-        return int(value)
-    except (ValueError, TypeError) as exc:
-        raise InvalidInputError(f"{name}은(는) 정수 문자열이어야 합니다: {value!r}") from exc
+_parse_int = parse_int
 
 
 def _egcd(a: int, b: int) -> tuple[int, int, int]:
