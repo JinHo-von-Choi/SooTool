@@ -19,11 +19,9 @@ import copy
 import functools
 import inspect
 import logging
-import math
 import types
 import typing
 from collections.abc import Callable
-from decimal import Decimal
 from typing import Annotated, Any
 
 from mcp.server.mcpserver import MCPServer
@@ -32,6 +30,7 @@ from mcp.types import CallToolResult, InputRequiredResult, TextContent
 from mcp.types import Tool as MCPTool
 from pydantic import BeforeValidator, ValidationError, ValidationInfo
 
+from sootool.core.coerce import number_to_str
 from sootool.core.errors import InvalidArgumentsError, SooToolError, UnknownToolError
 
 log = logging.getLogger("sootool.boundary")
@@ -51,17 +50,12 @@ def _number_to_str(value: Any, info: ValidationInfo) -> Any:
     부동소수는 배정밀도 표기(repr)로 바뀌어 원래 의도한 자릿수와 다를 수 있으므로, 호출 단위로 변환
     기록을 남겨 응답의 ``_meta.input_coerced`` 로 알린다.
     """
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, (int, Decimal)):
-        return str(value)
-    if isinstance(value, float) and math.isfinite(value):
-        converted = repr(value)
+    converted, from_float = number_to_str(value)
+    if from_float:
         record = _COERCED_FLOATS.get()
         if record is not None:
             record.append({"argument": info.field_name or "", "from": "float", "as": converted})
-        return converted
-    return value
+    return converted
 
 
 _NUMERIC_STR = Annotated[str, BeforeValidator(_number_to_str)]
