@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 import pytest
 
@@ -170,3 +170,28 @@ class TestSolveRaceFree:
             results = [f.result() for f in [ex.submit(run) for _ in range(100)]]
         for r in results:
             assert r == baseline
+
+
+def _exact(numerator: int, denominator: int) -> Decimal:
+    """50자리 유효숫자로 나눈 기대값(도구와 독립적으로 Decimal 에서 계산)."""
+    with localcontext() as ctx:
+        ctx.prec = 50
+        return Decimal(numerator) / Decimal(denominator)
+
+
+class TestSolveExactness:
+    """소수 리터럴과 variables 값은 정확한 유리수로 처리되어 해의 50자리가 모두 맞다."""
+
+    def test_decimal_literal_in_equation_is_exact(self) -> None:
+        out = REGISTRY.invoke("symbolic.solve", equation="3*x + 0.1 = 0", var="x")
+        assert out["symbolic"] == ["x = -1/30"]
+        assert out["solutions"] == [str(_exact(-1, 30))]
+
+    def test_variable_binding_is_exact(self) -> None:
+        out = REGISTRY.invoke("symbolic.solve", equation="3*x = a", var="x", variables={"a": "0.1"})
+        assert out["symbolic"] == ["x = 1/30"]
+        assert out["solutions"] == [str(_exact(1, 30))]
+
+    def test_irrational_root_keeps_all_digits(self) -> None:
+        out = REGISTRY.invoke("symbolic.solve", equation="x**2 = a", var="x", variables={"a": "2"})
+        assert out["solutions"][1] == "1.4142135623730950488016887242096980785696718753769"

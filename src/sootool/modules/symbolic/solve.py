@@ -49,7 +49,7 @@ class SolveResult(TracedResult):
     description=(
         "sympy 로 방정식을 기호 풀이한다. "
         "equation 은 'lhs = rhs' 또는 단일식(=0 가정), var 는 풀 변수이며 variables 값은 풀기 전에 치환한다. "
-        "solutions 에는 실수해만 Decimal 문자열로 담기고(variables 를 주면 수치 정밀도가 약 15자리), 복소해와 기호해는 symbolic 에만 담기며 numeric_eval=false 면 solutions 는 빈 리스트다. "
+        "solutions 에는 실수해만 50자리 Decimal 문자열로 담기고(소수 리터럴과 variables 값은 정확한 유리수로 해석), 복소해와 기호해는 symbolic 에만 담기며 numeric_eval=false 면 solutions 는 빈 리스트다. "
         "연산은 5초로 제한되며 sympy extra 가 필요하다."
     ),
     version="1.0.0",

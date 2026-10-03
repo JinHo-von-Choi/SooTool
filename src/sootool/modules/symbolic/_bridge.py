@@ -162,24 +162,27 @@ def sympify_safe(expression: str) -> Any:
     """AST 사전 검증된 수식을 sympy 객체로 변환한다.
 
     sympy.sympify 는 locals={} 로 호출하여 이름 해석 경로를 제거한다.
-    rational=False 로 float 리터럴을 sympy.Float 로 보존한다.
+    rational=True 로 소수 리터럴(0.1)을 정확한 유리수(1/10)로 해석해 배정밀도 오차가 들어오지 않게 한다.
     """
     sympy = _require_sympy()
 
     _validate_expression(expression)
-    return sympy.sympify(expression, locals={}, rational=False)
+    return sympy.sympify(expression, locals={}, rational=True)
 
 
 def substitute(expr: Any, variables: dict[str, str]) -> Any:
-    """sympy 식에 variables 를 치환한다. 값은 Decimal → sympy.Float 로 변환."""
+    """sympy 식에 variables 를 치환한다. 값은 Decimal 의 정확한 유리수(sympy.Rational)로 바꾼다.
+
+    부동소수(Float)로 치환하면 sympy.solve 가 계수를 15자리 부동소수로 취급해 해의 자릿수가 줄어든다.
+    """
     if not variables:
         return expr
     sympy = _require_sympy()
     subs_map: dict[Any, Any] = {}
     for name, raw in variables.items():
         sym = sympy.Symbol(name)
-        # Decimal → 문자열 → sympy.Float 경유 (float 누수 차단).
-        subs_map[sym] = sympy.Float(str(Decimal(raw)), _PRECISION)
+        numerator, denominator = Decimal(raw).as_integer_ratio()
+        subs_map[sym] = sympy.Rational(numerator, denominator)
     return expr.subs(subs_map)
 
 
