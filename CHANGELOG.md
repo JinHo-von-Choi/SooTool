@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+REGISTRY 수치는 0.1.4와 동일(18 domains, 254 base tools, 10 admin policy-management tools).
+
+### Added
+
+- `sootool.core.limits`: 도구 호출 단위 입력 한도의 단일 출처. 환경변수 `SOOTOOL_LIMIT_<이름>`으로 조정. 초과 입력은 `InputLimitError`(`DomainConstraintError` 하위)로 계산 전에 거부한다.
+- 한도 적용 도구: `probability.factorial`·`nCr`·`nPr`, `crypto.is_prime`, `finance.loan_schedule`·`irr`, `math.integrate_simpson`·`integrate_gauss_legendre`, `datetime.add_business_days`, `core.calc`(precision), `stats.bootstrap_ci`, `pm.monte_carlo_schedule`.
+
+### Changed
+
+- MCP 노출 경로가 `REGISTRY.invoke`를 거치도록 정리했다. 모든 MCP 응답에 `_meta.integrity`와 `_meta.hints`가 일관되게 포함된다.
+- `mcp[cli]` 의존 범위를 `>=1.27,<2`로 지정했다.
+- `_meta.integrity.input_hash`가 기본값 인자를 채운 정규화 입력으로 계산된다. 직접 호출과 MCP 호출, 기본값 생략과 명시 호출이 같은 해시를 갖는다.
+- 확률 조합 도구의 대형 정수 결과가 4300자리 변환 한계와 무관하게 문자열로 직렬화된다.
+
 ## [0.1.4] - 2026-04-24
 
 Release quality uplift. `docs/plans/2026-04-24-release-quality-improvements.md` 계획의 P0~P2 전 항목 반영. 기능 도구 추가 없음. REGISTRY 수치 0.1.3과 동일(18 domains, 254 base tools, 10 admin policy-management tools, 5 transport modes).
