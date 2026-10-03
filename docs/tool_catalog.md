@@ -4,7 +4,7 @@ scripts/gen_tool_catalog.py 가 레지스트리에서 생성한다. 직접 고�
 exact(Decimal), high_precision(mpmath, 지정 자릿수), approximate(float64 근사), depends_on_children(호출한 도구에 따름),
 not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as_of`)에 따라 정책 문서를 읽는다.
 
-총 281개 도구, 20개 네임스페이스.
+총 282개 도구, 20개 네임스페이스.
 
 
 ## accounting (11)
@@ -345,11 +345,12 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |diff|1.0.0|high_precision||예|sympy 로 n차 기호 도함수를 구하고, variables 로 값을 치환하면 그 지점의 수치를 Decimal 문자열(50자리)로 함께 반환한다. var 는 미…|
 |solve|1.0.0|high_precision||예|sympy 로 방정식을 기호 풀이한다. equation 은 'lhs = rhs' 또는 단일식(=0 가정), var 는 풀 변수이며 variables 값은 풀기 …|
 
-## tax (16)
+## tax (17)
 
 |도구|버전|정확도|정책|읽기 전용|설명|
 |-|-|-|-|-|-|
 |capital_gains_kr|2.0.0|exact|예|예|한국 양도소득세를 계산한다(소득세법 제89조·제95조·제103조·제104조). 금액은 원 단위 Decimal 문자열, 보유·거주 기간은 만 년 정수다. 1세대1…|
+|kr_comprehensive_income_tax|1.0.0|exact|예|예|종합소득세 신고 흐름(소득금액 합산, 종합소득공제, 과세표준, 산출세액, 세액공제, 결정세액, 지방소득세 10%)을 계산한다. 금액은 원 단위 Decimal 문…|
 |kr_corporate|1.0.0|exact|예|예|한국 법인세를 계산한다(법인세법 제55조, 조세특례제한법 제132조). taxable_income 은 과세표준(원, Decimal 문자열)이고 누진 구간 산출세…|
 |kr_education_tax_add|1.0.0|exact||예|한국 지방교육세를 본세 x 부가세율로 계산한다(지방세법 제151조). base_tax 는 재산세·취득세·등록면허세 등 본세액(원, 0 이상 Decimal 문자열…|
 |kr_eitc|1.0.0|exact|예|예|한국 근로장려금(조특법 §100의3·§100의5·§100의7) 산정. year 는 소득 귀속연도, 금액은 원 단위 숫자 문자열. 가구유형(single/one_e…|

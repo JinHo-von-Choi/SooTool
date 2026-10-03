@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-REGISTRY 수치: 18 domains, 271 base tools, 10 admin policy-management tools (0.1.4 대비 base 17개 증가: sootool.verify_receipt, core.solve_for, core.compare, core.explain, payroll.kr_gross_from_net, tax_us.fica, tax.kr_eitc, tax.kr_securities_transaction, tax.kr_pension_income, tax.kr_vehicle_tax, tax.kr_registration_license_tax, realestate.kr_subscription_score, payroll.kr_overtime_pay, payroll.kr_weekly_holiday_pay, payroll.kr_minimum_wage_check, payroll.kr_national_pension_benefit, payroll.kr_health_income_premium).
+REGISTRY 수치: 18 domains, 272 base tools, 10 admin policy-management tools (0.1.4 대비 base 18개 증가: sootool.verify_receipt, core.solve_for, core.compare, core.explain, payroll.kr_gross_from_net, tax_us.fica, tax.kr_eitc, tax.kr_securities_transaction, tax.kr_pension_income, tax.kr_vehicle_tax, tax.kr_registration_license_tax, realestate.kr_subscription_score, payroll.kr_overtime_pay, payroll.kr_weekly_holiday_pay, payroll.kr_minimum_wage_check, payroll.kr_national_pension_benefit, payroll.kr_health_income_premium, tax.kr_comprehensive_income_tax).
 
 ### Added
 
@@ -38,7 +38,7 @@ REGISTRY 수치: 18 domains, 271 base tools, 10 admin policy-management tools (0
 - `sootool.core.lazy`: 무거운 의존 모듈의 지연 로딩 프록시.
 - 노출 프로파일 `--profile {full,lean}`(환경변수 `SOOTOOL_PROFILE`). `lean`은 `sootool.search`, `sootool.describe`, `sootool.call`, `sootool.skill_guide` 4종만 노출한다(`tools/list` 약 2.4KB, `full`은 약 173KB). 기본값은 `full`이며 동작이 바뀌지 않는다.
 - `sootool.core.catalog`: 도구 검색(결정적 점수 순위), 설명, 인자 검증.
-- 신규 도구 12개: `tax_us.fica`(FICA, 자영업자 SECA 포함), `tax.kr_eitc`(근로장려금), `tax.kr_securities_transaction`(증권거래세와 농특세), `tax.kr_pension_income`(연금소득 원천징수와 분리과세), `tax.kr_vehicle_tax`, `tax.kr_registration_license_tax`, `realestate.kr_subscription_score`(청약 가점), `payroll.kr_overtime_pay`, `payroll.kr_weekly_holiday_pay`, `payroll.kr_minimum_wage_check`, `payroll.kr_national_pension_benefit`, `payroll.kr_health_income_premium`. 법정 상수는 정책 YAML(조문 인용 포함)에 있고 시행일별 버전을 지원한다.
+- 신규 도구 13개: `tax_us.fica`(FICA, 자영업자 SECA 포함), `tax.kr_eitc`(근로장려금), `tax.kr_securities_transaction`(증권거래세와 농특세), `tax.kr_pension_income`(연금소득 원천징수와 분리과세), `tax.kr_vehicle_tax`, `tax.kr_registration_license_tax`, `tax.kr_comprehensive_income_tax`(종합소득세 신고 흐름), `realestate.kr_subscription_score`(청약 가점), `payroll.kr_overtime_pay`, `payroll.kr_weekly_holiday_pay`, `payroll.kr_minimum_wage_check`, `payroll.kr_national_pension_benefit`, `payroll.kr_health_income_premium`. 법정 상수는 정책 YAML(조문 인용 포함)에 있고 시행일별 버전을 지원한다.
 - 도구 결과 스키마: 모든 도구가 도구별 TypedDict 로 결과 구조를 선언하고 `outputSchema` 로 공개한다(`sootool.core.result_types`). 시험 중 모든 도구 호출의 결과를 선언한 타입으로 검증한다. 공개 스키마는 공통 외피(`_meta`, `trace`, 정책 출처)를 줄여 `tools/list` 응답을 약 0.4MB 로 유지한다.
 - 응답 `_meta.input_coerced`: JSON 부동소수로 받은 문자열 숫자 인자가 배정밀도 표기로 바뀐 경우 인자 이름과 변환값을 알린다.
 - 정책 시행일별 버전 파일: 4대보험(2026-07-01, 2026-11-01), 간이세액표(2026-03-01 자녀 세액공제), 최저임금(2027), 양도소득세와 종합부동산세 등 2027 개정안(proposed).

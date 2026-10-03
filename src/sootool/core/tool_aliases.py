@@ -305,4 +305,5 @@ ALIASES: Final[dict[str, tuple[str, ...]]] = {
     "tax.kr_securities_transaction": ("증권거래세", "주식 매도 세금", "거래세", "농특세 주식", "securities transaction tax"),
     "tax.kr_vehicle_tax": ("자동차세 계산", "korea automobile tax"),
     "tax_us.fica": ("미국 급여세", "미국 사회보장세", "메디케어세", "자영업세", "FICA", "payroll tax", "self-employment tax", "medicare tax"),
+    "tax.kr_comprehensive_income_tax": ("종합소득세 신고 계산", "금융소득 종합과세", "배당세액공제", "5월 종소세", "comprehensive income tax return"),
 }

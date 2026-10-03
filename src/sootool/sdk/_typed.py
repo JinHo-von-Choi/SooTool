@@ -116,29 +116,30 @@ import sootool.modules.stats.regression as _m107
 import sootool.modules.symbolic.diff as _m108
 import sootool.modules.symbolic.solve as _m109
 import sootool.modules.tax.capital_gains as _m110
-import sootool.modules.tax.kr_corporate as _m111
-import sootool.modules.tax.kr_education_tax_add as _m112
-import sootool.modules.tax.kr_eitc as _m113
-import sootool.modules.tax.kr_gift as _m114
-import sootool.modules.tax.kr_income as _m115
-import sootool.modules.tax.kr_inheritance as _m116
-import sootool.modules.tax.kr_local_income_tax as _m117
-import sootool.modules.tax.kr_pension_income as _m118
-import sootool.modules.tax.kr_registration_license_tax as _m119
-import sootool.modules.tax.kr_rural_special_tax as _m120
-import sootool.modules.tax.kr_securities_transaction as _m121
-import sootool.modules.tax.kr_simplified_vat as _m122
-import sootool.modules.tax.kr_vehicle_tax as _m123
-import sootool.modules.tax.kr_withholding as _m124
-import sootool.modules.tax.progressive as _m125
-import sootool.modules.tax_us.capital_gains as _m126
-import sootool.modules.tax_us.federal_income as _m127
-import sootool.modules.tax_us.fica as _m128
-import sootool.modules.tax_us.state_tax as _m129
-import sootool.modules.units.convert as _m130
-import sootool.modules.units.currency as _m132
-import sootool.modules.units.extended as _m131
-import sootool.modules.units.temperature as _m133
+import sootool.modules.tax.kr_comprehensive_income_tax as _m111
+import sootool.modules.tax.kr_corporate as _m112
+import sootool.modules.tax.kr_education_tax_add as _m113
+import sootool.modules.tax.kr_eitc as _m114
+import sootool.modules.tax.kr_gift as _m115
+import sootool.modules.tax.kr_income as _m116
+import sootool.modules.tax.kr_inheritance as _m117
+import sootool.modules.tax.kr_local_income_tax as _m118
+import sootool.modules.tax.kr_pension_income as _m119
+import sootool.modules.tax.kr_registration_license_tax as _m120
+import sootool.modules.tax.kr_rural_special_tax as _m121
+import sootool.modules.tax.kr_securities_transaction as _m122
+import sootool.modules.tax.kr_simplified_vat as _m123
+import sootool.modules.tax.kr_vehicle_tax as _m124
+import sootool.modules.tax.kr_withholding as _m125
+import sootool.modules.tax.progressive as _m126
+import sootool.modules.tax_us.capital_gains as _m127
+import sootool.modules.tax_us.federal_income as _m128
+import sootool.modules.tax_us.fica as _m129
+import sootool.modules.tax_us.state_tax as _m130
+import sootool.modules.units.convert as _m131
+import sootool.modules.units.currency as _m133
+import sootool.modules.units.extended as _m132
+import sootool.modules.units.temperature as _m134
 import sootool.policy_mgmt.tool_types as _m97
 import sootool.receipt_tools as _m99
 import sootool.runtime as _m7
@@ -961,91 +962,94 @@ class _TaxTools(Protocol):
     def capital_gains_kr(self, acquisition_price: Num, sale_price: Num, holding_years: int, is_one_house: bool, year: int, decimals: int = 0, residence_years: int | None = None, acquired_in_regulated_area: bool = False, asset_type: Num | None = None, is_non_business_land: bool = False, is_unregistered: bool = False, multi_house_surcharge: Num = 'none', transfer_date: Num | None = None, apply_basic_deduction: bool = True, *, as_of: Num | None = None, include_proposed: bool = False) -> _m110.TaxCapitalGainsKrResult:
         """한국 양도소득세를 계산한다(소득세법 제89조·제95조·제103조·제104조). 금액은 원 단위 Decimal 문자열, 보유·거주 기간은 만 년 정수다. 1세대1주택 비과세와 12억 초과 고가주택 안분, 장기보유특별공제(표 1, 보유·거주 표 2), 기본공제 250만원, 단기보유·분양권·비사업용 토지·미등기·조정대상지역 다주택 중과 세율 중 해당 경로의 큰 세액을 적용한다. 세액은 decimals(기본 0)자리 HALF_UP 이고 지방소득세는 포함하지 않는다. 보유 2년 이상 다주택 중과 제외 판정에는 transfer_date 가 필요하다."""
         ...
-    def kr_corporate(self, taxable_income: Num, year: int, is_small: bool = False, rounding: Num = 'HALF_UP', decimals: int = 0, is_small_rental_corp: bool = False, sme_graduation_period: Num = 'none', reductions: Num = '0', pre_deduction_income: Num | None = None, *, as_of: Num | None = None, include_proposed: bool = False) -> _m111.TaxKrCorporateResult:
+    def kr_comprehensive_income_tax(self, year: int, total_salary: Num = '0', business_income: Num | None = None, business_revenue: Num = '0', business_expenses: Num = '0', interest_income: Num = '0', dividend_gross_up_eligible: Num = '0', dividend_other: Num = '0', pension_gross: Num = '0', other_income_deemed_revenue: Num = '0', other_income_actual_expenses: Num = '0', other_income_amount: Num = '0', other_income_aggregate: bool = False, dependents: int = 1, elderly_count: int = 0, disabled_count: int = 0, woman_deduction: bool = False, single_parent: bool = False, other_income_deductions: Num = '0', children_count: int = 0, newborn_birth_orders: list[int] | None = None, other_tax_credits: Num = '0', apply_standard_tax_credit: bool = False, diligent_business_operator: bool = False, *, as_of: Num | None = None, include_proposed: bool = False) -> _m111.TaxKrComprehensiveIncomeTaxResult:
+        """종합소득세 신고 흐름(소득금액 합산, 종합소득공제, 과세표준, 산출세액, 세액공제, 결정세액, 지방소득세 10%)을 계산한다. 금액은 원 단위 Decimal 문자열, year 필수, 원 미만 버림. 근로(총급여), 사업, 이자·배당(2천만원 초과 시 배당가산 10%, 제62조 비교과세, 배당세액공제), 연금(총연금액), 기타소득(60% 의제경비, 300만원 이하 분리과세)을 받는다. 결손금 통산, 중간예납·기납부세액, 외국납부세액공제는 계산하지 않고 특별공제는 합계로 넣는다. 근로소득만 있는 연말정산에는 payroll.kr_year_end_tax_settlement 를 쓴다."""
+        ...
+    def kr_corporate(self, taxable_income: Num, year: int, is_small: bool = False, rounding: Num = 'HALF_UP', decimals: int = 0, is_small_rental_corp: bool = False, sme_graduation_period: Num = 'none', reductions: Num = '0', pre_deduction_income: Num | None = None, *, as_of: Num | None = None, include_proposed: bool = False) -> _m112.TaxKrCorporateResult:
         """한국 법인세를 계산한다(법인세법 제55조, 조세특례제한법 제132조). taxable_income 은 과세표준(원, Decimal 문자열)이고 누진 구간 산출세액(base_tax)에서 reductions 를 빼되 최저한세에 미달하는 감면은 배제해 tax 를 정한다. is_small_rental_corp 는 제55조제1항제2호 세율, is_small 과 sme_graduation_period 는 최저한세율을 바꾼다. 감면 전 과세표준이 다르면 pre_deduction_income 을 따로 넣어야 최저한세가 맞는다."""
         ...
-    def kr_education_tax_add(self, base_tax: Num, rate: Num = '0.20', rounding: Num = 'DOWN', decimals: int = 0) -> _m112.TaxKrEducationTaxAddResult:
+    def kr_education_tax_add(self, base_tax: Num, rate: Num = '0.20', rounding: Num = 'DOWN', decimals: int = 0) -> _m113.TaxKrEducationTaxAddResult:
         """한국 지방교육세를 본세 x 부가세율로 계산한다(지방세법 제151조). base_tax 는 재산세·취득세·등록면허세 등 본세액(원, 0 이상 Decimal 문자열), rate 기본 0.20(0 이상 1 이하), rounding 기본 DOWN, decimals 기본 0이라 원 미만을 버린다. 본세마다 세율이 다르므로 rate 를 확인하지 않고 기본값을 쓰면 틀릴 수 있다."""
         ...
-    def kr_eitc(self, year: int, household_type: Num, property_total: Num, earned_income: Num = '0', business_income: list[dict[str, Num]] | None = None, religious_income: Num = '0', spouse_earned_income: Num = '0', spouse_business_income: list[dict[str, Num]] | None = None, spouse_religious_income: Num = '0', other_income: Num = '0', late_application: bool = False, *, as_of: Num | None = None, include_proposed: bool = False) -> _m113.KrEitcResult:
+    def kr_eitc(self, year: int, household_type: Num, property_total: Num, earned_income: Num = '0', business_income: list[dict[str, Num]] | None = None, religious_income: Num = '0', spouse_earned_income: Num = '0', spouse_business_income: list[dict[str, Num]] | None = None, spouse_religious_income: Num = '0', other_income: Num = '0', late_application: bool = False, *, as_of: Num | None = None, include_proposed: bool = False) -> _m114.KrEitcResult:
         """한국 근로장려금(조특법 §100의3·§100의5·§100의7) 산정. year 는 소득 귀속연도, 금액은 원 단위 숫자 문자열. 가구유형(single/one_earner/dual_earner)과 부부의 근로 총급여액, 사업 총수입금액(업종별 조정률 적용), 종교인소득, 재산 합계액으로 요건을 판정하고 시행령 별표 11 산정표 금액에 재산 1.7억원 이상 50%, 기한 후 95% 감액과 최소지급액 규칙을 적용한다. 산정표가 천원 단위라 별도 반올림은 없다. 자녀장려금, 반기 신청, 체납 충당, 국적·부양자녀·전문직 요건은 판정하지 않는다. 사업소득에 필요경비를 뺀 소득금액을 넣는 것은 오용이다."""
         ...
-    def kr_gift(self, gift_amount: Num, relationship: Num, year: int, rounding: Num = 'HALF_UP', decimals: int = 0, prior_deduction_used_10y: Num = '0', marriage_birth_gift: bool = False, prior_marriage_birth_deduction: Num = '0', generation_skip: bool = False, timely_filing: bool = True, *, as_of: Num | None = None, include_proposed: bool = False) -> _m114.TaxKrGiftResult:
+    def kr_gift(self, gift_amount: Num, relationship: Num, year: int, rounding: Num = 'HALF_UP', decimals: int = 0, prior_deduction_used_10y: Num = '0', marriage_birth_gift: bool = False, prior_marriage_birth_deduction: Num = '0', generation_skip: bool = False, timely_filing: bool = True, *, as_of: Num | None = None, include_proposed: bool = False) -> _m115.TaxKrGiftResult:
         """한국 증여세를 계산한다(상속세및증여세법 제53조·제53조의2·제56조·제57조·제69조). 금액은 원 단위 Decimal 문자열이다. 관계별 증여재산공제에서 10년 내 기공제액을 빼고, marriage_birth_gift=true 이면 직계존속 증여에 혼인·출산 공제 1억을 더하며, 10~50% 누진세율에 generation_skip=true 일 때 세대생략 할증(30%, 미성년 20억 초과 40%)과 기한 내 신고세액공제 3%를 반영한다. tax 는 신고세액공제 전 금액이고 공제 후는 tax_after_filing_credit 이다. 10년 내 기공제액은 prior_deduction_used_10y 로 직접 넣는다."""
         ...
-    def kr_income(self, taxable_income: Num, year: int, rounding: Num = 'HALF_UP', decimals: int = 0, *, as_of: Num | None = None, include_proposed: bool = False) -> _m115.TaxKrIncomeResult:
+    def kr_income(self, taxable_income: Num, year: int, rounding: Num = 'HALF_UP', decimals: int = 0, *, as_of: Num | None = None, include_proposed: bool = False) -> _m116.TaxKrIncomeResult:
         """한국 종합소득세·근로소득세 산출세액을 소득세법 제55조 기본세율(6~45% 누진, 정책 YAML)로 계산한다. taxable_income 은 공제를 모두 뺀 과세표준(원, Decimal 문자열)이고 year 는 필수다. 구간별 세액과 실효·한계세율을 돌려주며 rounding(기본 HALF_UP)으로 decimals(기본 0)자리에 맞춘다. 근로소득공제와 세액공제는 반영하지 않으므로 총급여를 그대로 넣으면 안 된다."""
         ...
-    def kr_inheritance(self, gross_estate: Num, spouse_inheritance: Num, year: int, use_lump_sum: bool = True, rounding: Num = 'HALF_UP', decimals: int = 0, has_spouse: bool | None = None, spouse_legal_share_cap: Num | None = None, spouse_sole_heir: bool = False, children_count: int = 0, minor_years_total: int = 0, elderly_count: int = 0, disabled_life_years_total: int = 0, bequest_to_non_heirs: Num = '0', renounced_inheritance: Num = '0', pre_gift_added: Num = '0', timely_filing: bool = True, *, as_of: Num | None = None, include_proposed: bool = False) -> _m116.TaxKrInheritanceResult:
+    def kr_inheritance(self, gross_estate: Num, spouse_inheritance: Num, year: int, use_lump_sum: bool = True, rounding: Num = 'HALF_UP', decimals: int = 0, has_spouse: bool | None = None, spouse_legal_share_cap: Num | None = None, spouse_sole_heir: bool = False, children_count: int = 0, minor_years_total: int = 0, elderly_count: int = 0, disabled_life_years_total: int = 0, bequest_to_non_heirs: Num = '0', renounced_inheritance: Num = '0', pre_gift_added: Num = '0', timely_filing: bool = True, *, as_of: Num | None = None, include_proposed: bool = False) -> _m117.TaxKrInheritanceResult:
         """한국 상속세를 계산한다(상속세및증여세법 제18조~제21조·제24조·제26조·제69조). 금액은 원 단위 Decimal 문자열이다. 기초·인적공제와 일괄공제 5억 중 큰 금액, 배우자공제(법정상속분 한도와 30억 중 작은 값, 최소 5억), 공제 종합한도를 적용한 뒤 10~50% 누진세율로 산출하고 기한 내 신고세액공제 3%를 따로 보여 준다. gross_estate 는 사전증여 가산 후 과세가액이다. 배우자가 있으나 상속받지 않았으면 has_spouse=true 를 지정해야 5억이 공제된다."""
         ...
-    def kr_local_income_tax(self, income_tax: Num, rounding: Num = 'DOWN', decimals: int = 0) -> _m117.TaxKrLocalIncomeTaxResult:
+    def kr_local_income_tax(self, income_tax: Num, rounding: Num = 'DOWN', decimals: int = 0) -> _m118.TaxKrLocalIncomeTaxResult:
         """한국 개인 지방소득세를 소득세 본세의 10% 고정 비율로 계산한다(지방세법 제92조). income_tax 는 이미 산출된 소득세액(원, 0 이상 Decimal 문자열)이며 rounding 기본 DOWN, decimals 기본 0이라 원 미만을 버린다. 과세표준이나 소득금액을 넣으면 안 되고 소득세 산출 후 그 세액을 넣어야 한다."""
         ...
-    def kr_pension_income(self, year: int, private_pension_amount: Num = '0', age: int | None = None, lifetime_annuity: bool = False, deferred_retirement_amount: Num = '0', deferred_retirement_tax_rate: Num | None = None, actual_receipt_years: int | None = None, non_pension_withdrawal_amount: Num = '0', public_pension_amount: Num = '0', annual_private_pension_total: Num | None = None, *, as_of: Num | None = None, include_proposed: bool = False) -> _m118.PensionIncomeResult:
+    def kr_pension_income(self, year: int, private_pension_amount: Num = '0', age: int | None = None, lifetime_annuity: bool = False, deferred_retirement_amount: Num = '0', deferred_retirement_tax_rate: Num | None = None, actual_receipt_years: int | None = None, non_pension_withdrawal_amount: Num = '0', public_pension_amount: Num = '0', annual_private_pension_total: Num | None = None, *, as_of: Num | None = None, include_proposed: bool = False) -> _m119.PensionIncomeResult:
         """한국 사적연금(연금계좌) 인출 원천징수, 분리과세 판정, 연금소득공제를 계산한다(소득세법 제129조, 제14조, 제47조의2). 금액은 원 문자열이며 private_pension_amount 는 나이별 5·4·3%(종신 3%), deferred_retirement_amount 는 이연퇴직소득으로 연금외수령 세율의 70·60·50%, non_pension_withdrawal_amount 는 연금외수령 15%. 지방소득세 10% 별도, 원 미만 절사. 사적연금 연 1,500만원 이하 분리과세. 공적연금 간이세액표 원천징수는 계산하지 않으므로 공적연금 월 원천징수액 용도로 쓰면 오용이다."""
         ...
-    def kr_registration_license_tax(self, registration_type: Num, year: int, tax_base: Num | None = None, *, as_of: Num | None = None, include_proposed: bool = False) -> _m119.RegistrationLicenseTaxResult:
+    def kr_registration_license_tax(self, registration_type: Num, year: int, tax_base: Num | None = None, *, as_of: Num | None = None, include_proposed: bool = False) -> _m120.RegistrationLicenseTaxResult:
         """부동산 등기의 등록면허세와 지방교육세(20%)를 계산한다(지방세법 제28조제1항제1호, 제151조). 저당권, 전세권, 지상권, 지역권, 임차권, 경매신청, 가압류, 가처분, 가등기는 과세표준(원 문자열) × 2/1000, 6천원 미만이면 6천원이고 other 는 건당 6천원이다. 세액은 10원 미만 버림. 소유권 보존과 이전 등기는 취득세로 과세되므로 다루지 않는다. 임차권 과세표준을 보증금으로 넣는 것은 오용이며 월 임대차금액을 넣는다."""
         ...
-    def kr_rural_special_tax(self, amount: Num, mode: Num = 'base', rounding: Num = 'DOWN', decimals: int = 0) -> _m120.TaxKrRuralSpecialTaxResult:
+    def kr_rural_special_tax(self, amount: Num, mode: Num = 'base', rounding: Num = 'DOWN', decimals: int = 0) -> _m121.TaxKrRuralSpecialTaxResult:
         """한국 농어촌특별세를 계산한다(농어촌특별세법 제5조). mode=base 는 본세액 x 10%, mode=reduced 는 감면세액 x 20%이고 amount 는 해당 금액(원, 0 이상 Decimal 문자열)이다. rounding 기본 DOWN, decimals 기본 0이라 원 미만을 버린다. 과세표준이 아니라 본세 또는 감면액을 넣어야 하며 mode 를 바꾸면 세율이 달라진다."""
         ...
-    def kr_securities_transaction(self, transfer_amount: Num, market: Num, year: int, *, as_of: Num | None = None, include_proposed: bool = False) -> _m121.SecuritiesTransactionTaxResult:
+    def kr_securities_transaction(self, transfer_amount: Num, market: Num, year: int, *, as_of: Num | None = None, include_proposed: bool = False) -> _m122.SecuritiesTransactionTaxResult:
         """한국 주식 양도 시 증권거래세와 농어촌특별세를 계산한다(증권거래세법 제8조, 시행령 제5조 탄력세율, 농특세법 제5조). transfer_amount 는 양도가액(원), market 은 kospi, kosdaq, konex, k_otc(금융투자협회 장외), other(그 밖의 장외·비상장, 기본세율 0.35%). year 는 결제일 연도이며 2023~2026 을 지원한다. 세액은 원 미만 절사. 2026 코스피는 0.05%와 농특세 0.15%로 실효 0.20%. 대체거래소 거래와 비과세 양도는 반영하지 않는다. 체결일 연도로 year 를 넣는 것은 오용이다."""
         ...
-    def kr_simplified_vat(self, supply_value: Num, business_type: Num, year: int, input_tax_amount: Num = '0', card_sales_amount: Num = '0', prior_year_supply: Num | None = None, restricted_business: bool = False, *, as_of: Num | None = None, include_proposed: bool = False) -> _m122.TaxKrSimplifiedVatResult:
+    def kr_simplified_vat(self, supply_value: Num, business_type: Num, year: int, input_tax_amount: Num = '0', card_sales_amount: Num = '0', prior_year_supply: Num | None = None, restricted_business: bool = False, *, as_of: Num | None = None, include_proposed: bool = False) -> _m123.TaxKrSimplifiedVatResult:
         """한국 간이과세자 부가가치세를 계산한다(부가가치세법 제46조·제61조·제63조·제69조). 금액은 원 단위 Decimal 문자열이다. 공급대가 x 업종별 부가가치율 x 10%에서 세금계산서등 수취분 0.5%와 신용카드 등 매출세액공제를 빼며, 공급대가가 4,800만원 미만이면 납부 면제로 0을 돌려준다. 모든 금액은 원 미만을 버리고 일반과세자 계산에는 쓸 수 없다. 간이과세 기준(1억4백만원) 초과여도 계산은 하며 threshold_exceeded 로만 표시하고, prior_year_supply 를 생략하면 당해 공급대가로 판정한다."""
         ...
-    def kr_vehicle_tax(self, year: int, vehicle_type: Num = 'passenger', displacement_cc: int | None = None, business_use: bool = False, age_start_date: Num | None = None, annual_payment: Num = 'none', *, as_of: Num | None = None, include_proposed: bool = False) -> _m123.VehicleTaxResult:
+    def kr_vehicle_tax(self, year: int, vehicle_type: Num = 'passenger', displacement_cc: int | None = None, business_use: bool = False, age_start_date: Num | None = None, annual_payment: Num = 'none', *, as_of: Num | None = None, include_proposed: bool = False) -> _m124.VehicleTaxResult:
         """한국 승용자동차 자동차세 연세액과 지방교육세(비영업용 30%)를 계산한다(지방세법 제127조, 제128조, 제151조). 배기량은 cc 정수, 차령기산일은 YYYY-MM-DD(보통 최초 신규등록일)이다. 비영업용은 차령 3년부터 연 5%, 최대 50% 경감하고 annual_payment 로 1월, 3월, 6월, 9월 연납 공제(이자율 5%)를 적용한다. 세액은 기분마다 10원 미만 버림. 승합, 화물, 특수차, 신규등록 일할계산, 조례 세율 조정은 다루지 않으며, 차령을 연식 차이로 넣으면 기산일 규칙과 어긋난다."""
         ...
-    def kr_withholding_simple(self, monthly_salary: Num, dependents: int, year: int, children_8_20: int = 0, *, as_of: Num | None = None, include_proposed: bool = False) -> _m124.TaxKrWithholdingSimpleResult:
+    def kr_withholding_simple(self, monthly_salary: Num, dependents: int, year: int, children_8_20: int = 0, *, as_of: Num | None = None, include_proposed: bool = False) -> _m125.TaxKrWithholdingSimpleResult:
         """근로소득 월 원천징수세액을 소득세법 시행령 별표 2 간이세액표로 구한다. monthly_salary 는 비과세·학자금을 뺀 월급여액(원, Decimal 문자열)이며 천원 미만을 버려 [이상, 미만) 행을 찾고, 10,000천원 초과 산식, 공제대상가족 11명 초과 규정, 8세 이상 20세 이하 자녀 차감을 적용한다. 세액은 원 단위이며 지방소득세 10%는 포함하지 않는다. dependents 는 본인 포함 인원이고 연간 정산(연말정산)에는 쓰지 않는다."""
         ...
-    def progressive(self, taxable_income: Num, brackets: list[dict[str, Any]], rounding: Num = 'HALF_UP', decimals: int = 0) -> _m125.TaxProgressiveResult:
+    def progressive(self, taxable_income: Num, brackets: list[dict[str, Any]], rounding: Num = 'HALF_UP', decimals: int = 0) -> _m126.TaxProgressiveResult:
         """임의의 누진세율 구간표로 세액을 계산한다. taxable_income 은 0 이상의 Decimal 문자열, brackets 는 오름차순 {upper, rate} 목록이며 마지막 upper 는 null, rate 는 0.1 처럼 소수다. 구간은 하한 초과 상한 이하이고 구간별 세액 합계를 rounding(기본 HALF_UP)으로 decimals(기본 0)자리에 맞춘다. 법정 세율표를 직접 입력해 쓰면 개정을 반영하지 못하므로 정책을 읽는 kr_income 등을 우선 쓴다."""
         ...
 
 
 class _TaxUsTools(Protocol):
-    def capital_gains(self, gain: Num, filing_status: Num, year: int, term: Num = 'long', magi: Num | None = None, apply_niit: bool = False, ordinary_taxable_income: Num | None = None, rounding: Num = 'HALF_UP', decimals: int = 2, *, as_of: Num | None = None, include_proposed: bool = False) -> _m126.TaxUsCapitalGainsResult:
+    def capital_gains(self, gain: Num, filing_status: Num, year: int, term: Num = 'long', magi: Num | None = None, apply_niit: bool = False, ordinary_taxable_income: Num | None = None, rounding: Num = 'HALF_UP', decimals: int = 2, *, as_of: Num | None = None, include_proposed: bool = False) -> _m127.TaxUsCapitalGainsResult:
         """미국 연방 자본이득세를 계산한다. 장기(long)는 0%/15%/20% 구간을 신고 유형별로 적용하며 ordinary_taxable_income 위에 양도소득을 쌓아 과세하고, 단기(short)는 그 증가분에 일반 소득세율을 쓴다. apply_niit=true 이면 순투자소득세 3.8%를 더한다. 금액은 USD Decimal 문자열이고 기본은 소수 둘째 자리 HALF_UP이다. ordinary_taxable_income 을 생략하면 0으로 보므로 다른 소득이 있으면 반드시 넣어야 한다."""
         ...
-    def federal_income(self, taxable_income: Num, filing_status: Num, year: int, apply_standard_deduction: bool = False, rounding: Num = 'HALF_UP', decimals: int = 2, *, as_of: Num | None = None, include_proposed: bool = False) -> _m127.TaxUsFederalIncomeResult:
+    def federal_income(self, taxable_income: Num, filing_status: Num, year: int, apply_standard_deduction: bool = False, rounding: Num = 'HALF_UP', decimals: int = 2, *, as_of: Num | None = None, include_proposed: bool = False) -> _m128.TaxUsFederalIncomeResult:
         """미국 연방 소득세(일반 세율)를 계산한다. IRS 2025·2026 tax year, 7개 누진 구간, 4개 신고 유형이며 qualifying_surviving_spouse 는 공동 신고 표를 쓴다. 금액은 USD Decimal 문자열이고 기본은 소수 둘째 자리 HALF_UP이다. apply_standard_deduction=true 이면 taxable_income 을 AGI 로 보고 표준공제를 뺀다. 이미 공제를 뺀 과세표준에 true 를 주면 공제가 두 번 빠지고, 장기 양도소득이나 FICA 는 반영하지 않는다."""
         ...
-    def fica(self, year: int, mode: Num = 'employee', wages: Num = '0', net_profit: Num = '0', filing_status: Num | None = None, other_medicare_wages: Num = '0', rounding: Num = 'HALF_UP', decimals: int = 2, *, as_of: Num | None = None, include_proposed: bool = False) -> _m128.FicaResult:
+    def fica(self, year: int, mode: Num = 'employee', wages: Num = '0', net_profit: Num = '0', filing_status: Num | None = None, other_medicare_wages: Num = '0', rounding: Num = 'HALF_UP', decimals: int = 2, *, as_of: Num | None = None, include_proposed: bool = False) -> _m129.FicaResult:
         """미국 FICA 급여세(IRC 3101, 3111) 근로자·고용주 부담분과 자영업세 SECA(IRC 1401, 순이익의 92.35%)를 과세연도 정책으로 계산한다. 금액은 USD 연간 합계 문자열, 세목별로 decimals 자리 반올림(기본 HALF_UP 2자리). 추가 Medicare 0.9%는 고용주 원천징수(20만 달러 초과)와 filing_status 별 신고 정산(25만/12.5만/20만)을 나눠 낸다. 사회보장 기준액은 고용주 한 곳 기준이며 복수 고용주 초과징수 환급, 선택적 계산법, RRTA, 배우자 자영업 소득 합산은 다루지 않는다. 오용 예: 급여 1회분을 연간 임금으로 넣기."""
         ...
-    def state_tax(self, taxable_income: Num, state: Num, filing_status: Num, year: int, apply_standard_deduction: bool = False, rounding: Num = 'HALF_UP', decimals: int = 2, state_agi: Num | None = None, *, as_of: Num | None = None, include_proposed: bool = False) -> _m129.TaxUsStateTaxResult:
+    def state_tax(self, taxable_income: Num, state: Num, filing_status: Num, year: int, apply_standard_deduction: bool = False, rounding: Num = 'HALF_UP', decimals: int = 2, state_agi: Num | None = None, *, as_of: Num | None = None, include_proposed: bool = False) -> _m130.TaxUsStateTaxResult:
         """미국 주 소득세를 계산한다(CA, NY, TX). 신고 유형별 누진 구간과 주별 표준공제를 반영하고 TX 는 소득세가 없어 0이다. NY 는 조정총소득(state_agi)이 107,650 을 넘으면 세액 환수(recapture) 워크시트를, CA 는 과세표준 1,000,000 초과분에 1% 가산세를 적용한다. 금액은 USD Decimal 문자열이고 기본은 소수 둘째 자리 HALF_UP이다. 연도별 지원 범위가 다르고(CA 2025), 지방세나 FICA 는 포함하지 않는다."""
         ...
 
 
 class _UnitsTools(Protocol):
-    def convert(self, magnitude: Num, from_unit: Num, to_unit: Num) -> _m130.ConvertResult:
+    def convert(self, magnitude: Num, from_unit: Num, to_unit: Num) -> _m131.ConvertResult:
         """pint 로 물리 단위를 변환한다. magnitude 는 Decimal 문자열, from_unit 과 to_unit 은 pint 단위 이름(meter, foot, km 등)이고 차원이 다르거나 모르는 단위는 오류이다. 결과 magnitude 는 문자열이며 1E+3 같은 지수 표기가 나올 수 있다. 섭씨·화씨는 끝자리 오차가 생기므로 units.temperature 를 쓴다."""
         ...
-    def data_size_convert(self, magnitude: Num, from_unit: Num, to_unit: Num, mode: Num = 'si') -> _m131.DataSizeConvertResult:
+    def data_size_convert(self, magnitude: Num, from_unit: Num, to_unit: Num, mode: Num = 'si') -> _m132.DataSizeConvertResult:
         """데이터 크기 단위를 바이트 기준으로 변환한다. mode 'si'(b, B, kB, MB, GB, TB, PB, 1000 배, b 는 비트, 기본)와 'iec'(B, KiB, MiB, GiB, TiB, PiB, 1024 배)는 각 표의 단위만, 'mixed' 는 두 표를 함께 허용한다. magnitude 는 0 이상 Decimal 문자열이고 단위는 대소문자를 구분한다(KB 는 오류, kB 만 유효)."""
         ...
-    def energy_convert(self, magnitude: Num, from_unit: Num, to_unit: Num) -> _m131.EnergyConvertResult:
+    def energy_convert(self, magnitude: Num, from_unit: Num, to_unit: Num) -> _m132.EnergyConvertResult:
         """에너지 단위를 J 기준 Decimal 계수로 변환한다. 지원 단위는 J, kJ, cal, kcal, eV, BTU, Wh, kWh 이며 대소문자를 구분하고 magnitude 는 Decimal 문자열이다. cal 은 열화학 칼로리(4.184 J)이고 결과는 magnitude 와 unit 이다. 목록에 없는 단위(MJ, 국제표 칼로리 등)는 오류이다."""
         ...
-    def fx_convert(self, amount: Num, from_ccy: Num, to_ccy: Num, rate: Num, rounding: Num = 'HALF_EVEN') -> _m132.FxConvertResult:
+    def fx_convert(self, amount: Num, from_ccy: Num, to_ccy: Num, rate: Num, rounding: Num = 'HALF_EVEN') -> _m133.FxConvertResult:
         """amount * rate 를 to_ccy 의 소수 자릿수로 반올림해 amount(문자열)와 currency 를 반환한다. 자릿수는 JPY, KRW 등 0, USD 등 2, KWD 등 3 이고 표에 없는 통화는 2 이다. rounding 은 HALF_EVEN(기본), HALF_UP, DOWN, UP, FLOOR, CEIL. rate 는 from_ccy 에서 to_ccy 방향의 양수이며 환율을 조회하지는 않는다."""
         ...
-    def fx_triangulate(self, amount: Num, from_ccy: Num, via_ccy: Num, to_ccy: Num, rate1: Num, rate2: Num, rounding: Num = 'HALF_EVEN') -> _m132.FxTriangulateResult:
+    def fx_triangulate(self, amount: Num, from_ccy: Num, via_ccy: Num, to_ccy: Num, rate1: Num, rate2: Num, rounding: Num = 'HALF_EVEN') -> _m133.FxTriangulateResult:
         """중간 통화를 거치는 삼각 환산 amount * rate1 * rate2 를 to_ccy 의 소수 자릿수로 한 번만 반올림해 amount(문자열)와 currency 를 반환한다. rate1 은 from_ccy 에서 via_ccy, rate2 는 via_ccy 에서 to_ccy 방향의 양수이며 중간 금액은 반올림하지 않는다. rounding 기본값은 HALF_EVEN 이다."""
         ...
-    def pressure_convert(self, magnitude: Num, from_unit: Num, to_unit: Num) -> _m131.PressureConvertResult:
+    def pressure_convert(self, magnitude: Num, from_unit: Num, to_unit: Num) -> _m132.PressureConvertResult:
         """압력 단위를 Pa 기준 Decimal 계수로 변환한다. 지원 단위는 Pa, kPa, MPa, atm, bar, mbar, psi, mmHg, torr 이며 대소문자를 구분하고 magnitude 는 Decimal 문자열이다. 단순 배율 변환이라 게이지압과 절대압의 차이는 반영하지 않는다. 결과는 magnitude 와 unit 이다."""
         ...
-    def temperature(self, value: Num, from_scale: Num, to_scale: Num) -> _m133.TemperatureResult:
+    def temperature(self, value: Num, from_scale: Num, to_scale: Num) -> _m134.TemperatureResult:
         """섭씨(C), 화씨(F), 켈빈(K), 랭킨(R) 사이에서 온도를 변환한다. value 는 Decimal 문자열, from_scale 과 to_scale 은 대소문자 구분 없는 한 글자이며 결과는 value 와 대문자 scale 이다. 절대영도 미만 입력은 오류이다. 온도 차이(Δ)가 아닌 절대 온도 값 변환용이고, 5/9 계수는 유효 50자리로 근사한다."""
         ...
-    def time_small_convert(self, magnitude: Num, from_unit: Num, to_unit: Num) -> _m131.TimeSmallConvertResult:
+    def time_small_convert(self, magnitude: Num, from_unit: Num, to_unit: Num) -> _m132.TimeSmallConvertResult:
         """짧은 시간 단위 s, ms, us, ns, ps, min, hour, day 사이를 pint 로 변환한다. magnitude 는 Decimal 문자열이고 단위는 대소문자를 구분하며 1 day 는 86400 s 이다. 월과 연은 길이가 일정하지 않아 지원하지 않으므로 날짜 간격에는 datetime.diff 를 쓴다."""
         ...
 

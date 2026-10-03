@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from sootool.modules.tax import (
     capital_gains,
+    kr_comprehensive_income_tax,
     kr_corporate,
     kr_education_tax_add,
     kr_eitc,
@@ -40,4 +41,5 @@ __all__ = [
     "kr_registration_license_tax",
     "kr_securities_transaction",
     "kr_pension_income",
+    "kr_comprehensive_income_tax",
 ]
