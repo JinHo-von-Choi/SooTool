@@ -47,6 +47,7 @@ class Meta(TypedDict):
     engine:        NotRequired[str]
     hints:         NotRequired[list[Hint]]
     session_stats: NotRequired[dict[str, Any]]
+    input_coerced: NotRequired[list[dict[str, str]]]
 
 
 class TraceStep(TypedDict):

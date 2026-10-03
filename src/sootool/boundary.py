@@ -14,6 +14,7 @@
 """
 from __future__ import annotations
 
+import contextvars
 import functools
 import inspect
 import logging
@@ -27,7 +28,7 @@ from typing import Annotated, Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 from mcp.types import CallToolResult, InputRequiredResult, TextContent
-from pydantic import BeforeValidator, ValidationError
+from pydantic import BeforeValidator, ValidationError, ValidationInfo
 
 from sootool.core.errors import InvalidArgumentsError, SooToolError, UnknownToolError
 
@@ -37,14 +38,27 @@ INTERNAL_ERROR_CODE = "internal_error"
 _INTERNAL_MESSAGE   = "계산 중 예기치 않은 오류가 발생했습니다."
 
 
-def _number_to_str(value: Any) -> Any:
-    """JSON 숫자를 문자열 숫자로 바꾼다. 그 밖의 값은 그대로 두어 검증 단계가 판단하게 한다."""
+_COERCED_FLOATS: contextvars.ContextVar[list[dict[str, str]] | None] = contextvars.ContextVar(
+    "sootool_coerced_floats", default=None,
+)
+
+
+def _number_to_str(value: Any, info: ValidationInfo) -> Any:
+    """JSON 숫자를 문자열 숫자로 바꾼다. 그 밖의 값은 그대로 두어 검증 단계가 판단하게 한다.
+
+    부동소수는 배정밀도 표기(repr)로 바뀌어 원래 의도한 자릿수와 다를 수 있으므로, 호출 단위로 변환
+    기록을 남겨 응답의 ``_meta.input_coerced`` 로 알린다.
+    """
     if isinstance(value, bool):
         return value
     if isinstance(value, (int, Decimal)):
         return str(value)
     if isinstance(value, float) and math.isfinite(value):
-        return repr(value)
+        converted = repr(value)
+        record = _COERCED_FLOATS.get()
+        if record is not None:
+            record.append({"argument": info.field_name or "", "from": "float", "as": converted})
+        return converted
     return value
 
 
@@ -112,6 +126,16 @@ def error_result(exc: BaseException) -> CallToolResult:
     )
 
 
+def _with_input_coerced(result: Any) -> Any:
+    """이 호출에서 부동소수가 문자열로 바뀌었다면 ``_meta.input_coerced`` 로 알린다."""
+    coerced = _COERCED_FLOATS.get()
+    if not coerced or not isinstance(result, dict):
+        return result
+    meta = dict(result.get("_meta") or {})
+    meta["input_coerced"] = [dict(item) for item in coerced]
+    return {**result, "_meta": meta}
+
+
 def with_error_contract(
     fn:         Callable[..., Any],
     call:       Callable[..., Any] | None = None,
@@ -130,7 +154,7 @@ def with_error_contract(
     @functools.wraps(fn)
     def bound(**kwargs: Any) -> Any:
         try:
-            return target(**kwargs)
+            return _with_input_coerced(target(**kwargs))
         except Exception as exc:  # noqa: BLE001
             if not isinstance(exc, SooToolError):
                 log.exception("unexpected error in tool %s", getattr(fn, "__name__", fn))
@@ -164,6 +188,18 @@ class SooToolServer(MCPServer):
         name: str,
         arguments: dict[str, Any],
         context: Any = None,
+    ) -> CallToolResult | InputRequiredResult:
+        token = _COERCED_FLOATS.set([])
+        try:
+            return await self._call_tool(name, arguments, context)
+        finally:
+            _COERCED_FLOATS.reset(token)
+
+    async def _call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        context: Any,
     ) -> CallToolResult | InputRequiredResult:
         tool = self._tool_manager.get_tool(name)
         if tool is not None:

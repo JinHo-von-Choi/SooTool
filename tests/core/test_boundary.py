@@ -145,6 +145,23 @@ def test_float_uses_shortest_roundtrip_representation(srv):
     assert result.structured_content["result"] == "0.3"
 
 
+def test_float_inputs_are_reported_in_response_meta(srv):
+    result = _call(srv, "core.add", {"operands": [0.1, 2, "3"]})
+    coerced = result.structured_content["_meta"]["input_coerced"]
+    assert coerced == [{"argument": "operands", "from": "float", "as": "0.1"}]
+
+
+def test_inputs_without_floats_carry_no_coercion_marker(srv):
+    result = _call(srv, "core.add", {"operands": [1, "2"]})
+    assert "input_coerced" not in result.structured_content["_meta"]
+
+
+def test_coercion_records_do_not_leak_between_calls(srv):
+    _call(srv, "core.add", {"operands": [0.5]})
+    result = _call(srv, "core.add", {"operands": ["1"]})
+    assert "input_coerced" not in result.structured_content["_meta"]
+
+
 def test_booleans_are_not_treated_as_numbers(srv):
     result = _call(srv, "core.add", {"operands": [True]})
     assert result.is_error is True
