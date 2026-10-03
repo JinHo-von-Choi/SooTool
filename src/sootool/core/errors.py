@@ -14,6 +14,10 @@ class PrecisionLossError(SooToolError):
     pass
 
 
+class UnsafeDirectoryError(SooToolError):
+    """정책·초안·감사 로그 저장 디렉터리가 안전하지 않음(심볼릭 링크, 타인 소유, 비디렉터리)."""
+
+
 class InputLimitError(DomainConstraintError):
     """도구 입력이 호출 단위 한도를 초과함.
 

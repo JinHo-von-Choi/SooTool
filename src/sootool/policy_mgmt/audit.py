@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from sootool.policy_mgmt.paths import get_audit_log_path
+from sootool.policy_mgmt.paths import ensure_private_dir, get_audit_log_path
 
 log = logging.getLogger("sootool.policy_mgmt.audit")
 
@@ -22,7 +22,7 @@ _WRITE_LOCK = threading.Lock()
 
 
 def _ensure_audit_file(path: Path) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_private_dir(path.parent)
     if not path.exists():
         path.touch(mode=0o600)
     else:

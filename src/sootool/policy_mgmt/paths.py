@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import logging
 import os
+import stat
 from pathlib import Path
+
+from sootool.core.errors import UnsafeDirectoryError
 
 log = logging.getLogger("sootool.policy_mgmt.paths")
 
@@ -30,8 +33,28 @@ def _xdg_runtime_dir() -> Path:
     xdg = os.environ.get("XDG_RUNTIME_DIR", "")
     if xdg:
         return Path(xdg)
-    uid = os.getuid()
-    return Path(f"/tmp/sootool-drafts-{uid}")  # noqa: S108
+    return _xdg_state_home()
+
+
+def ensure_private_dir(path: Path) -> None:
+    """디렉터리를 소유자 전용(0700)으로 준비한다.
+
+    없으면 만들고, 심볼릭 링크이거나 디렉터리가 아니거나 다른 사용자 소유이면
+    UnsafeDirectoryError 를 낸다. 소유자는 맞지만 그룹·기타 권한이 열려 있으면 0700 으로 좁힌다.
+    """
+    path.mkdir(parents=True, exist_ok=True)
+    info = path.lstat()
+    if stat.S_ISLNK(info.st_mode):
+        raise UnsafeDirectoryError(f"심볼릭 링크는 저장 디렉터리로 쓸 수 없습니다: {path}")
+    if not stat.S_ISDIR(info.st_mode):
+        raise UnsafeDirectoryError(f"디렉터리가 아닙니다: {path}")
+    if hasattr(os, "getuid") and info.st_uid != os.getuid():
+        raise UnsafeDirectoryError(f"다른 사용자 소유 디렉터리는 쓸 수 없습니다: {path}")
+    if stat.S_IMODE(info.st_mode) & 0o077:
+        try:
+            os.chmod(path, 0o700)
+        except OSError as exc:
+            raise UnsafeDirectoryError(f"디렉터리 권한을 0700 으로 좁히지 못했습니다: {path}") from exc
 
 
 def get_override_policy_dir() -> Path:
@@ -48,7 +71,7 @@ def get_override_policy_dir() -> Path:
 def get_draft_dir() -> Path:
     """Return the draft storage directory.
 
-    Priority: SOOTOOL_DRAFT_DIR > $XDG_RUNTIME_DIR/sootool/drafts/ > /tmp/sootool-drafts-<uid>/
+    Priority: SOOTOOL_DRAFT_DIR > $XDG_RUNTIME_DIR/sootool/drafts/ > $XDG_STATE_HOME/sootool/drafts/ > ~/.local/state/...
     """
     env = os.environ.get("SOOTOOL_DRAFT_DIR", "")
     if env:

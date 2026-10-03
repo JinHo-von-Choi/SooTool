@@ -16,7 +16,7 @@ import yaml
 from sootool.core.registry import REGISTRY
 from sootool.policy_mgmt import audit, drafts, loader
 from sootool.policy_mgmt.diff import diff_policies
-from sootool.policy_mgmt.paths import get_override_policy_dir
+from sootool.policy_mgmt.paths import ensure_private_dir, get_override_policy_dir
 from sootool.policy_mgmt.validators import validate_policy
 
 log = logging.getLogger("sootool.policy_mgmt.tools")
@@ -46,12 +46,7 @@ def _new_audit_id() -> str:
 
 def _atomic_write_yaml(yaml_path: Path, content: str) -> None:
     """Write content to yaml_path atomically via tmp -> fsync -> rename."""
-    yaml_path.parent.mkdir(parents=True, exist_ok=True)
-    # Enforce 0700 on directory
-    try:
-        os.chmod(yaml_path.parent, 0o700)
-    except OSError:
-        pass
+    ensure_private_dir(yaml_path.parent)
     tmp = yaml_path.with_suffix(".yaml.tmp")
     tmp.write_text(content, encoding="utf-8")
     os.chmod(tmp, 0o600)

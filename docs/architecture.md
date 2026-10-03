@@ -296,7 +296,7 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 - 벽시계 시각은 영수증에 넣지 않는다(결정성 유지). 시각이 필요한 감사 기록은 별도 로그 계층의 책임이다.
 - 정확도 등급: 응답 `_meta.engine` 은 도구가 사용하는 수치 엔진(`decimal`, `mpmath`, `float64`, `composite`, `none`)을 알린다. 정의 모듈의 임포트를 정적으로 분석하는 보수적 분류(`core/engines.py`)이며 영수증 해시에는 포함하지 않는다. `float64` 는 IEEE 754 배정밀도 근사임을 뜻한다.
 
-상태: 수용됨(Accepted). 2026-10-03.
+상태: 제안됨(Proposed). 2026-10-03.
 
 관련 아티팩트:
 - 구현: `src/sootool/core/audit.py`, `src/sootool/core/receipts.py`, `src/sootool/core/signing.py`, `src/sootool/receipt_tools.py`

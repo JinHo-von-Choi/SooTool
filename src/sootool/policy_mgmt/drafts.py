@@ -13,7 +13,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from sootool.policy_mgmt.paths import get_draft_dir
+from sootool.policy_mgmt.paths import ensure_private_dir, get_draft_dir
 
 log = logging.getLogger("sootool.policy_mgmt.drafts")
 
@@ -25,12 +25,7 @@ def _new_draft_id() -> str:
 
 
 def _ensure_draft_dir(draft_dir: Path) -> None:
-    draft_dir.mkdir(parents=True, exist_ok=True)
-    # Set directory permissions to 0700
-    try:
-        os.chmod(draft_dir, 0o700)
-    except OSError:
-        log.warning("Could not set 0700 permissions on draft dir: %s", draft_dir)
+    ensure_private_dir(draft_dir)
 
 
 def _draft_meta_path(draft_dir: Path, draft_id: str) -> Path:
