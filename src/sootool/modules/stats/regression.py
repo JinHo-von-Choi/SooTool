@@ -1,9 +1,12 @@
-"""Linear regression using statsmodels OLS.
+"""Linear regression (OLS) with numpy and scipy.
 
 Author: 최진호
 Date: 2026-04-22
+Modified: 2026-10-03
 
-Internal dtype: float64 (statsmodels/numpy). Boundaries: Decimal strings.
+Internal dtype: float64 (numpy/scipy). Boundaries: Decimal strings.
+계수는 의사역행렬(pinv)로 구하고, 표준오차와 p값은 잔차 자유도 n - rank 의 t 분포로 계산한다.
+결정계수는 상수항이 있으면 중심화 총제곱합, 없으면 비중심화 총제곱합을 쓴다.
 """
 from __future__ import annotations
 
@@ -16,7 +19,45 @@ from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import TracedResult
 
-sm = lazy_module("statsmodels.api")
+stats = lazy_module("scipy.stats")
+
+
+class _OlsFit:
+    """OLS 적합 결과(float64)."""
+
+    __slots__ = ("params", "pvalues", "resid", "rsquared")
+
+    def __init__(self, params: np.ndarray, pvalues: np.ndarray, resid: np.ndarray, rsquared: float) -> None:
+        self.params   = params
+        self.pvalues  = pvalues
+        self.resid    = resid
+        self.rsquared = rsquared
+
+
+def _has_constant(X: np.ndarray) -> bool:
+    """설계행렬에 상수항(상수 열 또는 열들의 일차결합으로 표현되는 상수)이 있는지 판정한다."""
+    if np.any(np.ptp(X, axis=0) == 0):
+        return True
+    ones = np.ones((X.shape[0], 1))
+    return int(np.linalg.matrix_rank(np.hstack([ones, X]))) == int(np.linalg.matrix_rank(X))
+
+
+def _ols(X: np.ndarray, y: np.ndarray) -> _OlsFit:
+    pinv      = np.linalg.pinv(X)
+    params    = pinv @ y
+    resid     = y - X @ params
+    rank      = int(np.linalg.matrix_rank(X))
+    df_resid  = X.shape[0] - rank
+    ssr       = float(resid @ resid)
+    centered  = _has_constant(X)
+    tss       = float(((y - y.mean()) ** 2).sum()) if centered else float(y @ y)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rsquared = float(1.0 - np.float64(ssr) / tss)
+        sigma2   = np.float64(ssr) / df_resid
+        bse      = np.sqrt(np.diag(pinv @ pinv.T) * sigma2)
+        tvalues  = params / bse
+        pvalues  = 2.0 * stats.t.sf(np.abs(tvalues), df_resid)
+    return _OlsFit(params, pvalues, resid, rsquared)
 
 
 class StatsRegressionLinearResult(TracedResult):
@@ -63,7 +104,7 @@ def stats_regression_linear(
     """
     trace = CalcTrace(
         tool="stats.regression_linear",
-        formula="statsmodels OLS: y = X*β + ε",
+        formula="OLS: y = X*β + ε",
     )
 
     if not X or not y:
@@ -91,16 +132,12 @@ def stats_regression_linear(
             f"샘플 수({n_samples})가 특징 수({n_features}) + 절편보다 많아야 합니다."
         )
 
-    if add_intercept:
-        X_fit = sm.add_constant(X_arr, has_constant="add")
-    else:
-        X_fit = X_arr
+    X_fit = np.hstack([np.ones((n_samples, 1)), X_arr]) if add_intercept else X_arr
 
-    model   = sm.OLS(y_arr, X_fit)
-    results = model.fit()
+    results = _ols(X_fit, y_arr)
 
-    params   = results.params
-    p_values = results.pvalues
+    params    = results.params
+    p_values  = results.pvalues
     residuals = list(results.resid)
 
     if add_intercept:
@@ -112,7 +149,7 @@ def stats_regression_linear(
         coef_vals     = [float(p) for p in params]
         p_coef        = [float(p) for p in p_values]
 
-    r_squared = float(results.rsquared)
+    r_squared = results.rsquared
 
     trace.input("X",             X)
     trace.input("y",             y)
