@@ -284,3 +284,20 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 - 스크립트: `scripts/release_preflight.py`, `scripts/count_tools.py`(`--assert-base` 포함)
 - 워크플로: `.github/workflows/ci.yml` (extras matrix), `.github/workflows/publish-pypi.yml` (attestation)
 
+
+## ADR-024: 계산 영수증과 재실행 검증
+
+- 영수증은 응답의 `_meta.integrity` 블록이다. ADR-021 필드에 `tool`(정규화된 도구 이름)과 `result_hash`를 더한다. `result_hash` 는 응답 본문(result, trace 등)의 canonical JSON sha256 이며 모든 중첩 수준의 `_meta` 를 제외한다. `_meta` 에는 세션 통계와 힌트처럼 호출 이력에 따라 달라지는 값이 들어가므로 해시에 넣지 않는다.
+- `input_hash` 는 도구 시그니처의 기본값을 채운 정규화 입력으로 계산한다. 직접 호출, MCP 호출, `sootool.call` 호출이 같은 해시를 갖는다.
+- `sootool.verify_receipt(tool, arguments, receipt)` 는 같은 도구를 다시 실행해 `tool`, `input_hash`, `result_hash`, `tool_version`, `policy_sha256` 을 대조한다. `sootool_version` 차이는 경고로만 보고한다. 결정적 엔진이라 가능한 검증이며 외부 API 에 의존하는 계산기는 제공할 수 없다.
+- 재실행 검증 제외 대상: `core.batch`, `core.pipeline`, `core.pipeline_resume`(결과에 소요 시간과 실행 id 포함), 쓰기 도구, `sootool.verify_receipt` 자신.
+- 선택 서명: 환경변수 `SOOTOOL_RECEIPT_KEY_FILE` 이 가리키는 파일의 base64 ed25519 개인 키로 `signature` 를 제외한 스탬프의 정규화 JSON 에 서명하고 `key_id`(공개 키 sha256 앞 16자)를 함께 싣는다. 키는 파일 경로로만 참조하며 도구 인자로 받지 않는다. 키를 읽을 수 없으면 계산 결과는 그대로 반환하고 `signature_error` 코드를 남긴다.
+- 서명 기반 함수는 `sootool.core.signing` 에 두고 정책 번들 서명(`policy_mgmt.signatures`)과 공유한다.
+- 벽시계 시각은 영수증에 넣지 않는다(결정성 유지). 시각이 필요한 감사 기록은 별도 로그 계층의 책임이다.
+
+상태: 수용됨(Accepted). 2026-10-03.
+
+관련 아티팩트:
+- 구현: `src/sootool/core/audit.py`, `src/sootool/core/receipts.py`, `src/sootool/core/signing.py`, `src/sootool/receipt_tools.py`
+- 테스트: `tests/core/test_receipts.py`
+- 계획: `docs/plans/2026-10-03-enhancement-roadmap.md` 4.1

@@ -16,6 +16,7 @@ from sootool.core.decimal_ops import add as d_add
 from sootool.core.decimal_ops import div as d_div
 from sootool.core.decimal_ops import mul as d_mul
 from sootool.core.decimal_ops import sub as d_sub
+from sootool.core.receipts import sign_stamp
 from sootool.core.registry import REGISTRY, ToolEntry
 from sootool.skill_guide.hints import generate_hints, inject_meta
 from sootool.skill_guide.session_state import STORE, ToolCall
@@ -162,11 +163,14 @@ def _integrity_post_processor(response: dict[str, Any], tool_name: str) -> dict[
     entry = _REG._tools.get(tool_name)
     tool_version = entry.version if entry is not None else "0.0.0"
 
-    stamp = integrity_stamp(
-        tool_name   = tool_name,
-        tool_version= tool_version,
-        inputs      = _INTEGRITY_CTX.inputs,
-        policy_meta = _INTEGRITY_CTX.policy_meta,
+    stamp = sign_stamp(
+        integrity_stamp(
+            tool_name   = tool_name,
+            tool_version= tool_version,
+            inputs      = _INTEGRITY_CTX.inputs,
+            policy_meta = _INTEGRITY_CTX.policy_meta,
+            result      = response,
+        )
     )
 
     result = dict(response)
@@ -321,6 +325,7 @@ def _load_modules() -> None:
     import sootool.modules.tax_us  # noqa: F401
     import sootool.modules.units  # noqa: F401
     import sootool.policy_mgmt.tools  # noqa: F401
+    import sootool.receipt_tools  # noqa: F401
     import sootool.skill_guide  # noqa: F401
 
 

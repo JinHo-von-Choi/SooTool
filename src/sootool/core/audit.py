@@ -144,11 +144,29 @@ def _get_sootool_version() -> str:
 _SOOTOOL_VERSION_CACHE: str | None = None
 
 
+def _strip_meta(value: Any) -> Any:
+    """모든 중첩 수준에서 ``_meta`` 키를 제거한다.
+
+    _meta 에는 세션 통계, 힌트처럼 호출 이력에 따라 달라지는 값이 들어가므로 결과 해시에서 뺀다.
+    """
+    if isinstance(value, dict):
+        return {k: _strip_meta(v) for k, v in value.items() if k != "_meta"}
+    if isinstance(value, (list, tuple)):
+        return [_strip_meta(v) for v in value]
+    return value
+
+
+def result_hash(result: dict[str, Any]) -> str:
+    """응답 본문(result, trace 등)의 정규화 JSON sha256. ``_meta`` 는 제외한다."""
+    return _sha256_hex(_canonical_json(_strip_meta(result)))
+
+
 def integrity_stamp(
     tool_name:    str,
     tool_version: str,
     inputs:       dict[str, Any] | None,
     policy_meta:  dict[str, Any] | None = None,
+    result:       dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build the _meta.integrity block for a single tool response.
 
@@ -160,6 +178,8 @@ def integrity_stamp(
                    sha256'd to produce ``input_hash``.
     policy_meta  : Optional dict with ``policy_sha256`` and ``policy_source``
                    keys, injected when the tool consumed a policy YAML.
+    result       : Optional response body; when given, ``result_hash`` (sha256
+                   of the canonical body without any ``_meta``) is added.
 
     Returns
     -------
@@ -169,10 +189,13 @@ def integrity_stamp(
     canonical    = _canonical_json(inputs if inputs is not None else {})
     input_hash   = _sha256_hex(canonical)
     stamp: dict[str, Any] = {
+        "tool":            tool_name,
         "input_hash":      input_hash,
-        "tool_version":    tool_version,
-        "sootool_version": _get_sootool_version(),
     }
+    if result is not None:
+        stamp["result_hash"] = result_hash(result)
+    stamp["tool_version"]    = tool_version
+    stamp["sootool_version"] = _get_sootool_version()
     if policy_meta:
         sha = policy_meta.get("policy_sha256")
         src = policy_meta.get("policy_source")

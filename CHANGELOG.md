@@ -7,9 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-REGISTRY 수치는 0.1.4와 동일(18 domains, 254 base tools, 10 admin policy-management tools).
+REGISTRY 수치: 18 domains, 255 base tools, 10 admin policy-management tools (0.1.4 대비 base 1개 증가).
 
 ### Added
+
+- 계산 영수증 재실행 검증: `_meta.integrity`에 `tool`과 `result_hash`(중첩 `_meta`를 제외한 응답 본문의 정규화 sha256)를 추가했다. 새 도구 `sootool.verify_receipt`가 `tool`, `arguments`, `receipt`로 같은 계산을 다시 실행해 도구 이름, 입력 해시, 결과 해시, 도구 버전, 정책 해시를 대조한다. `core.batch`, `core.pipeline`, `core.pipeline_resume`은 결과에 실행별 값이 있어 검증 대상에서 제외한다.
+- 영수증 선택 서명: 환경변수 `SOOTOOL_RECEIPT_KEY_FILE`에 base64 ed25519 개인 키 파일 경로를 지정하면 스탬프에 `key_id`와 `signature`가 추가된다. 키는 파일 경로로만 참조한다. 키 파일을 읽을 수 없으면 계산 결과는 그대로 반환하고 `signature_error` 코드를 남긴다. `verify_receipt`는 `public_key_b64`가 있으면 서명을 검증하고 `require_signature`로 서명 필수를 강제할 수 있다.
+- `sootool.core.signing`: 정책 번들과 영수증이 공유하는 ed25519 기반 함수.
 
 - `sootool.core.limits`: 도구 호출 단위 입력 한도의 단일 출처. 환경변수 `SOOTOOL_LIMIT_<이름>`으로 조정. 초과 입력은 `InputLimitError`(`DomainConstraintError` 하위)로 계산 전에 거부한다.
 - 한도 적용 도구: `probability.factorial`·`nCr`·`nPr`, `crypto.is_prime`, `finance.loan_schedule`·`irr`, `math.integrate_simpson`·`integrate_gauss_legendre`, `datetime.add_business_days`, `core.calc`(precision), `stats.bootstrap_ci`, `pm.monte_carlo_schedule`.
