@@ -131,6 +131,13 @@ def _stage2_required_fields(
                 "message": f"Required field '{field}' is missing",
                 "stage":   2,
             })
+    if "data" in doc and not isinstance(doc["data"], dict):
+        findings.append({
+            "level":   "error",
+            "path":    "data",
+            "message": "'data' must be a mapping",
+            "stage":   2,
+        })
 
 
 def _iso_date(value: Any) -> date | None:
@@ -260,7 +267,7 @@ def _stage4_cross_validation(
     findings: list[dict[str, Any]],
 ) -> None:
     data = doc.get("data")
-    if data is None:
+    if not isinstance(data, dict):
         return
 
     # effective_date year vs year field consistency
@@ -413,7 +420,10 @@ def _stage5_sensitivity(
     threshold: float,
     findings: list[dict[str, Any]],
 ) -> None:
-    new_tables = _extract_bracket_tables(doc.get("data", {}))
+    new_data = doc.get("data")
+    if not isinstance(new_data, dict) or not isinstance(prev_data, dict):
+        return
+    new_tables = _extract_bracket_tables(new_data)
     old_tables = _extract_bracket_tables(prev_data)
 
     for label, new_brackets in new_tables.items():

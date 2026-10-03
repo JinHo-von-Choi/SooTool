@@ -11,12 +11,13 @@ from typing import Any
 
 def _extract_brackets(data: dict[str, Any]) -> list[dict[str, Any]] | None:
     """Try to extract a bracket list from a policy data dict."""
-    if "brackets" in data:
-        return list(data["brackets"])
-    if "income_tax_brackets" in data:
-        return list(data["income_tax_brackets"])
-    if "house" in data and isinstance(data["house"], dict) and "brackets" in data["house"]:
-        return list(data["house"]["brackets"])
+    candidates: list[Any] = [data.get("brackets"), data.get("income_tax_brackets")]
+    house = data.get("house")
+    if isinstance(house, dict):
+        candidates.append(house.get("brackets"))
+    for candidate in candidates:
+        if isinstance(candidate, list) and all(isinstance(b, dict) for b in candidate):
+            return list(candidate)
     return None
 
 

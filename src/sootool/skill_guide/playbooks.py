@@ -9,9 +9,9 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "scenario": "월급 → 연봉 → 소득세 → 실수령액",
         "steps": [
             {"id": "annual", "tool": "core.mul", "args": {"operands": ["<월급>", "12"]}},
-            {"id": "tax", "tool": "tax.kr_income", "args": {"taxable_income": "${annual.result}", "year": "<연도>"}},
-            {"id": "net", "tool": "core.sub", "args": {"a": "${annual.result}", "b": "${tax.tax}"}},
-            {"id": "monthly_net", "tool": "core.div", "args": {"a": "${net.result}", "b": "12"}},
+            {"id": "tax", "tool": "tax.kr_income", "args": {"taxable_income": "${annual.result.result}", "year": "<연도>"}},
+            {"id": "net", "tool": "core.sub", "args": {"a": "${annual.result.result}", "b": "${tax.result.tax}"}},
+            {"id": "monthly_net", "tool": "core.div", "args": {"a": "${net.result.result}", "b": "12"}},
         ],
         "expected_output": {"monthly_net": "실수령 월급", "annual_tax": "연간 소득세"},
         "caveats": [
@@ -23,14 +23,16 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "id": "vat_batch_summary",
         "scenario": "거래명세서 N건 → 부가세 분리 후 합계",
         "steps": [
-            {"id": "vat_items", "tool": "core.batch", "args": {"items": [{"id": "item_<i>", "tool": "accounting.vat_extract", "args": {"vat_inclusive": "<금액>", "rate": "0.1"}}]}},
-            {"id": "total_supply", "tool": "core.add", "args": {"operands": ["${vat_items.results[*].output.supply}"]}},
-            {"id": "total_vat", "tool": "core.add", "args": {"operands": ["${vat_items.results[*].output.vat}"]}},
+            {"id": "item_1", "tool": "accounting.vat_extract", "args": {"gross": "<금액1>", "rate": "0.1"}},
+            {"id": "item_2", "tool": "accounting.vat_extract", "args": {"gross": "<금액2>", "rate": "0.1"}},
+            {"id": "total_net", "tool": "core.add", "args": {"operands": ["${item_1.result.net}", "${item_2.result.net}"]}},
+            {"id": "total_vat", "tool": "core.add", "args": {"operands": ["${item_1.result.vat}", "${item_2.result.vat}"]}},
         ],
-        "expected_output": {"total_supply": "공급가액 합계", "total_vat": "부가세 합계"},
+        "expected_output": {"total_net": "공급가액 합계", "total_vat": "부가세 합계"},
         "caveats": [
             "각 건의 vat는 DOWN 반올림 적용됨",
             "합계 시 반올림 누적 오차 최소화를 위해 개별 추출 후 합산 권장",
+            "항목이 더 있으면 vat_extract 단계와 합계 operands 를 항목 수만큼 늘린다",
         ],
     },
     {
@@ -54,7 +56,7 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "steps": [
             {"id": "npvs", "tool": "core.batch", "args": {
                 "items": [
-                    {"id": "npv_<r>", "tool": "finance.npv", "args": {"rate": "<r>", "cashflows": "<현금흐름>"}}
+                    {"id": f"npv_{r}", "tool": "finance.npv", "args": {"rate": r, "cashflows": "<현금흐름>"}}
                     for r in ["0.05", "0.06", "0.07", "0.08", "0.09", "0.10", "0.11", "0.12", "0.13"]
                 ]
             }},
@@ -66,23 +68,19 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "id": "bond_yield_duration",
         "scenario": "채권 YTM + Modified Duration 동시 계산",
         "steps": [
-            {"id": "bond_calcs", "tool": "core.batch", "args": {
-                "items": [
-                    {"id": "ytm", "tool": "finance.bond_ytm", "args": {"face": "<액면가>", "price": "<시장가>", "coupon_rate": "<쿠폰율>", "periods": "<기간>", "freq": "<이자지급횟수>"}},
-                    {"id": "dur", "tool": "finance.bond_duration", "args": {"face": "<액면가>", "price": "<시장가>", "coupon_rate": "<쿠폰율>", "periods": "<기간>", "freq": "<이자지급횟수>"}},
-                ]
-            }},
+            {"id": "ytm", "tool": "finance.bond_ytm", "args": {"price": "<시장가>", "face": "<액면가>", "coupon_rate": "<쿠폰율>", "years": "<기간>", "freq": "<이자지급횟수>"}},
+            {"id": "dur", "tool": "finance.bond_duration", "args": {"face": "<액면가>", "coupon_rate": "<쿠폰율>", "years": "<기간>", "ytm": "${ytm.result.ytm}", "freq": "<이자지급횟수>"}},
         ],
-        "expected_output": {"ytm": "수익률", "macaulay_duration": "맥컬리 듀레이션", "modified_duration": "수정 듀레이션"},
+        "expected_output": {"ytm": "수익률(ytm 단계)", "macaulay": "맥컬리 듀레이션(dur 단계)", "modified": "수정 듀레이션(dur 단계)"},
         "caveats": ["Macaulay와 Modified Duration 모두 반환됨", "YTM은 시장가 기준 수익률"],
     },
     {
         "id": "ab_test_full",
         "scenario": "A/B 테스트 전체 (t-검정 + 신뢰구간 + 효과 크기)",
         "steps": [
-            {"id": "ttest", "tool": "stats.ttest_two_sample", "args": {"group_a": "<A그룹 데이터>", "group_b": "<B그룹 데이터>"}},
-            {"id": "ci_a", "tool": "stats.ci_mean", "args": {"data": "<A그룹 데이터>", "confidence": "0.95"}},
-            {"id": "ci_b", "tool": "stats.ci_mean", "args": {"data": "<B그룹 데이터>", "confidence": "0.95"}},
+            {"id": "ttest", "tool": "stats.ttest_two_sample", "args": {"a": "<A그룹 데이터>", "b": "<B그룹 데이터>"}},
+            {"id": "ci_a", "tool": "stats.ci_mean", "args": {"values": "<A그룹 데이터>", "confidence": "0.95"}},
+            {"id": "ci_b", "tool": "stats.ci_mean", "args": {"values": "<B그룹 데이터>", "confidence": "0.95"}},
         ],
         "expected_output": {"p_value": "유의확률", "ci_a": "A 신뢰구간", "ci_b": "B 신뢰구간"},
         "caveats": ["p < 0.05 기준 유의성 판단", "효과 크기(Cohen's d) 별도 계산 필요 시 descriptive stats 활용"],
@@ -93,7 +91,7 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "title": "연간 세법 개정 정책 업데이트",
         "description": "고시문 확인 후 policy_propose → policy_activate 워크플로우로 정책 YAML을 갱신한다.",
         "steps": [
-            {"id": "validate", "tool": "sootool.policy_validate", "args": {"domain": "<도메인>", "name": "<정책명>", "year": "<연도>", "yaml_content": "<새 YAML>"}},
+            {"id": "validate", "tool": "sootool.policy_validate", "args": {"domain": "<도메인>", "name": "<정책명>", "yaml_content": "<새 YAML>"}},
             {"id": "propose",  "tool": "sootool.policy_propose",  "args": {"domain": "<도메인>", "name": "<정책명>", "year": "<연도>", "yaml_content": "<새 YAML>"}},
             {"id": "activate", "tool": "sootool.policy_activate",  "args": {"draft_id": "<propose 응답의 draft_id>"}},
         ],
@@ -132,7 +130,7 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "steps": [
             {"id": "seollal",  "tool": "datetime.lunar_holiday", "args": {"name": "seollal", "year": "<연도>"}},
             {"id": "chuseok",  "tool": "datetime.lunar_holiday", "args": {"name": "chuseok", "year": "<연도>"}},
-            {"id": "preholiday", "tool": "datetime.add_business_days", "args": {"start_date": "${chuseok.solar_date}", "days": "-3", "country": "KR"}},
+            {"id": "preholiday", "tool": "datetime.add_business_days", "args": {"start_date": "${chuseok.result.solar_date}", "days": -3, "country": "KR"}},
         ],
         "expected_output": {"seollal": "설날 양력 ISO", "chuseok": "추석 양력 ISO", "preholiday": "추석 3영업일 전"},
         "caveats": ["음력 연도 지원 범위 2020-2030", "country=KR 공휴일 포함"],
@@ -156,7 +154,7 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
         "title": "NPV 검증 (이산 vs 수치 적분)",
         "description": "연속 현금흐름 f(t) 를 심프슨 법칙으로 적분하고 finance.npv 의 이산 합산 결과와 비교한다.",
         "steps": [
-            {"id": "integral", "tool": "math.integrate_simpson", "args": {"expression": "<f(t) 표현식>", "a": "0", "b": "<T>", "n": "200", "variable": "t"}},
+            {"id": "integral", "tool": "math.integrate_simpson", "args": {"expression": "<f(t) 표현식>", "a": "0", "b": "<T>", "n": 200, "variable": "t"}},
             {"id": "npv",      "tool": "finance.npv",            "args": {"rate": "<할인율>", "cashflows": "<샘플링된 현금흐름 리스트>"}},
         ],
         "expected_output": {"integral": "연속 적분 현재가치", "npv": "이산 NPV"},
@@ -186,12 +184,12 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
                 "items": [
                     {"id": "ohm",    "tool": "engineering.electrical_ohm",    "args": {"voltage": "<V>", "resistance": "<R>"}},
                     {"id": "power",  "tool": "engineering.electrical_power",  "args": {"voltage": "<V>", "resistance": "<R>"}},
-                    {"id": "rpar",   "tool": "engineering.resistor_parallel", "args": {"resistances": ["<R1>", "<R2>", "<R3>"]}},
+                    {"id": "rpar",   "tool": "engineering.resistor_parallel", "args": {"resistors": ["<R1>", "<R2>", "<R3>"]}},
                 ]
             }},
         ],
         "expected_output": {"ohm": "I=V/R", "power": "P=V^2/R", "rpar": "R_eq"},
-        "caveats": ["저항 단위 Ω 일치", "병렬저항 3개 이상 시 resistances 배열에 모두 나열"],
+        "caveats": ["저항 단위 Ω 일치", "병렬저항 3개 이상 시 resistors 배열에 모두 나열"],
     },
 ]
 
@@ -201,9 +199,9 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         "scenario": "Monthly salary -> annual -> income tax -> net pay",
         "steps": [
             {"id": "annual", "tool": "core.mul", "args": {"operands": ["<monthly>", "12"]}},
-            {"id": "tax", "tool": "tax.kr_income", "args": {"taxable_income": "${annual.result}", "year": "<year>"}},
-            {"id": "net", "tool": "core.sub", "args": {"a": "${annual.result}", "b": "${tax.tax}"}},
-            {"id": "monthly_net", "tool": "core.div", "args": {"a": "${net.result}", "b": "12"}},
+            {"id": "tax", "tool": "tax.kr_income", "args": {"taxable_income": "${annual.result.result}", "year": "<year>"}},
+            {"id": "net", "tool": "core.sub", "args": {"a": "${annual.result.result}", "b": "${tax.result.tax}"}},
+            {"id": "monthly_net", "tool": "core.div", "args": {"a": "${net.result.result}", "b": "12"}},
         ],
         "expected_output": {"monthly_net": "net monthly pay", "annual_tax": "annual income tax"},
         "caveats": [
@@ -215,14 +213,16 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         "id": "vat_batch_summary",
         "scenario": "N invoice lines -> separate VAT -> totals",
         "steps": [
-            {"id": "vat_items", "tool": "core.batch", "args": {"items": [{"id": "item_<i>", "tool": "accounting.vat_extract", "args": {"vat_inclusive": "<amount>", "rate": "0.1"}}]}},
-            {"id": "total_supply", "tool": "core.add", "args": {"operands": ["${vat_items.results[*].output.supply}"]}},
-            {"id": "total_vat", "tool": "core.add", "args": {"operands": ["${vat_items.results[*].output.vat}"]}},
+            {"id": "item_1", "tool": "accounting.vat_extract", "args": {"gross": "<amount1>", "rate": "0.1"}},
+            {"id": "item_2", "tool": "accounting.vat_extract", "args": {"gross": "<amount2>", "rate": "0.1"}},
+            {"id": "total_net", "tool": "core.add", "args": {"operands": ["${item_1.result.net}", "${item_2.result.net}"]}},
+            {"id": "total_vat", "tool": "core.add", "args": {"operands": ["${item_1.result.vat}", "${item_2.result.vat}"]}},
         ],
-        "expected_output": {"total_supply": "total supply amount", "total_vat": "total VAT"},
+        "expected_output": {"total_net": "total supply amount", "total_vat": "total VAT"},
         "caveats": [
             "Each line VAT uses DOWN rounding",
             "Extract per-line then sum to minimize rounding accumulation",
+            "For more lines, add a vat_extract step per line and list each in the totals operands",
         ],
     },
     {
@@ -246,7 +246,7 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         "steps": [
             {"id": "npvs", "tool": "core.batch", "args": {
                 "items": [
-                    {"id": "npv_<r>", "tool": "finance.npv", "args": {"rate": "<r>", "cashflows": "<cashflows>"}}
+                    {"id": f"npv_{r}", "tool": "finance.npv", "args": {"rate": r, "cashflows": "<cashflows>"}}
                     for r in ["0.05", "0.06", "0.07", "0.08", "0.09", "0.10", "0.11", "0.12", "0.13"]
                 ]
             }},
@@ -258,23 +258,19 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         "id": "bond_yield_duration",
         "scenario": "Bond YTM + Modified Duration simultaneously",
         "steps": [
-            {"id": "bond_calcs", "tool": "core.batch", "args": {
-                "items": [
-                    {"id": "ytm", "tool": "finance.bond_ytm", "args": {"face": "<face>", "price": "<price>", "coupon_rate": "<coupon>", "periods": "<n>", "freq": "<freq>"}},
-                    {"id": "dur", "tool": "finance.bond_duration", "args": {"face": "<face>", "price": "<price>", "coupon_rate": "<coupon>", "periods": "<n>", "freq": "<freq>"}},
-                ]
-            }},
+            {"id": "ytm", "tool": "finance.bond_ytm", "args": {"price": "<price>", "face": "<face>", "coupon_rate": "<coupon>", "years": "<n>", "freq": "<freq>"}},
+            {"id": "dur", "tool": "finance.bond_duration", "args": {"face": "<face>", "coupon_rate": "<coupon>", "years": "<n>", "ytm": "${ytm.result.ytm}", "freq": "<freq>"}},
         ],
-        "expected_output": {"ytm": "yield to maturity", "macaulay_duration": "Macaulay duration", "modified_duration": "Modified duration"},
+        "expected_output": {"ytm": "yield to maturity (ytm step)", "macaulay": "Macaulay duration (dur step)", "modified": "Modified duration (dur step)"},
         "caveats": ["Both Macaulay and Modified Duration returned", "YTM is yield based on market price"],
     },
     {
         "id": "ab_test_full",
         "scenario": "Full A/B test: t-test + confidence interval + effect size",
         "steps": [
-            {"id": "ttest", "tool": "stats.ttest_two_sample", "args": {"group_a": "<data_a>", "group_b": "<data_b>"}},
-            {"id": "ci_a", "tool": "stats.ci_mean", "args": {"data": "<data_a>", "confidence": "0.95"}},
-            {"id": "ci_b", "tool": "stats.ci_mean", "args": {"data": "<data_b>", "confidence": "0.95"}},
+            {"id": "ttest", "tool": "stats.ttest_two_sample", "args": {"a": "<data_a>", "b": "<data_b>"}},
+            {"id": "ci_a", "tool": "stats.ci_mean", "args": {"values": "<data_a>", "confidence": "0.95"}},
+            {"id": "ci_b", "tool": "stats.ci_mean", "args": {"values": "<data_b>", "confidence": "0.95"}},
         ],
         "expected_output": {"p_value": "significance probability", "ci_a": "CI for A", "ci_b": "CI for B"},
         "caveats": ["Significance threshold p < 0.05", "Use descriptive stats for Cohen's d effect size"],
@@ -285,7 +281,7 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         "title": "Annual Tax Law Policy Update",
         "description": "After reviewing official notices, update a policy YAML via policy_propose → policy_activate workflow.",
         "steps": [
-            {"id": "validate", "tool": "sootool.policy_validate", "args": {"domain": "<domain>", "name": "<policy>", "year": "<year>", "yaml_content": "<new YAML>"}},
+            {"id": "validate", "tool": "sootool.policy_validate", "args": {"domain": "<domain>", "name": "<policy>", "yaml_content": "<new YAML>"}},
             {"id": "propose",  "tool": "sootool.policy_propose",  "args": {"domain": "<domain>", "name": "<policy>", "year": "<year>", "yaml_content": "<new YAML>"}},
             {"id": "activate", "tool": "sootool.policy_activate",  "args": {"draft_id": "<draft_id from propose>"}},
         ],
@@ -324,7 +320,7 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         "steps": [
             {"id": "seollal",    "tool": "datetime.lunar_holiday",      "args": {"name": "seollal", "year": "<year>"}},
             {"id": "chuseok",    "tool": "datetime.lunar_holiday",      "args": {"name": "chuseok", "year": "<year>"}},
-            {"id": "preholiday", "tool": "datetime.add_business_days",  "args": {"start_date": "${chuseok.solar_date}", "days": "-3", "country": "KR"}},
+            {"id": "preholiday", "tool": "datetime.add_business_days",  "args": {"start_date": "${chuseok.result.solar_date}", "days": -3, "country": "KR"}},
         ],
         "expected_output": {"seollal": "Seollal solar ISO", "chuseok": "Chuseok solar ISO", "preholiday": "3 business days before"},
         "caveats": ["Lunar year range 2020-2030", "country=KR holidays considered"],
@@ -348,7 +344,7 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
         "title": "NPV validation (discrete vs continuous)",
         "description": "Integrate continuous cash flow f(t) via Simpson's rule and compare against discrete finance.npv.",
         "steps": [
-            {"id": "integral", "tool": "math.integrate_simpson", "args": {"expression": "<f(t) expression>", "a": "0", "b": "<T>", "n": "200", "variable": "t"}},
+            {"id": "integral", "tool": "math.integrate_simpson", "args": {"expression": "<f(t) expression>", "a": "0", "b": "<T>", "n": 200, "variable": "t"}},
             {"id": "npv",      "tool": "finance.npv",            "args": {"rate": "<rate>", "cashflows": "<sampled cash flows>"}},
         ],
         "expected_output": {"integral": "continuous PV", "npv": "discrete NPV"},
@@ -378,12 +374,12 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
                 "items": [
                     {"id": "ohm",   "tool": "engineering.electrical_ohm",    "args": {"voltage": "<V>", "resistance": "<R>"}},
                     {"id": "power", "tool": "engineering.electrical_power",  "args": {"voltage": "<V>", "resistance": "<R>"}},
-                    {"id": "rpar",  "tool": "engineering.resistor_parallel", "args": {"resistances": ["<R1>", "<R2>", "<R3>"]}},
+                    {"id": "rpar",  "tool": "engineering.resistor_parallel", "args": {"resistors": ["<R1>", "<R2>", "<R3>"]}},
                 ]
             }},
         ],
         "expected_output": {"ohm": "I=V/R", "power": "P=V^2/R", "rpar": "R_eq"},
-        "caveats": ["Keep resistance units in ohms", "List all resistors in the resistances array"],
+        "caveats": ["Keep resistance units in ohms", "List all resistors in the resistors array"],
     },
 ]
 

@@ -8,23 +8,23 @@ _EXAMPLES_KO: list[dict[str, Any]] = [
         "request": "500만원에서 부가세 분리해줘",
         "tool_call": {
             "tool": "accounting.vat_extract",
-            "args": {"vat_inclusive": "5000000", "rate": "0.1"},
+            "args": {"gross": "5000000", "rate": "0.1"},
         },
         "expected_output": {
-            "supply": "4545454",
+            "net": "4545454",
             "vat": "454546",
-            "trace": {"formula": "supply=floor(inclusive/(1+rate)), vat=inclusive-supply"},
+            "trace": {"formula": "net=floor(gross/(1+rate)), vat=gross-net"},
         },
     },
     {
-        "request": "2024년 종합소득세 계산해줘 (과세표준 8000만원)",
+        "request": "2026년 종합소득세 계산해줘 (과세표준 8000만원)",
         "tool_call": {
             "tool": "tax.kr_income",
-            "args": {"taxable_income": "80000000", "year": 2024},
+            "args": {"taxable_income": "80000000", "year": 2026},
         },
         "expected_output": {
             "tax": "...",
-            "trace": {"policy_version": "kr_income_2024", "formula": "progressive brackets"},
+            "trace": {"policy_version": "kr_income_2026", "formula": "progressive brackets"},
         },
     },
     {
@@ -54,8 +54,8 @@ _EXAMPLES_KO: list[dict[str, Any]] = [
             "args": {
                 "steps": [
                     {"id": "annual", "tool": "core.mul", "args": {"operands": ["3500000", "12"]}},
-                    {"id": "tax", "tool": "tax.kr_income", "args": {"taxable_income": "${annual.result}", "year": 2024}},
-                    {"id": "net", "tool": "core.sub", "args": {"a": "${annual.result}", "b": "${tax.tax}"}},
+                    {"id": "tax", "tool": "tax.kr_income", "args": {"taxable_income": "${annual.result.result}", "year": 2026}},
+                    {"id": "net", "tool": "core.sub", "args": {"a": "${annual.result.result}", "b": "${tax.result.tax}"}},
                 ]
             },
         },
@@ -96,23 +96,23 @@ _EXAMPLES_EN: list[dict[str, Any]] = [
         "request": "Separate VAT from KRW 5,000,000",
         "tool_call": {
             "tool": "accounting.vat_extract",
-            "args": {"vat_inclusive": "5000000", "rate": "0.1"},
+            "args": {"gross": "5000000", "rate": "0.1"},
         },
         "expected_output": {
-            "supply": "4545454",
+            "net": "4545454",
             "vat": "454546",
-            "trace": {"formula": "supply=floor(inclusive/(1+rate)), vat=inclusive-supply"},
+            "trace": {"formula": "net=floor(gross/(1+rate)), vat=gross-net"},
         },
     },
     {
-        "request": "Calculate 2024 Korean income tax for taxable income KRW 80,000,000",
+        "request": "Calculate 2026 Korean income tax for taxable income KRW 80,000,000",
         "tool_call": {
             "tool": "tax.kr_income",
-            "args": {"taxable_income": "80000000", "year": 2024},
+            "args": {"taxable_income": "80000000", "year": 2026},
         },
         "expected_output": {
             "tax": "...",
-            "trace": {"policy_version": "kr_income_2024"},
+            "trace": {"policy_version": "kr_income_2026"},
         },
     },
     {
@@ -142,8 +142,8 @@ _EXAMPLES_EN: list[dict[str, Any]] = [
             "args": {
                 "steps": [
                     {"id": "annual", "tool": "core.mul", "args": {"operands": ["3500000", "12"]}},
-                    {"id": "tax", "tool": "tax.kr_income", "args": {"taxable_income": "${annual.result}", "year": 2024}},
-                    {"id": "net", "tool": "core.sub", "args": {"a": "${annual.result}", "b": "${tax.tax}"}},
+                    {"id": "tax", "tool": "tax.kr_income", "args": {"taxable_income": "${annual.result.result}", "year": 2026}},
+                    {"id": "net", "tool": "core.sub", "args": {"a": "${annual.result.result}", "b": "${tax.result.tax}"}},
                 ]
             },
         },

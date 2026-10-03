@@ -113,8 +113,9 @@ def policy_propose(
     diff_result = None
     if prev_data is not None:
         doc_new = yaml.safe_load(effective_yaml)
-        new_data = doc_new.get("data", {}) if isinstance(doc_new, dict) else {}
-        diff_result = cast(PolicyDiff, diff_policies({"data": prev_data}, {"data": new_data}, year - 1, year))
+        new_data = doc_new.get("data") if isinstance(doc_new, dict) else None
+        if isinstance(new_data, dict) and isinstance(prev_data, dict):
+            diff_result = cast(PolicyDiff, diff_policies({"data": prev_data}, {"data": new_data}, year - 1, year))
 
     return {
         "draft_id":   meta["draft_id"],
