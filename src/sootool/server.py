@@ -110,7 +110,7 @@ def _add_registry_tool(server: MCPServer, entry: ToolEntry) -> None:
     server.add_tool(
         _bind_to_registry(entry),
         name        = entry.full_name,
-        description = entry.description,
+        description = entry.public_description,
         annotations = _annotations_for(entry),
     )
 

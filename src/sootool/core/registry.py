@@ -81,6 +81,20 @@ class ToolEntry:
     def full_name(self) -> str:
         return f"{self.namespace}.{self.name}"
 
+    @property
+    def public_description(self) -> str:
+        """도구 목록에 노출하는 설명. 폐기 예고된 도구는 앞에 대체 도구와 제거 예정 버전을 붙인다."""
+        if not self.deprecated:
+            return self.description
+        replacement = self.deprecated.get("replacement")
+        remove_in   = self.deprecated.get("remove_in")
+        notice = "[폐기 예정"
+        if replacement:
+            notice += f", 대체: {replacement}"
+        if remove_in:
+            notice += f", 제거 예정: {remove_in}"
+        return f"{notice}] {self.description}"
+
     def exposed_signature(self) -> inspect.Signature:
         """호출자가 보는 시그니처. 정책 기반 도구는 ``as_of``, ``include_proposed`` 를 더한다."""
         signature = inspect.signature(self.fn)

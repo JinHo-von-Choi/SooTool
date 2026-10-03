@@ -213,6 +213,8 @@ def _integrity_post_processor(response: dict[str, Any], tool_name: str) -> dict[
     meta["integrity"] = stamp
     if entry is not None:
         meta["engine"] = engine_of(entry)
+        if entry.deprecated:
+            meta["deprecated"] = dict(entry.deprecated)
     result["_meta"] = meta
     return result
 

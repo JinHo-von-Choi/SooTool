@@ -133,6 +133,7 @@ def describe_tool(entry: ToolEntry) -> dict[str, Any]:
         "idempotent":  spec.idempotent,
         "engine":      spec.engine,
         "exactness":   spec.exactness,
+        "deprecated":  spec.deprecated,
         "parameters":  parameters,
         "doc":         inspect.getdoc(entry.fn) or "",
     }

@@ -47,6 +47,7 @@ class ToolSpec:
     destructive: bool
     idempotent:  bool
     policy:      bool
+    deprecated:  dict[str, Any] | None
     engine:      str
     exactness:   str
     result_type: str | None
@@ -77,6 +78,7 @@ def tool_spec(entry: ToolEntry) -> ToolSpec:
         destructive = entry.destructive,
         idempotent  = entry.idempotent,
         policy      = entry.policy,
+        deprecated  = entry.deprecated,
         engine      = engine,
         exactness   = EXACTNESS[engine],
         result_type = None if declared is None else getattr(declared, "__name__", str(declared)),
