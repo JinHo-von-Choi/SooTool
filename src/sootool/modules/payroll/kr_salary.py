@@ -43,6 +43,7 @@ def _clip(value: Decimal, lo: Decimal, hi: Decimal) -> Decimal:
         "근로자 부담, 비과세 식대, 소득세/지방소득세 공제."
     ),
     version="1.0.0",
+    policy=True,
 )
 def payroll_kr_salary(
     monthly_salary:     str,

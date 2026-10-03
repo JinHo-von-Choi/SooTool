@@ -119,6 +119,53 @@ class ToolTimeoutError(SooToolError):
         return {"tool": self.tool, "seconds": self.seconds}
 
 
+class PolicyFormatError(SooToolError, ValueError):
+    """정책 YAML 의 필수 필드 누락이나 값 형식 오류."""
+
+    code = "policy_format"
+
+
+class PolicyNotInEffectError(SooToolError):
+    """요청한 시점(as_of)에 시행 중인 정책 버전이 없다."""
+
+    code = "policy_not_in_effect"
+
+    def __init__(self, domain: str, key: str, year: int, as_of: str, periods: list[dict[str, Any]]) -> None:
+        self.domain  = domain
+        self.key     = key
+        self.year    = year
+        self.as_of   = as_of
+        self.periods = periods
+        listing = ", ".join(f"{p['effective_from']}~{p['effective_to'] or '현재'}({p['status']})" for p in periods)
+        super().__init__(
+            f"정책 '{domain}/{key}' {year}년 버전 중 {as_of} 에 시행 중인 것이 없습니다. 시행 기간: {listing or '없음'}"
+        )
+
+    def details(self) -> dict[str, Any]:
+        return {
+            "domain": self.domain, "key": self.key, "year": self.year,
+            "as_of": self.as_of, "periods": self.periods,
+        }
+
+
+class PolicyNotEnactedError(SooToolError):
+    """정책은 있지만 아직 확정(enacted)되지 않은 개정안(proposed)뿐이다."""
+
+    code = "policy_not_enacted"
+
+    def __init__(self, domain: str, key: str, year: int) -> None:
+        self.domain = domain
+        self.key    = key
+        self.year   = year
+        super().__init__(
+            f"정책 '{domain}/{key}' {year}년 버전은 확정 전 개정안(proposed)입니다. "
+            "개정안 기준으로 계산하려면 include_proposed=true 를 지정하세요. 결과에는 legal_status=proposed 가 표기됩니다."
+        )
+
+    def details(self) -> dict[str, Any]:
+        return {"domain": self.domain, "key": self.key, "year": self.year}
+
+
 class InputLimitError(DomainConstraintError):
     """도구 입력이 호출 단위 한도를 초과함.
 

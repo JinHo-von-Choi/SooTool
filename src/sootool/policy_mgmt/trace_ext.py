@@ -1,8 +1,9 @@
 """Helper to enrich policy-aware tool responses with trace extension fields.
 
-Adds policy_source, policy_audit_id, policy_sha256, policy_effective_date
-to both the trace dict and the top-level response, and injects
-override_policy_in_use hints when needed.
+Adds policy_source, policy_audit_id, policy_sha256, policy_effective_date,
+policy_status (enacted | proposed | superseded), policy_effective_to and
+policy_citations to both the trace dict and the top-level response, and injects
+override_policy_in_use and proposed_policy_in_use hints when needed.
 
 Author: 최진호
 Date: 2026-04-23
@@ -25,20 +26,32 @@ def enrich_response(
     sha256    = pv.get("sha256", "")
     eff_date  = pv.get("effective_date", "")
     audit_id  = _resolve_audit_id(source, pv)
+    status    = pv.get("status", "enacted")
+    fields    = {
+        "policy_source":         source,
+        "policy_audit_id":       audit_id,
+        "policy_sha256":         sha256,
+        "policy_effective_date": eff_date,
+        "policy_effective_to":   pv.get("effective_to"),
+        "policy_status":         status,
+        "policy_citations":      pv.get("citations", []),
+    }
 
-    # Top-level fields
-    response["policy_source"]         = source
-    response["policy_audit_id"]       = audit_id
-    response["policy_sha256"]         = sha256
-    response["policy_effective_date"] = eff_date
-
-    # Enrich trace dict if present
+    # Top-level fields and the trace dict
+    response.update(fields)
     trace = response.get("trace")
     if isinstance(trace, dict):
-        trace["policy_source"]         = source
-        trace["policy_audit_id"]       = audit_id
-        trace["policy_sha256"]         = sha256
-        trace["policy_effective_date"] = eff_date
+        trace.update(fields)
+
+    if status == "proposed":
+        _add_hint(response, {
+            "signal":           "proposed_policy_in_use",
+            "suggestion":       (
+                "이 결과는 국회 확정 전 개정안(proposed) 정책을 사용합니다. 확정 전에는 법적 효력이 "
+                "없으며 개정안이 바뀔 수 있습니다. policy_status 와 policy_effective_date 를 확인하세요."
+            ),
+            "recommended_tool": None,
+        })
 
     # Inject _meta.hints when override is in use
     if source == "override":
@@ -50,20 +63,24 @@ def enrich_response(
             ),
             "recommended_tool": "sootool.policy_history",
         }
-        meta = response.get("_meta")
-        if meta is None:
-            response["_meta"] = {"hints": [hint]}
-        elif isinstance(meta, dict):
-            hints = meta.get("hints")
-            if hints is None:
-                meta["hints"] = [hint]
-            elif isinstance(hints, list):
-                # Avoid duplicates
-                signals = {h.get("signal") for h in hints}
-                if "override_policy_in_use" not in signals:
-                    hints.append(hint)
+        _add_hint(response, hint)
 
     return response
+
+
+def _add_hint(response: dict[str, Any], hint: dict[str, Any]) -> None:
+    """응답의 _meta.hints 에 힌트를 중복 없이 추가한다."""
+    meta = response.get("_meta")
+    if meta is None:
+        response["_meta"] = {"hints": [hint]}
+    elif isinstance(meta, dict):
+        hints = meta.get("hints")
+        if hints is None:
+            meta["hints"] = [hint]
+        elif isinstance(hints, list):
+            signals = {h.get("signal") for h in hints}
+            if hint["signal"] not in signals:
+                hints.append(hint)
 
 
 def _resolve_audit_id(source: str, policy_version: dict[str, Any]) -> str | None:

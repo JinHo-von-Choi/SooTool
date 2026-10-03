@@ -47,6 +47,7 @@ def _lookup_ltct_rate(
         "소득세법 제95조 기준."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_capital_gains_kr(
     acquisition_price: str,

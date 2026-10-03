@@ -8,6 +8,7 @@ from typing import Any
 
 from sootool.core.errors import SooToolError
 from sootool.core.registry import ToolRegistry
+from sootool.core.request_context import submit_with_context
 
 
 class BatchLimitError(SooToolError):
@@ -42,7 +43,7 @@ class BatchExecutor:
             futures: dict[Future[Any], str] = {}
             for it in items:
                 submit_t0 = time.monotonic()
-                fut = pool.submit(self.registry.invoke_read_only, it["tool"], **it.get("args", {}))
+                fut = submit_with_context(pool, self.registry.invoke_read_only, it["tool"], **it.get("args", {}))
                 futures[fut] = it["id"]
                 item_started_at[it["id"]] = submit_t0
 

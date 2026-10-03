@@ -42,6 +42,7 @@ def _validate_state(state: str) -> None:
         "filing_status·주별 표준공제·누진구간 반영."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_us_state_tax(
     taxable_income:           str,

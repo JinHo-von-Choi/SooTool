@@ -68,9 +68,13 @@ def _coercible(tp: Any) -> Any:
     return tp
 
 
-def coerced_signature(fn: Callable[..., Any]) -> inspect.Signature:
-    """``fn`` 의 시그니처에서 문자열 파라미터를 숫자 허용으로 바꾼 시그니처를 만든다."""
-    signature = inspect.signature(fn)
+def coerced_signature(fn: Callable[..., Any], base: inspect.Signature | None = None) -> inspect.Signature:
+    """``fn`` 의 시그니처에서 문자열 파라미터를 숫자 허용으로 바꾼 시그니처를 만든다.
+
+    ``base`` 가 있으면 그 시그니처(예: 정책 공통 인자를 더한 노출 시그니처)를 바탕으로 한다.
+    타입 힌트는 ``fn`` 에서 해석하며, 힌트가 없는 파라미터는 ``base`` 의 주석을 그대로 쓴다.
+    """
+    signature = base if base is not None else inspect.signature(fn)
     try:
         hints = typing.get_type_hints(fn)
     except Exception:  # noqa: BLE001
@@ -113,11 +117,13 @@ def with_error_contract(
     call:       Callable[..., Any] | None = None,
     *,
     coerce:     bool                      = True,
+    signature:  inspect.Signature | None  = None,
 ) -> Callable[..., Any]:
     """``fn`` 의 시그니처로 노출되는 호출자를 만든다.
 
     ``call`` 이 있으면 그것을 실제 실행에 쓴다(예: REGISTRY.invoke 경유). 실행 중 발생한 예외는
-    오류 계약 결과로 변환한다. 입력 숫자 허용은 ``coerce`` 로 끌 수 있다.
+    오류 계약 결과로 변환한다. 입력 숫자 허용은 ``coerce`` 로 끌 수 있다. ``signature`` 로 노출
+    시그니처를 지정할 수 있다(기본은 ``fn`` 의 시그니처).
     """
     target = call if call is not None else fn
 
@@ -130,7 +136,9 @@ def with_error_contract(
                 log.exception("unexpected error in tool %s", getattr(fn, "__name__", fn))
             return error_result(exc)
 
-    bound.__signature__ = coerced_signature(fn) if coerce else inspect.signature(fn)  # type: ignore[attr-defined]
+    bound.__signature__ = (  # type: ignore[attr-defined]
+        coerced_signature(fn, signature) if coerce else (signature or inspect.signature(fn))
+    )
     return bound
 
 

@@ -31,6 +31,7 @@ DEFAULT_MONTHLY_HOURS = Decimal("209")  # 주 40h 법정 기준
         "kr_salary와 연계하여 4대보험·세액 공제 반영."
     ),
     version="1.0.0",
+    policy=True,
 )
 def payroll_hourly_to_monthly_net(
     hourly_wage:    str,

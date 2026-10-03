@@ -63,6 +63,7 @@ def _lookup_bracket_rate(price: Decimal, brackets: list[dict[str, Any]]) -> Deci
         "지원: seoul/gyeonggi/busan/incheon/daegu/daejeon/gwangju/ulsan/sejong."
     ),
     version="1.0.0",
+    policy=True,
 )
 def realestate_kr_local_property(
     region:          str,

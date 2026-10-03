@@ -62,6 +62,7 @@ def _annual_tax(
         "averaging(연분연승법) 선택."
     ),
     version="1.0.0",
+    policy=True,
 )
 def payroll_kr_bonus_tax(
     bonus_amount:          str,

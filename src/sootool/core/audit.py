@@ -104,6 +104,9 @@ def set_policy_meta(
     domain: str | None = None,
     key: str | None = None,
     year: int | None = None,
+    status: str | None = None,
+    effective_from: str | None = None,
+    effective_to: str | None = None,
 ) -> None:
     """Record policy metadata for the current tool invocation (thread-local).
 
@@ -119,6 +122,12 @@ def set_policy_meta(
         meta["policy_sha256"] = sha256
     if source is not None and domain is not None and key is not None and year is not None:
         meta["policy_source"] = f"{domain}/{key}/{year}"
+    if status is not None:
+        meta["policy_status"] = status
+    if effective_from is not None:
+        meta["policy_effective_from"] = effective_from
+    if effective_to is not None:
+        meta["policy_effective_to"] = effective_to
     _INTEGRITY_CTX.policy_meta = meta
 
 
@@ -203,4 +212,7 @@ def integrity_stamp(
             stamp["policy_sha256"] = sha
         if src is not None:
             stamp["policy_source"] = src
+        for extra in ("policy_status", "policy_effective_from", "policy_effective_to"):
+            if policy_meta.get(extra) is not None:
+                stamp[extra] = policy_meta[extra]
     return stamp

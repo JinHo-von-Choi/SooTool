@@ -27,6 +27,7 @@ from sootool.policy_mgmt.trace_ext import enrich_response
         "1주택/다주택 누진세율 산출, 농어촌특별세 20% 합산."
     ),
     version="1.0.0",
+    policy=True,
 )
 def realestate_kr_comprehensive(
     total_published_price: str,

@@ -9,10 +9,12 @@ MCP 2026-07-28 사양은 프로토콜 세션을 없애고 모든 요청을 독�
 """
 from __future__ import annotations
 
-from collections.abc import Iterator
+import contextvars
+from collections.abc import Callable, Iterator
+from concurrent.futures import Executor, Future
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Final
+from typing import Any, Final
 
 SCOPE_READ:         Final = "read"
 SCOPE_POLICY_WRITE: Final = "policy-write"
@@ -52,3 +54,12 @@ def has_scope(scope: str) -> bool:
     """현재 요청이 범위를 가졌는지 반환한다. 로컬 신뢰 컨텍스트(None)는 모든 범위를 가진다."""
     scopes = REQUEST_SCOPES.get()
     return scopes is None or scope in scopes
+
+
+def submit_with_context(pool: Executor, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Future[Any]:
+    """현재 컨텍스트를 복사해 워커 스레드에서 ``fn`` 을 실행한다.
+
+    ThreadPoolExecutor 는 contextvar 를 상속하지 않으므로, batch·pipeline 의 중첩 호출이 요청의
+    로케일, 무상태 표식, 인증 범위, 정책 해석 시점을 잃지 않게 호출마다 컨텍스트를 복사한다.
+    """
+    return pool.submit(contextvars.copy_context().run, fn, *args, **kwargs)

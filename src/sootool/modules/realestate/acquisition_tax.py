@@ -59,6 +59,7 @@ def _surcharge_rate(
         "농어촌특별세 및 지방교육세 포함."
     ),
     version="1.0.0",
+    policy=True,
 )
 def realestate_kr_acquisition_tax(
     price:        str,

@@ -32,6 +32,7 @@ from sootool.policy_mgmt.trace_ext import enrich_response
         "금융위원회 DSR 40% cap 기준."
     ),
     version="1.0.0",
+    policy=True,
 )
 def realestate_kr_dsr(
     annual_debt_payment: str,
@@ -98,6 +99,7 @@ def realestate_kr_dsr(
         "규제지역/비규제지역, 주택 수에 따른 한도 적용."
     ),
     version="1.0.0",
+    policy=True,
 )
 def realestate_kr_ltv(
     loan_amount:     str,
@@ -187,6 +189,7 @@ def realestate_kr_ltv(
         "규제지역 40%, 비규제지역 60% cap."
     ),
     version="1.0.0",
+    policy=True,
 )
 def realestate_kr_dti(
     monthly_debt_payment: str,

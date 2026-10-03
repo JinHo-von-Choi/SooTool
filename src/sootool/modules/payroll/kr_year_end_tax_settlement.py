@@ -40,6 +40,7 @@ STANDARD_TAX_CREDIT = Decimal("130000")
         "표준세액공제 기반 간이 모델."
     ),
     version="1.0.0",
+    policy=True,
 )
 def payroll_kr_year_end_tax_settlement(
     annual_gross:       str,

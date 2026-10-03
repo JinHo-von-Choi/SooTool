@@ -35,6 +35,7 @@ from sootool.policy_mgmt.trace_ext import enrich_response
         "총급여 3% 초과분에 대해 일반 15%·난임 30%·미숙아 20% 공제."
     ),
     version="1.0.0",
+    policy=True,
 )
 def payroll_kr_medical_deduction(
     gross_income:     str,

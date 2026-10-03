@@ -70,6 +70,7 @@ def _converted_salary_deduction(
         "근속연수공제 + 환산급여공제 + 기본세율 누진구조 반영."
     ),
     version="1.0.0",
+    policy=True,
 )
 def payroll_kr_severance_pay(
     severance_amount:    str,

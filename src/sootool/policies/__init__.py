@@ -104,11 +104,11 @@ def _find_supported_years(domain_dir: Path, key: str) -> list[int]:
     pattern = f"{key}_*.yaml"
     years   = []
     for f in domain_dir.glob(pattern):
-        stem = f.stem          # e.g. "kr_income_2026"
-        suffix = stem[len(key) + 1:]   # e.g. "2026"
+        stem = f.stem          # e.g. "kr_income_2026" or "kr_income_2026@2026-07-01"
+        suffix = stem[len(key) + 1:].partition("@")[0]   # e.g. "2026"
         if suffix.isdigit():
             years.append(int(suffix))
-    return sorted(years)
+    return sorted(set(years))
 
 
 # ---------------------------------------------------------------------------

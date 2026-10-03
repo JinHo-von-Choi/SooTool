@@ -96,6 +96,7 @@ def _calc_labor_income_deduction(
         "근로소득 간이 원천징수세액 계산 (간이세액표 근사 공식)."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_kr_withholding_simple(
     monthly_salary: str,

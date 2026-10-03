@@ -44,6 +44,7 @@ _CATEGORIES: tuple[str, ...] = (
         "본인 15%·자녀 초중고 300만원 한도·대학 900만원 한도·장애인 한도없음."
     ),
     version="1.0.0",
+    policy=True,
 )
 def payroll_kr_education_deduction(
     expenses:  dict[str, str],

@@ -18,6 +18,9 @@ def _make_income_yaml(year: int = 2027) -> str:
         effective_date: "{year}-01-01"
         notice_no: "고시-test-{year}"
         source_url: "https://example.com"
+        citations:
+          - law: "소득세법"
+            article: "제55조"
         data:
           brackets:
             - upper: 14000000

@@ -52,6 +52,7 @@ def _resolve_limit_key(
         "상환기간·고정금리·비거치식 조건에 따른 한도 적용."
     ),
     version="1.0.0",
+    policy=True,
 )
 def payroll_kr_housing_loan_deduction(
     interest_paid:  str,

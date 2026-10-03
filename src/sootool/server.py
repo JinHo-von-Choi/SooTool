@@ -368,7 +368,7 @@ def _bind_to_registry(entry: ToolEntry) -> Callable[..., Any]:
     def invoke(**kwargs: Any) -> Any:
         return REGISTRY.invoke(entry.full_name, **kwargs)
 
-    return with_error_contract(entry.fn, invoke)
+    return with_error_contract(entry.fn, invoke, signature=entry.exposed_signature())
 
 
 def _annotations_for(entry: ToolEntry) -> ToolAnnotations:

@@ -96,3 +96,44 @@ def test_lean_call_cannot_reach_write_tools_through_batch(_admin_mode):
     assert out["count_error"] == 1
     assert out["count_ok"] == 0
     assert _nothing_was_written(_admin_mode)
+
+
+# --- 중첩 호출의 요청 컨텍스트 전파 ---
+
+def test_batch_items_inherit_the_stateless_request_context():
+    from sootool.core.request_context import request_context
+    from sootool.skill_guide.session_state import STORE
+
+    before = STORE.session_count()
+    with request_context(stateless=True):
+        out = REGISTRY.invoke(
+            "core.batch", items=[{"id": "a", "tool": "core.add", "args": {"operands": ["1", "2"]}}],
+        )
+    inner_meta = out["results"][0]["result"]["_meta"]
+    assert "session_stats" not in inner_meta
+    assert STORE.session_count() == before
+
+
+def test_pipeline_steps_inherit_the_request_locale_and_scopes():
+    from sootool.core.request_context import (
+        REQUEST_LOCALE,
+        REQUEST_SCOPES,
+        SCOPE_READ,
+        request_context,
+    )
+
+    seen: dict[str, object] = {}
+
+    r = ToolRegistry()
+
+    @r.tool(namespace="t", name="probe")
+    def _probe() -> dict[str, Any]:
+        seen["locale"] = REQUEST_LOCALE.get()
+        seen["scopes"] = REQUEST_SCOPES.get()
+        return {"result": "ok"}
+
+    from sootool.core.pipeline import PipelineExecutor
+
+    with request_context(locale="en", scopes=frozenset({SCOPE_READ})):
+        PipelineExecutor(registry=r).run(steps=[{"id": "s", "tool": "t.probe", "args": {}}])
+    assert seen == {"locale": "en", "scopes": frozenset({SCOPE_READ})}

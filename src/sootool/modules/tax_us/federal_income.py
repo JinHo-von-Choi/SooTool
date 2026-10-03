@@ -45,6 +45,7 @@ def _validate_filing_status(filing_status: str) -> None:
         "4 filing statuses). 표준공제(standard_deduction) 옵션 지원."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_us_federal_income(
     taxable_income:           str,

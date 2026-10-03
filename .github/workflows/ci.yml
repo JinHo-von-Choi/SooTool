@@ -46,6 +46,9 @@ jobs:
       - name: Pytest
         run: uv run pytest -q --strict-markers
 
+      - name: Policy hash check
+        run: uv run python scripts/policy_stamp.py --check
+
       - name: Tool count single source guard (ADR-019)
         run: |
           set -euo pipefail

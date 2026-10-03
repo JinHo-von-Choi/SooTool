@@ -51,6 +51,7 @@ def _calc_ltcg(
         "Short-term (연방 소득세율 위임). Net Investment Income Tax (NIIT) 3.8% 옵션."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_us_capital_gains(
     gain:                     str,

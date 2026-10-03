@@ -28,6 +28,7 @@ from sootool.policy_mgmt.trace_ext import enrich_response
         "소득세법 누진세율 구간(정책 YAML)을 참조하여 세액 계산."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_kr_income(
     taxable_income: str,

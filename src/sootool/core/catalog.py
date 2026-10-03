@@ -118,7 +118,7 @@ def _json_safe_default(value: Any) -> Any:
 def describe_tool(entry: ToolEntry) -> dict[str, Any]:
     """도구의 전체 설명, 동작 특성, 파라미터 목록, 독스트링을 반환한다."""
     parameters = []
-    for param in inspect.signature(entry.fn).parameters.values():
+    for param in entry.exposed_signature().parameters.values():
         required = param.default is inspect.Parameter.empty
         item: dict[str, Any] = {
             "name":     param.name,
@@ -158,7 +158,7 @@ def bind_call_arguments(entry: ToolEntry, arguments: dict[str, Any] | None) -> d
     """호출 인자가 도구 시그니처에 맞는지 확인하고 인자 사본을 반환한다."""
     kwargs = dict(arguments or {})
     try:
-        inspect.signature(entry.fn).bind(**kwargs)
+        entry.exposed_signature().bind(**kwargs)
     except TypeError as exc:
         raise InvalidInputError(
             f"{entry.full_name} 인자가 올바르지 않습니다: {exc}. sootool.describe 로 파라미터를 확인하세요."

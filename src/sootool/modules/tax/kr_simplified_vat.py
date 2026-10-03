@@ -43,6 +43,7 @@ from sootool.policy_mgmt.trace_ext import enrich_response
         "4,800만원 미만 납부 면제 처리."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_kr_simplified_vat(
     supply_value:     str,

@@ -27,6 +27,7 @@ from sootool.policy_mgmt.trace_ext import enrich_response
         "→ 누진세율 적용 후 지방교육세·도시지역분 합산."
     ),
     version="1.0.0",
+    policy=True,
 )
 def realestate_kr_property_tax(
     published_price: str,

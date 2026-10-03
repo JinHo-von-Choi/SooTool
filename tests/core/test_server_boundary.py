@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import json
 from typing import Any
 
@@ -78,7 +77,7 @@ def test_registered_tool_schema_matches_original_signature(server):
 
     tools = {t.name: t for t in asyncio.run(server.list_tools())}
     for entry in REGISTRY.list():
-        expected = set(inspect.signature(entry.fn).parameters)
+        expected = set(entry.exposed_signature().parameters)
         actual   = set(tools[entry.full_name].input_schema.get("properties", {}))
         assert actual == expected, entry.full_name
 

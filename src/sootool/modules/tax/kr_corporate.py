@@ -63,6 +63,7 @@ def _calc_minimum_tax(
         "반환은 base_tax, minimum_tax, tax(=max), breakdown."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_kr_corporate(
     taxable_income: str,

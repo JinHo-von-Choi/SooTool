@@ -9,11 +9,13 @@ import hashlib
 import logging
 import os
 import re
+from datetime import date
 from decimal import Decimal
 from typing import Any
 
 import yaml
 
+from sootool.policy_mgmt.loader import VALID_STATUSES, existing_versions
 from sootool.policy_mgmt.schemas import get_domain_schema
 
 log = logging.getLogger("sootool.policy_mgmt.validators")
@@ -48,6 +50,7 @@ def validate_policy(
 
     # Stage 2: Required metadata fields
     _stage2_required_fields(doc, findings)
+    _stage2_header_v2(doc, findings)
 
     # Stage 3: Domain pydantic schema validation
     if name:
@@ -55,6 +58,8 @@ def validate_policy(
 
     # Stage 4: Cross-field validation
     _stage4_cross_validation(doc, domain, findings)
+    if name:
+        _stage4_version_overlap(doc, domain, name, findings)
 
     # Stage 5: YoY sensitivity check
     if prev_year_data is not None:
@@ -125,6 +130,96 @@ def _stage2_required_fields(
                 "path":    field,
                 "message": f"Required field '{field}' is missing",
                 "stage":   2,
+            })
+
+
+def _iso_date(value: Any) -> date | None:
+    if isinstance(value, date):
+        return value
+    try:
+        return date.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+
+def _stage2_header_v2(doc: dict[str, Any], findings: list[dict[str, Any]]) -> None:
+    """정책 헤더 v2 필드(status, effective_to, citations, reviewed_by) 검증."""
+
+    def finding(level: str, path: str, message: str) -> None:
+        findings.append({"level": level, "path": path, "message": message, "stage": 2})
+
+    status = doc.get("status", "enacted")
+    if status not in VALID_STATUSES:
+        finding("error", "status", f"status must be one of {list(VALID_STATUSES)}, got {status!r}")
+
+    effective_from = _iso_date(doc["effective_date"]) if "effective_date" in doc else None
+    if "effective_date" in doc and effective_from is None:
+        finding("error", "effective_date", f"effective_date must be an ISO date (YYYY-MM-DD), got {doc['effective_date']!r}")
+
+    raw_to = doc.get("effective_to")
+    if raw_to not in (None, ""):
+        effective_to = _iso_date(raw_to)
+        if effective_to is None:
+            finding("error", "effective_to", f"effective_to must be an ISO date (YYYY-MM-DD), got {raw_to!r}")
+        elif effective_from is not None and effective_to < effective_from:
+            finding("error", "effective_to", "effective_to must not precede effective_date")
+
+    citations = doc.get("citations")
+    if citations is None or citations == []:
+        # 개정안은 근거 조문(개정안 이름, 입법예고 번호 등)이 없으면 법적 효력과 출처를 확인할 수 없다.
+        level = "error" if status == "proposed" else "warning"
+        finding(level, "citations", "citations (law and article references) are missing")
+    elif not isinstance(citations, list):
+        finding("error", "citations", "citations must be a list of {law, article?, url?, note?} mappings")
+    else:
+        for index, citation in enumerate(citations):
+            if not isinstance(citation, dict) or not str(citation.get("law", "")).strip():
+                finding("error", f"citations[{index}]", "each citation must be a mapping with a non-empty 'law'")
+                continue
+            unknown = set(citation) - {"law", "article", "url", "note"}
+            if unknown:
+                finding("error", f"citations[{index}]", f"unknown citation fields: {sorted(unknown)}")
+
+    reviewed_by = doc.get("reviewed_by")
+    if reviewed_by is not None and (
+        not isinstance(reviewed_by, list) or not all(isinstance(r, str) and r.strip() for r in reviewed_by)
+    ):
+        finding("error", "reviewed_by", "reviewed_by must be a list of non-empty strings")
+
+
+def _stage4_version_overlap(
+    doc: dict[str, Any],
+    domain: str,
+    name: str,
+    findings: list[dict[str, Any]],
+) -> None:
+    """같은 연도의 확정 버전끼리 시행 기간이 겹치지 않는지 확인한다.
+
+    같은 시행일의 기존 버전은 교체되므로 비교에서 제외하고, 개정안(proposed)은 확정 버전과 겹칠 수 있다.
+    """
+    effective_from = _iso_date(doc.get("effective_date"))
+    if effective_from is None or doc.get("status", "enacted") != "enacted":
+        return
+    effective_to = _iso_date(doc.get("effective_to")) if doc.get("effective_to") not in (None, "") else None
+    year = int(doc["year"]) if str(doc.get("year", "")).isdigit() else effective_from.year
+
+    for version in existing_versions(domain, name, year):
+        if version["status"] != "enacted" or version["effective_from"] == effective_from.isoformat():
+            continue
+        other_from = date.fromisoformat(version["effective_from"])
+        other_to   = date.fromisoformat(version["effective_to"]) if version["effective_to"] else None
+        starts_before_other_ends = other_to is None or effective_from <= other_to
+        ends_after_other_starts  = effective_to is None or other_from <= effective_to
+        if starts_before_other_ends and ends_after_other_starts:
+            findings.append({
+                "level":   "error",
+                "path":    "effective_date",
+                "message": (
+                    f"effective period overlaps the enacted version {version['filename']} "
+                    f"({version['effective_from']}~{version['effective_to'] or 'open'}); "
+                    "close the earlier version with effective_to first"
+                ),
+                "stage":   4,
             })
 
 

@@ -30,6 +30,61 @@ domain/name/year, `UnsupportedPolicyError` is raised.
 
 On server startup, the effective override directory is logged at INFO level.
 
+## Policy Versions, `as_of`, and Proposed Amendments (schema v2)
+
+A policy year may have several versions with different effective dates, and a
+version may be an unenacted amendment. The header fields below are optional and
+backward compatible.
+
+```yaml
+sha256: "<computed>"
+effective_date: "2027-01-01"      # start of the effective period (inclusive)
+effective_to:   "2027-06-30"      # optional end (inclusive); absent = open ended
+status: enacted                   # enacted (default) | proposed | superseded
+version: "2027.1"                 # optional label
+notice_no: "..."                  # human readable legal notice (kept)
+source_url: "..."
+citations:                        # structured legal basis, required for proposed
+  - law: "소득세법"
+    article: "제55조"
+    url: "https://www.law.go.kr/..."
+    note: "optional"
+reviewed_by: ["..."]              # optional reviewers
+data: { ... }
+```
+
+File names: `<name>_<year>.yaml` for the base version and
+`<name>_<year>@<effective_date>.yaml` for further versions of the same year.
+
+Every policy-backed tool accepts two extra arguments (`as_of`, `include_proposed`):
+
+* No `as_of`: the enacted version with the latest `effective_date` of that year.
+  The result never depends on the current date.
+* `as_of: "YYYY-MM-DD"`: the version whose period contains that day. Versions
+  marked `superseded` still serve their own period. If no version is in effect,
+  the call fails with `policy_not_in_effect` and lists the available periods.
+* `include_proposed: true`: also consider `proposed` versions. Without it a year
+  that has only a proposed version fails with `policy_not_enacted`.
+
+Results report the version used (`policy_status`, `policy_effective_date`,
+`policy_effective_to`, `policy_citations`, and `_meta.integrity.policy_*`). A result computed from a proposed
+version carries `policy_status: proposed` and the `proposed_policy_in_use` hint.
+`as_of` and `include_proposed` are part of the receipt input hash.
+
+Activation writes the new document to the override store. The same effective
+date replaces the existing version; a different effective date adds a new
+`@<effective_date>` version file. Enacted periods of the same year must not
+overlap (checked by `policy_propose` and `policy_validate`); close the earlier
+version with `effective_to` first. `policy_rollback` removes the only override
+of a year, or the one named by `effective_date` when several exist.
+
+After editing a packaged policy file by hand, refresh its self hash:
+
+```
+uv run python scripts/policy_stamp.py            # update all packaged policies
+uv run python scripts/policy_stamp.py --check    # CI check, exit 1 on mismatch
+```
+
 ## Admin Mode
 
 Write tools (`policy_propose`, `policy_activate`, `policy_rollback`,

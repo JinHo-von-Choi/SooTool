@@ -51,6 +51,7 @@ def _tiered_credit(
         "1천만원 이하 15%·초과 30%, 법정기부금 한도없음, 지정기부금 근로소득 30% 한도."
     ),
     version="1.0.0",
+    policy=True,
 )
 def payroll_kr_donation_deduction(
     earned_income:      str,

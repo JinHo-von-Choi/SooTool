@@ -37,6 +37,7 @@ _ALLOWED_RELATIONSHIPS = frozenset([
         "수증자 관계별 증여재산공제(10년 합산 기준) 적용 후 누진세율."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_kr_gift(
     gift_amount:  str,

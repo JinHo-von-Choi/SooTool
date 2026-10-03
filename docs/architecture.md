@@ -324,3 +324,24 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 - 구현: `src/sootool/boundary.py`, `src/sootool/core/request_context.py`, `src/sootool/core/errors.py`, `src/sootool/transports/`, `src/sootool/middleware/`
 - 테스트: `tests/core/test_boundary.py`, `tests/core/test_request_context.py`, `tests/transports/test_http_e2e.py`, `tests/middleware/`
 - 계획: `docs/plans/2026-10-03-enhancement-roadmap.md` A4, A5, A6, B1, B4
+
+
+## ADR-026: 시점·조문 인지 정책 엔진 (schema v2)
+
+배경: 정책 YAML 은 연도별 한 파일이라 연중 개정(같은 해의 시행일이 다른 두 버전)과 국회 확정 전 개정안을 표현하지 못했고, 근거 조문은 자유 문자열(`notice_no`)뿐이었다.
+
+결정:
+- 헤더 v2(모두 선택, 하위 호환): `effective_to`, `status`(enacted, proposed, superseded), `version`, `citations`(law, article?, url?, note?), `reviewed_by`. 같은 연도의 추가 버전은 `<name>_<year>@<시행일>.yaml` 이다.
+- 호출 단위 해석: 정책 기반 도구(`policy=True` 로 선언한 27개와 `policy_get`, `policy_export`)는 공통 인자 `as_of`(YYYY-MM-DD)와 `include_proposed` 를 받는다. 레지스트리가 이 인자를 도구 함수에 넘기지 않고 호출 범위의 컨텍스트(`core/policy_context.py`)로 설정한다. 도구 함수의 시그니처는 바꾸지 않는다. 중첩 호출(위임 도구, batch, pipeline)은 컨텍스트를 상속하며 batch·pipeline 의 워커 스레드로는 호출마다 컨텍스트를 복사해 전달한다.
+- 선택 규칙(`policy_mgmt/loader.py`): 시점이 없으면 확정 버전 중 시행일이 가장 늦은 것(호출 시각에 의존하지 않아 결정적). `as_of` 가 있으면 시행 기간에 시점이 속하는 버전 중 시행일이 가장 늦은 것이며 교체된 버전도 자기 기간에는 쓰인다. 개정안은 `include_proposed` 일 때만 후보다. 후보가 없으면 `policy_not_in_effect`(시행 기간 목록 포함) 또는 `policy_not_enacted` 를 낸다.
+- 표기: 결과에 `policy_status`, `policy_effective_date`, `policy_effective_to`, `policy_citations` 를 싣고 `_meta.integrity` 에 `policy_status`, `policy_effective_from`, `policy_effective_to` 를 더한다. 개정안으로 계산한 결과에는 `proposed_policy_in_use` 힌트가 붙는다. `as_of` 와 `include_proposed` 는 영수증 입력 해시에 포함되어 재실행 검증이 같은 버전으로 재현된다.
+- 관리: 검증은 헤더 v2 필드 형식과 같은 연도 확정 버전의 시행 기간 겹침을 확인한다. 활성화는 시행일이 같으면 교체, 다르면 새 버전 파일을 만든다. 롤백은 `effective_date` 로 버전을 고른다.
+- 자체 해시 갱신과 검사는 `scripts/policy_stamp.py` 가 맡고 CI 가 `--check` 로 검사한다.
+
+상태: 제안됨(Proposed). 2026-10-03.
+
+관련 아티팩트:
+- 구현: `src/sootool/policy_mgmt/loader.py`, `src/sootool/core/policy_context.py`, `src/sootool/core/registry.py`, `src/sootool/policy_mgmt/validators.py`, `src/sootool/policy_mgmt/tools.py`
+- 테스트: `tests/policy_mgmt/test_policy_versions.py`, `tests/policy_mgmt/test_policy_schema_v2.py`, `tests/core/test_policy_tools.py`
+- 문서: `docs/policy_management.md`
+- 계획: `docs/plans/2026-10-03-enhancement-roadmap.md` 4.2

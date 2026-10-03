@@ -19,6 +19,9 @@ REGISTRY 수치: 18 domains, 255 base tools, 10 admin policy-management tools (0
 - 인자 크기 검사: 모든 호출 경로(stdio, 네트워크, 프로세스 내, batch·pipeline 중첩)에서 문자열 길이(10만자), 목록·객체 원소 수(10만), 중첩 깊이(16), 전체 노드 수(100만)를 검사한다. 도구별 한도를 행렬 크기(200), 다항식 차수(256), FFT 표본 수(65,536), crypto 정수 자릿수(2,048), 영업일 구간(10만 일)으로 확대했다. 모든 한도는 `SOOTOOL_LIMIT_<이름>`으로 조정한다. 한도 경계 입력의 최악 실행 시간은 시험으로 고정한다(호출당 15초 이내, 실측 대부분 4초 이내). 신호 기반 호출 시간 중단은 SDK v2가 동기 도구를 워커 스레드에서 실행해 쓸 수 없어 입력 한도로 실행 시간을 묶는다.
 - 도구 검색 별칭(`sootool.core.tool_aliases`): 양도세, 종부세, 집 팔 때 세금 같은 줄임말과 일상 표현, 영어 동의어로 `sootool.search`를 찾는다. 38개 현실 질의 중 별칭 없이 11개가 상위 3위 밖이던 것을 모두 상위 3위 안으로 올렸다.
 - `tools/list` 결과에 `ttlMs`(1시간)와 `cacheScope`(public)를 싣고 도구를 이름 순으로 고정한다(MCP 2026-07-28).
+- 시점·조문 인지 정책 엔진(ADR-026): 정책 헤더 v2(`effective_to`, `status`, `version`, `citations`, `reviewed_by`)와 같은 연도의 다중 버전(`<name>_<year>@<시행일>.yaml`). 정책 기반 도구 27개와 `policy_get`, `policy_export`가 공통 인자 `as_of`(YYYY-MM-DD)와 `include_proposed`를 받는다. 결과에 `policy_status`, `policy_effective_to`, `policy_citations`와 `_meta.integrity.policy_*`가 실리고 개정안 결과에는 `proposed_policy_in_use` 힌트가 붙는다. 영수증 검증은 같은 버전으로 재현된다.
+- 정책 검증: 헤더 v2 필드 형식, 인용 구조, 같은 연도 확정 버전의 시행 기간 겹침을 검사한다. 활성화는 시행일이 다르면 새 버전 파일을 만들고 `policy_rollback`은 `effective_date`로 버전을 고른다.
+- `scripts/policy_stamp.py`: 정책 자체 해시 갱신과 검사(CI에 `--check` 추가).
 - 계산 영수증 재실행 검증: `_meta.integrity`에 `tool`과 `result_hash`(중첩 `_meta`를 제외한 응답 본문의 정규화 sha256)를 추가했다. 새 도구 `sootool.verify_receipt`가 `tool`, `arguments`, `receipt`로 같은 계산을 다시 실행해 도구 이름, 입력 해시, 결과 해시, 도구 버전, 정책 해시를 대조한다. `core.batch`, `core.pipeline`, `core.pipeline_resume`은 결과에 실행별 값이 있어 검증 대상에서 제외한다.
 - 영수증 선택 서명: 환경변수 `SOOTOOL_RECEIPT_KEY_FILE`에 base64 ed25519 개인 키 파일 경로를 지정하면 스탬프에 `key_id`와 `signature`가 추가된다. 키는 파일 경로로만 참조한다. 키 파일을 읽을 수 없으면 계산 결과는 그대로 반환하고 `signature_error` 코드를 남긴다. `verify_receipt`는 `public_key_b64`가 있으면 서명을 검증하고 `require_signature`로 서명 필수를 강제할 수 있다.
 - `sootool.core.signing`: 정책 번들과 영수증이 공유하는 ed25519 기반 함수.

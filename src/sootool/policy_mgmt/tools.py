@@ -17,7 +17,11 @@ from sootool.core.registry import REGISTRY
 from sootool.core.request_context import SCOPE_POLICY_WRITE, has_scope
 from sootool.policy_mgmt import audit, drafts, loader
 from sootool.policy_mgmt.diff import diff_policies
-from sootool.policy_mgmt.paths import ensure_private_dir, get_override_policy_dir
+from sootool.policy_mgmt.paths import (
+    ensure_private_dir,
+    get_override_policy_dir,
+    get_package_policy_dir,
+)
 from sootool.policy_mgmt.validators import validate_policy
 
 log = logging.getLogger("sootool.policy_mgmt.tools")
@@ -66,6 +70,27 @@ def _atomic_write_yaml(yaml_path: Path, content: str) -> None:
     os.chmod(yaml_path, 0o600)
 
 
+def _target_path(domain: str, name: str, year: int, yaml_content: str) -> Path:
+    """새 정책 문서를 저장할 덮어쓰기 경로. 시행일이 다른 새 버전이면 ``@<시행일>`` 이 붙는다."""
+    doc       = yaml.safe_load(yaml_content)
+    effective = str(doc.get("effective_date", "")) if isinstance(doc, dict) else ""
+    filename  = loader.version_filename(domain, name, year, effective) if effective else f"{name}_{year}.yaml"
+    return get_override_policy_dir() / domain / filename
+
+
+def _existing_sha256(domain: str, filename: str) -> str | None:
+    """같은 파일 이름의 기존 문서(덮어쓰기 우선)의 sha256. 없으면 None."""
+    for base in (get_override_policy_dir(), get_package_policy_dir()):
+        path = base / domain / filename
+        if path.exists():
+            try:
+                doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+                return str(doc.get("sha256", "")) if isinstance(doc, dict) else None
+            except Exception:
+                log.debug("Could not read sha256 from %s", path, exc_info=True)
+    return None
+
+
 # ---------------------------------------------------------------------------
 # 1. policy_list
 # ---------------------------------------------------------------------------
@@ -89,8 +114,12 @@ def policy_list() -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="sootool",
     name="policy_get",
-    description="Retrieve a policy file's content with source (package | override) indication.",
+    description=(
+        "Retrieve a policy file's content with source (package | override) indication. "
+        "as_of selects the version in effect on a date; include_proposed also considers unenacted drafts."
+    ),
     version="1.0.0",
+    policy=True,
 )
 def policy_get(domain: str, name: str, year: int) -> dict[str, Any]:
     """Load a specific policy by domain/name/year."""
@@ -317,17 +346,9 @@ def policy_activate(draft_id: str) -> dict[str, Any]:
     year   = draft_meta["year"]
     yaml_content = draft_meta["yaml_content"]
 
-    # Determine sha256_before (if override already exists)
-    sha256_before = None
-    try:
-        existing = loader.load(domain, name, year)
-        sha256_before = existing.get("policy_version", {}).get("sha256")
-    except Exception:
-        log.debug("No existing policy for %s/%s/%d (first activation)", domain, name, year)
-
-    # Write to override directory atomically
-    override_dir = get_override_policy_dir() / domain
-    override_path = override_dir / f"{name}_{year}.yaml"
+    # Write to override directory atomically. A different effective date makes a new version file.
+    override_path = _target_path(domain, name, year, yaml_content)
+    sha256_before = _existing_sha256(domain, override_path.name)
     _atomic_write_yaml(override_path, yaml_content)
 
     # Invalidate cache
@@ -382,27 +403,52 @@ def policy_activate(draft_id: str) -> dict[str, Any]:
     destructive=True,
     idempotent=False,
 )
-def policy_rollback(domain: str, name: str, year: int) -> dict[str, Any]:
-    """Remove override for domain/name/year, reverting to the package default."""
+def policy_rollback(domain: str, name: str, year: int, effective_date: str = "") -> dict[str, Any]:
+    """Remove the override version for domain/name/year, reverting to the package default.
+
+    A year may have several override versions (different effective dates). Pass
+    ``effective_date`` (YYYY-MM-DD) to pick one; without it the single override is removed and
+    several overrides are reported as ambiguous.
+    """
     err = _require_admin()
     if err:
         return err
 
-    override_path = get_override_policy_dir() / domain / f"{name}_{year}.yaml"
+    override_dir = get_override_policy_dir() / domain
+    candidates: list[tuple[Path, str]] = []
+    if override_dir.is_dir():
+        for path in sorted(override_dir.glob(f"{name}_{year}*.yaml")):
+            parsed = loader.parse_policy_filename(path.name)
+            if parsed is None or parsed[0] != name or parsed[1] != year:
+                continue
+            try:
+                doc = yaml.safe_load(path.read_text(encoding="utf-8"))
+            except Exception:
+                doc = None
+            effective = str(doc.get("effective_date", "")) if isinstance(doc, dict) else ""
+            candidates.append((path, effective))
+
+    if effective_date:
+        candidates = [(p, e) for p, e in candidates if e == effective_date]
+    elif len(candidates) > 1:
+        return {
+            "error":    "ambiguous_version",
+            "message":  "Several override versions exist; pass effective_date to choose one.",
+            "versions": [e for _, e in candidates],
+        }
 
     sha256_before = None
-    if override_path.exists():
+    removed = False
+    if candidates:
+        override_path = candidates[0][0]
         try:
-            raw = override_path.read_text(encoding="utf-8")
-            doc = yaml.safe_load(raw)
+            doc = yaml.safe_load(override_path.read_text(encoding="utf-8"))
             sha256_before = doc.get("sha256", "") if isinstance(doc, dict) else ""
         except Exception:
             log.debug("Could not read sha256 from override before rollback", exc_info=True)
         override_path.unlink()
         loader.invalidate_cache(domain=domain, key=name, year=year)
         removed = True
-    else:
-        removed = False
 
     audit_id = _new_audit_id()
     entry = audit.make_entry(
@@ -437,8 +483,12 @@ def policy_rollback(domain: str, name: str, year: int) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="sootool",
     name="policy_export",
-    description="Export a policy as a portable bundle (YAML + metadata).",
+    description=(
+        "Export a policy as a portable bundle (YAML + metadata). "
+        "as_of selects the version in effect on a date; include_proposed also considers unenacted drafts."
+    ),
     version="1.0.0",
+    policy=True,
 )
 def policy_export(
     domain:           str,
@@ -450,15 +500,9 @@ def policy_export(
     """Bundle a policy for sharing or import."""
     doc = loader.load(domain, name, year)
 
-    # Read raw YAML from the source file
-    source = doc.get("source", "package")
-    if source == "override":
-        yaml_path = get_override_policy_dir() / domain / f"{name}_{year}.yaml"
-    else:
-        from sootool.policy_mgmt.paths import get_package_policy_dir
-        yaml_path = get_package_policy_dir() / domain / f"{name}_{year}.yaml"
-
-    yaml_content = yaml_path.read_text(encoding="utf-8")
+    # Read raw YAML from the file of the version the call resolved (as_of, include_proposed)
+    source       = doc.get("source", "package")
+    yaml_content = Path(doc["path"]).read_text(encoding="utf-8")
 
     metadata = {
         "domain":          domain,
@@ -548,16 +592,9 @@ def policy_import(
             "validation": report,
         }
 
-    # Determine sha256_before
-    sha256_before = None
-    try:
-        existing = loader.load(domain, name, year)
-        sha256_before = existing.get("policy_version", {}).get("sha256")
-    except Exception:
-        log.debug("No existing policy for %s/%s/%d (first import)", domain, name, year)
-
-    # Write to override
-    override_path = get_override_policy_dir() / domain / f"{name}_{year}.yaml"
+    # Write to override. A different effective date makes a new version file.
+    override_path = _target_path(domain, name, year, yaml_content)
+    sha256_before = _existing_sha256(domain, override_path.name)
     _atomic_write_yaml(override_path, yaml_content)
     loader.invalidate_cache(domain=domain, key=name, year=year)
 

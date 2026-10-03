@@ -21,6 +21,7 @@ from sootool.core.registry import REGISTRY
         "tax.capital_gains_kr에 위임하며 부동산 도메인 메타데이터 추가."
     ),
     version="1.0.0",
+    policy=True,
 )
 def realestate_kr_transfer_tax(
     acquisition_price: str,

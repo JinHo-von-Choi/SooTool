@@ -48,6 +48,7 @@ def _resolve_spouse_deduction(
         "일괄공제·배우자공제 적용 후 누진세율 산출."
     ),
     version="1.0.0",
+    policy=True,
 )
 def tax_kr_inheritance(
     gross_estate:       str,
