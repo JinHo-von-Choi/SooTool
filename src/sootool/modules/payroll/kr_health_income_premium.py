@@ -37,7 +37,7 @@ from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
-from sootool.modules.payroll.kr_salary import _truncate_premium
+from sootool.modules.payroll._insurance import employee_health_premium
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
@@ -103,20 +103,6 @@ def _non_negative(name: str, value: str) -> Decimal:
     if amount < _ZERO:
         raise InvalidInputError(f"{name}는 0 이상이어야 합니다.")
     return amount
-
-
-def _employee_salary_premium(remuneration_monthly: Decimal, hi_cfg: dict[str, Any]) -> tuple[Decimal, Decimal]:
-    """근로자 부담 보수월액보험료와 장기요양보험료. 월별 보험료 상·하한의 근로자 부담분으로 제한한다."""
-    employee_rate = D(str(hi_cfg["employee_rate"]))
-    share         = employee_rate / (employee_rate + D(str(hi_cfg["employer_rate"])))
-    unit          = D(str(hi_cfg.get("premium_truncation_unit", 1)))
-    health        = _truncate_premium(remuneration_monthly * employee_rate, unit)
-    if hi_cfg.get("premium_min_monthly_total") is not None:
-        health = max(health, _truncate_premium(D(str(hi_cfg["premium_min_monthly_total"])) * share, unit))
-    if hi_cfg.get("premium_max_monthly_total") is not None:
-        health = min(health, _truncate_premium(D(str(hi_cfg["premium_max_monthly_total"])) * share, unit))
-    ltc = _truncate_premium(health * D(str(hi_cfg["long_term_care_rate_of_health"])), unit)
-    return health, ltc
 
 
 @REGISTRY.tool(
@@ -271,7 +257,7 @@ def payroll_kr_health_income_premium(
         total_health = _ZERO
         total_ltc    = _ZERO
         for month, month_cfg in month_configs:
-            health, ltc = _employee_salary_premium(remuneration_monthly, month_cfg)
+            health, ltc = employee_health_premium(remuneration_monthly, month_cfg)
             total_health += health
             total_ltc    += ltc
             monthly_rows.append({

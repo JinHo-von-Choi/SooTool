@@ -23,8 +23,9 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyResult
-from sootool.core.rounding import RoundingPolicy
+from sootool.core.rounding import RoundingPolicy, truncate_to_unit
 from sootool.core.rounding import apply as round_apply
+from sootool.modules.payroll._insurance import employee_health_premium
 from sootool.modules.tax.kr_withholding import lookup_simple_tax
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
@@ -81,16 +82,6 @@ def _clip(value: Decimal, lo: Decimal, hi: Decimal) -> Decimal:
     if value > hi:
         return hi
     return value
-
-
-def _truncate_premium(value: Decimal, unit: Decimal) -> Decimal:
-    """보험료를 unit 원 단위로 절사한다. 비율의 자릿수 한계로 생기는 미소 오차는 먼저 정리한다."""
-    return _truncate_to_unit(round_apply(value, 6, RoundingPolicy.HALF_UP), unit)
-
-
-def _truncate_to_unit(value: Decimal, unit: Decimal) -> Decimal:
-    """unit 원 미만을 버린다 (unit=1000 이면 천원 미만 버림)."""
-    return round_apply(value / unit, 0, RoundingPolicy.DOWN) * unit
 
 
 @REGISTRY.tool(
@@ -172,7 +163,7 @@ def payroll_kr_salary(
     np_cfg    = data["national_pension"]
     np_unit   = D(str(np_cfg.get("base_truncation_unit", 1)))
     np_base   = _clip(
-        _truncate_to_unit(taxable, np_unit),
+        truncate_to_unit(taxable, np_unit),
         D(str(np_cfg["base_min_monthly"])),
         D(str(np_cfg["base_max_monthly"])),
     )
@@ -180,19 +171,7 @@ def payroll_kr_salary(
     national_pension = _round_krw(np_base * np_rate)
 
     # --- 건강보험(월별 보험료액 하한/상한의 근로자 부담분) + 장기요양 ---
-    hi_cfg    = data["health_insurance"]
-    hi_rate   = D(str(hi_cfg["employee_rate"]))
-    hi_share  = hi_rate / (hi_rate + D(str(hi_cfg["employer_rate"])))
-    hi_unit           = D(str(hi_cfg.get("premium_truncation_unit", 1)))
-    health_insurance  = _truncate_premium(taxable * hi_rate, hi_unit)
-    if hi_cfg.get("premium_min_monthly_total") is not None:
-        hi_floor = _truncate_premium(D(str(hi_cfg["premium_min_monthly_total"])) * hi_share, hi_unit)
-        health_insurance = max(health_insurance, hi_floor)
-    if hi_cfg.get("premium_max_monthly_total") is not None:
-        hi_ceiling = _truncate_premium(D(str(hi_cfg["premium_max_monthly_total"])) * hi_share, hi_unit)
-        health_insurance = min(health_insurance, hi_ceiling)
-    ltc_rate  = D(str(hi_cfg["long_term_care_rate_of_health"]))
-    long_term_care    = _truncate_premium(health_insurance * ltc_rate, hi_unit)
+    health_insurance, long_term_care = employee_health_premium(taxable, data["health_insurance"])
 
     # --- 고용보험 ---
     ei_rate   = D(str(data["employment_insurance"]["employee_rate"]))

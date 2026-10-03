@@ -9,7 +9,7 @@ Date: 2026-04-22
 
 ## 내부 자료형 및 캐스팅 정책 (ADR-008)
 
-ADR-008 준수: 통계 계산은 내부적으로 `float64` (numpy/scipy/statsmodels) 사용.
+ADR-008 준수: 통계 계산은 내부적으로 `float64` (numpy/scipy) 사용.
 경계에서만 Decimal 문자열로 변환한다.
 
 - 입력: `list[str]` (Decimal 문자열) → `np.array(dtype=np.float64)` 변환
@@ -38,4 +38,4 @@ ADR-008 준수: 통계 계산은 내부적으로 `float64` (numpy/scipy/statsmod
 
 - `numpy`: 배열 연산, 기술통계
 - `scipy.stats`: t-검정, 카이제곱, 신뢰구간
-- `statsmodels`: OLS 회귀분석
+- `numpy`, `scipy.stats`: OLS 회귀분석(의사역행렬과 t 분포, statsmodels 결과와 교차 시험)

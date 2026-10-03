@@ -36,3 +36,8 @@ def apply(value: Decimal, decimals: int, policy: RoundingPolicy) -> Decimal:
         raise ValueError("decimals는 0 이상")
     quant = Decimal(10) ** -decimals if decimals > 0 else Decimal("1")
     return value.quantize(quant, rounding=_MAP[policy])
+
+
+def truncate_to_unit(value: Decimal, unit: Decimal) -> Decimal:
+    """unit 원 미만 끝수를 버린다(unit=10 이면 10원 미만, 1000 이면 천원 미만 버림)."""
+    return apply(value / unit, 0, RoundingPolicy.DOWN) * unit

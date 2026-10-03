@@ -28,8 +28,7 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyResult
-from sootool.core.rounding import RoundingPolicy
-from sootool.core.rounding import apply as round_apply
+from sootool.core.rounding import truncate_to_unit
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
@@ -56,11 +55,6 @@ class VehicleTaxResult(PolicyResult):
     vehicle_age_second_half:     NotRequired[int]
 
 
-def _truncate(value: Decimal, unit: Decimal) -> Decimal:
-    """unit 원 미만 끝수를 버린다."""
-    return round_apply(value / unit, 0, RoundingPolicy.DOWN) * unit
-
-
 def _per_cc_rate(cc: int, table: list[dict[str, Any]]) -> Decimal:
     """배기량이 속한 구간(상한 포함)의 시시당 세액. 구간 세율을 배기량 전체에 적용한다."""
     for row in table:
@@ -81,10 +75,10 @@ def _vehicle_ages(start: date, year: int) -> tuple[int, int]:
 def _period_tax(half: Decimal, age: int, cfg: dict[str, Any], unit: Decimal) -> Decimal:
     """비영업용 승용자동차 기분세액. 차령이 최소 차령 미만이면 경감하지 않는다."""
     if age < int(cfg["min_age"]):
-        return _truncate(half, unit)
+        return truncate_to_unit(half, unit)
     n         = min(age, int(cfg["max_age"]))
     reduction = half * D(str(cfg["rate_per_year"])) * Decimal(n - int(cfg["base_age"]))
-    return _truncate(half - reduction, unit)
+    return truncate_to_unit(half - reduction, unit)
 
 
 def _deduction_base(
@@ -198,8 +192,8 @@ def tax_kr_vehicle_tax(
         resp["per_cc_rate"]     = str(rate)
         trace.step("per_cc_rate", str(rate))
         if business_use:
-            first_half  = _truncate(half, unit)
-            second_half = _truncate(half, unit)
+            first_half  = truncate_to_unit(half, unit)
+            second_half = truncate_to_unit(half, unit)
         else:
             assert start is not None
             age_1, age_2 = _vehicle_ages(start, year)
@@ -211,8 +205,8 @@ def tax_kr_vehicle_tax(
             trace.step("vehicle_age_second_half", age_2)
     else:
         base_annual = D(str(data["other_passenger_annual"][usage]))
-        first_half  = _truncate(base_annual / Decimal("2"), unit)
-        second_half = _truncate(base_annual / Decimal("2"), unit)
+        first_half  = truncate_to_unit(base_annual / Decimal("2"), unit)
+        second_half = truncate_to_unit(base_annual / Decimal("2"), unit)
 
     annual        = first_half + second_half
     edu_applies   = not business_use
@@ -222,14 +216,14 @@ def tax_kr_vehicle_tax(
     if annual_payment == "none":
         payable = annual
         edu_tax = (
-            _truncate(first_half * edu_rate, unit) + _truncate(second_half * edu_rate, unit)
+            truncate_to_unit(first_half * edu_rate, unit) + truncate_to_unit(second_half * edu_rate, unit)
             if edu_applies else Decimal("0")
         )
     else:
         target   = _deduction_base(annual_payment, year, annual, second_half, int(pay_cfg["second_half_days"]))
         rate_cap = min(D(str(pay_cfg["interest_rate"])), D(str(pay_cfg["max_ratio"])))
-        payable  = _truncate(annual - target * rate_cap, unit)
-        edu_tax  = _truncate(payable * edu_rate, unit) if edu_applies else Decimal("0")
+        payable  = truncate_to_unit(annual - target * rate_cap, unit)
+        edu_tax  = truncate_to_unit(payable * edu_rate, unit) if edu_applies else Decimal("0")
         trace.step("deduction_target_tax", str(target))
         trace.step("deduction_rate",       str(rate_cap))
 

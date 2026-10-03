@@ -28,7 +28,7 @@ from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
-from sootool.modules.tax._credits import STANDARD_TAX_CREDIT, _labor_income_tax_credit
+from sootool.modules.tax._credits import labor_income_tax_credit, standard_tax_credit
 from sootool.modules.tax.kr_withholding import _calc_labor_income_deduction
 from sootool.modules.tax.progressive import _calc_progressive
 from sootool.policy_mgmt.loader import load as policy_load
@@ -144,8 +144,8 @@ def payroll_kr_year_end_tax_settlement(
         taxable, brackets, RoundingPolicy.HALF_UP, 0
     )
 
-    labor_credit = _labor_income_tax_credit(computed_tax, gross)
-    tax_credit   = labor_credit + STANDARD_TAX_CREDIT + extra_credit
+    labor_credit = labor_income_tax_credit(computed_tax, gross, wh_data)
+    tax_credit   = labor_credit + standard_tax_credit(wh_data) + extra_credit
     decided    = computed_tax - tax_credit
     if decided < Decimal("0"):
         decided = Decimal("0")

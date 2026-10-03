@@ -37,7 +37,7 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyResult
-from sootool.core.rounding import RoundingPolicy
+from sootool.core.rounding import RoundingPolicy, truncate_to_unit
 from sootool.core.rounding import apply as round_apply
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
@@ -84,11 +84,6 @@ class KrNationalPensionBenefitResult(PolicyResult):
 
 def _floor_won(value: Decimal) -> Decimal:
     return round_apply(value, 0, RoundingPolicy.DOWN)
-
-
-def _truncate_to_unit(value: Decimal, unit: Decimal) -> Decimal:
-    """unit 원 미만을 버린다(unit=10 이면 10원 미만 버림)."""
-    return round_apply(value / unit, 0, RoundingPolicy.DOWN) * unit
 
 
 def _positive_amount(name: str, value: str) -> Decimal:
@@ -356,7 +351,7 @@ def payroll_kr_national_pension_benefit(
         adjusted_annual = pension_cap * _TWELVE
     total_annual = adjusted_annual + dependent_annual
     unit         = D(str(data.get("monthly_truncation_unit", 1)))
-    monthly      = _truncate_to_unit(total_annual / _TWELVE, unit)
+    monthly      = truncate_to_unit(total_annual / _TWELVE, unit)
 
     trace.input("year",                       year)
     trace.input("input_mode",                 mode)

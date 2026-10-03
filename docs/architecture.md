@@ -17,7 +17,7 @@
 사유: OCP 준수, 모듈 추가 시 코어 무변경.
 
 ## ADR-005: 언어 Python, 패키지 uv
-수치 라이브러리 생태계(numpy/scipy/statsmodels/numpy-financial/mpmath/pint) 우위.
+수치 라이브러리 생태계(numpy/scipy/mpmath/pint) 우위. 초기에 검토한 statsmodels, numpy-financial 은 쓰이지 않아 0.2 에서 의존성에서 뺐다.
 uv는 resolve 속도·재현성에서 우수.
 
 ## ADR-006: 배치·파이프라인 1급 지원

@@ -41,7 +41,7 @@ from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
-from sootool.modules.tax._credits import STANDARD_TAX_CREDIT, _labor_income_tax_credit
+from sootool.modules.tax._credits import labor_income_tax_credit, standard_tax_credit
 from sootool.modules.tax.kr_local_income_tax import _LOCAL_RATE
 from sootool.modules.tax.kr_pension_income import _pension_income_deduction
 from sootool.modules.tax.kr_withholding import _calc_labor_income_deduction
@@ -408,7 +408,7 @@ def tax_kr_comprehensive_income_tax(
     labor_credit = _ZERO
     if labor_income > _ZERO and comprehensive > _ZERO:
         labor_share  = _floor_won(computed * labor_income / comprehensive)
-        labor_credit = _floor_won(_labor_income_tax_credit(labor_share, salary))
+        labor_credit = _floor_won(labor_income_tax_credit(labor_share, salary, wh_data))
         trace.step("labor_income_computed_tax", str(labor_share))
 
     child_credit = _child_tax_credit(children_count, birth_orders, data["child_tax_credit"])
@@ -416,7 +416,7 @@ def tax_kr_comprehensive_income_tax(
     standard_credit = _ZERO
     if apply_standard_tax_credit:
         if salary > _ZERO:
-            standard_credit = STANDARD_TAX_CREDIT
+            standard_credit = standard_tax_credit(wh_data)
         else:
             non_wage        = data["standard_tax_credit_non_wage"]
             standard_credit = D(str(non_wage["diligent_business" if diligent_business_operator else "other"]))

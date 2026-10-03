@@ -63,14 +63,21 @@ Decimal 4칙(`add/sub/mul/div`)과 병렬 실행기(`batch`), DAG 파이프라�
 DuPont 3·5요소, 비율 분석을 포함한다.
 
 ### tax / payroll
-- `tax.kr_income`, `tax.capital_gains_kr`, `tax.kr_corporate`,
-  `tax.kr_gift`, `tax.kr_inheritance`, `tax.kr_withholding_simple`은 정책
-  YAML 기반 2026 한국 세목.
-- `tax.progressive`는 범용 누진세 엔진.
-- `payroll.kr_salary`는 4대보험 + 소득세 + 지방소득세를 하나의 trace로 합성.
+- 정책 YAML 기반 한국 세목: `tax.kr_income`, `tax.kr_comprehensive_income_tax`(종합소득세 신고 흐름),
+  `tax.capital_gains_kr`, `tax.kr_corporate`, `tax.kr_gift`, `tax.kr_inheritance`(세대생략 할증 입력
+  `skipped_generation_amount`, `skipped_generation_minor`), `tax.kr_withholding_simple`(공식 간이세액표, 자녀 세액공제
+  인자 `children_8_20`), `tax.kr_eitc`(근로장려금), `tax.kr_securities_transaction`, `tax.kr_pension_income`,
+  `tax.kr_vehicle_tax`, `tax.kr_registration_license_tax`.
+- `tax.progressive`는 범용 누진세 엔진. `tax_us.*`는 미국 연방, 주 소득세와 FICA(`tax_us.fica`).
+- `payroll.kr_salary`는 4대보험 + 소득세(간이세액표) + 지방소득세를 하나의 trace로 합성한다. 건강보험과 장기요양은
+  10원 미만을 버리고 시행일별 값(2026-07-01, 2026-11-01)은 `as_of` 로 고른다. `payroll.kr_gross_from_net`은 세후
+  월급에서 세전 월급을 구한다.
+- 근로기준법 수당과 최저임금: `payroll.kr_overtime_pay`, `payroll.kr_weekly_holiday_pay`,
+  `payroll.kr_minimum_wage_check`. 국민연금과 건강보험: `payroll.kr_national_pension_benefit`(월 지급액 10원 미만 버림,
+  제53조 최고한도 적용, 결과의 `pension_capped`), `payroll.kr_health_income_premium`(소득월액보험료와 연말 정산).
 
 ### realestate
-취득세, 양도세, 종합부동산세, 재산세, DSR/DTI/LTV, 임대수익률을 제공한다.
+취득세, 양도세, 종합부동산세, 재산세, DSR/DTI/LTV, 임대수익률, 청약 가점(`realestate.kr_subscription_score`)을 제공한다.
 모든 도구는 2026년 정책 YAML을 참조하며 `policy_source`와 `sha256`을 trace에
 기록한다.
 
@@ -103,10 +110,17 @@ VaR, Sharpe/Sortino ratio를 포함한다.
   `policy_rollback` 10개는 admin 전용이며 `SOOTOOL_ADMIN_MODE=1` 환경에서만
   실행된다. 상세 워크플로우는 `docs/policy_management.md` 참조.
 
+## 라이브러리, 시점, 정책 팩
+
+- 코드에서 직접 부르려면 `sootool.sdk`(`docs/sdk.md`). 결과는 도구별 TypedDict 로 타입이 붙는다.
+- 정책 도구는 `as_of`(시점)와 `include_proposed`(개정안 포함)를 받고, 응답에 적용된 정책의 출처와 근거 조문이 붙는다.
+- 응답 `_meta` 에는 영수증(`integrity`), 정확도 등급(`engine`), JSON 부동소수 변환 기록(`input_coerced`), 폐기 표기(`deprecated`)가
+  들어갈 수 있다. 호환 약속은 `docs/stability.md`, 서명된 외부 정책 팩은 `docs/external_policy_packs.md`.
+
 ## 다음 단계
 
 - 트리거 테이블과 한국어/영어 playbook은 `sootool.skill_guide()` 호출로
   직접 조회한다.
-- 아키텍처와 ADR-001~017은 `docs/architecture.md`를 본다.
+- 아키텍처와 ADR-001~028은 `docs/architecture.md`를 본다.
 - 정책 편집·배포 절차는 `docs/policy_management.md`를 본다.
 - 전송 모드별 스모크 스크립트는 `scripts/mcp_smoke_*.py`를 본다.

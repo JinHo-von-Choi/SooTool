@@ -1,4 +1,4 @@
-sha256: "70db85092999f5aea89b4dde3b7ff493e00401e7c14348808b4e272648e11254"
+sha256: "8b7f0a5c7c5e56c9ef92d68f96041754f7ca8b13e9dd2b36cf9b9c766479fb79"
 effective_date: "2026-01-01"
 effective_to: "2026-02-28"
 status: superseded
@@ -47,6 +47,19 @@ data:
       rate: 0.02
       offset: 14750000
   labor_income_deduction_cap: 20000000
+  # 근로소득세액공제(소득세법 제59조제1항, 제2항)와 표준세액공제(제59조의4제9항제1호)
+  labor_income_tax_credit:
+    low_threshold: 1300000      # 산출세액 130만원 이하 구간
+    low_rate: "0.55"
+    base: 715000                # 130만원 초과 시 71만 5천원
+    high_rate: "0.30"           # 초과분 30%
+    # 총급여액 구간별 공제 한도: max(floor, base - (총급여액 - over) x rate)
+    limits:
+      - {upper: 33000000,  base: 740000, over: 0,         rate: "0",     floor: 740000}
+      - {upper: 70000000,  base: 740000, over: 33000000,  rate: "0.008", floor: 660000}
+      - {upper: 120000000, base: 660000, over: 70000000,  rate: "0.5",   floor: 500000}
+      - {upper: null,      base: 500000, over: 120000000, rate: "0.5",   floor: 200000}
+  standard_tax_credit: 130000
   progressive_rate_applied: true
   # 공제대상가족 1명당 일률 차감액은 법령에 없다. 자녀 차감은 child_reduction_monthly 를 쓴다.
   dependent_credit_monthly: 0

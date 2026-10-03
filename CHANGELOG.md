@@ -46,6 +46,7 @@ REGISTRY 수치: 18 domains, 272 base tools, 10 admin policy-management tools (0
 - 라이브러리 인터페이스 `sootool.sdk`(ADR-028): MCP 서버 없이 같은 도구를 파이썬 함수로 호출한다. 결과, 영수증, 정책 `as_of`, 오류 계약이 MCP 와 같고 도구별 결과 타입 선언(`sdk/_typed.py`)으로 타입 검사가 된다. 실행 기반을 `sootool.runtime`(mcp 비의존)으로 분리해 도메인 하나를 불러와 첫 호출까지 약 0.35~0.5초가 든다. pint 단위 레지스트리를 첫 사용 때 만들어 단위 변환을 쓰지 않는 호출과 서버 기동 비용을 줄였다(서버 전체 기동 약 2.2~2.6초에서 약 1.7~2.0초). 코드 실행 환경 레시피는 `docs/sdk.md`.
 - 도구 메타데이터 조회 지점 `ToolSpec`(`sootool.core.toolspec`): 엔진, 정확도 등급(exact, high_precision, approximate, depends_on_children, not_numeric), 별칭, 결과 타입, 파라미터를 한 구조로 모은다. `sootool.describe` 가 `exactness` 를 함께 반환한다. 도구 전체 목록 `docs/tool_catalog.md` 는 레지스트리에서 생성하며 README 표의 도구 수와 함께 시험으로 검사한다.
 - 폐기 예고 표기: 도구 정의의 `deprecated`(대체 도구, 제거 예정 버전)가 도구 목록 설명 앞부분, `describe` 결과, 응답 `_meta.deprecated` 에 나타난다. 호환 약속과 폐기 절차는 `docs/stability.md`.
+- 모든 패키지 정책(52개)이 영역별 구조 스키마(`policy_mgmt/schemas.py`)로 검증된다. `policy_propose`, `policy_validate` 가 필수 키와 값의 종류를 검사하고, 모든 패키지 정책이 이를 통과하는 시험이 있다.
 - 도구 설명 전체를 목적, 입력 단위, 반올림 규칙, 대표 오용 순으로 보강하고 검색 별칭을 확대했다.
 
 ### Breaking
@@ -63,6 +64,7 @@ REGISTRY 수치: 18 domains, 272 base tools, 10 admin policy-management tools (0
 
 ### Changed
 
+- 근로소득세액공제와 표준세액공제의 비율, 구간, 한도를 코드 상수에서 `kr_withholding` 정책(`labor_income_tax_credit`, `standard_tax_credit`)으로 옮겼다. 연말정산과 종합소득세 신고 흐름이 같은 정책 값을 쓴다. 보험료 끝수와 건강보험료 산정 중복 코드는 공통 함수(`core.rounding.truncate_to_unit`, `payroll._insurance`)로 합쳤다.
 - 선형회귀(`stats.regression_linear`)를 statsmodels 대신 numpy/scipy 로 계산한다(교차 시험으로 같은 결과 확인). 기본 의존성에서 statsmodels(pandas 포함)와 사용하지 않던 workalendar, numpy-financial 을 뺐다. statsmodels 는 교차 시험용 dev 의존성이다.
 - scipy.stats, scipy.interpolate, statsmodels를 해당 도구의 첫 호출 시점에 불러온다. 전체 모듈 로드 기동 시간이 약 4.2~4.7초에서 약 2.2~2.6초로, 기동 직후 메모리가 약 209MB에서 약 92MB로 줄었다(측정 환경 기준).
 - 정책 초안 기본 경로를 `/tmp` 대신 `$XDG_RUNTIME_DIR` 또는 `$XDG_STATE_HOME/sootool/drafts`로 옮겼다. 초안, 정책 덮어쓰기, 감사 로그 디렉터리는 소유자 전용(0700)으로 준비하며 심볼릭 링크, 다른 사용자 소유, 비디렉터리는 `UnsafeDirectoryError`로 거부한다.

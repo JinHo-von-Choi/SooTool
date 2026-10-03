@@ -26,8 +26,7 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyResult
-from sootool.core.rounding import RoundingPolicy
-from sootool.core.rounding import apply as round_apply
+from sootool.core.rounding import truncate_to_unit
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
@@ -44,11 +43,6 @@ class RegistrationLicenseTaxResult(PolicyResult):
     registration_tax:    str
     local_education_tax: str
     total_tax:           str
-
-
-def _truncate(value: Decimal, unit: Decimal) -> Decimal:
-    """unit 원 미만 끝수를 버린다."""
-    return round_apply(value / unit, 0, RoundingPolicy.DOWN) * unit
 
 
 @REGISTRY.tool(
@@ -124,9 +118,9 @@ def tax_kr_registration_license_tax(
         rate      = D(str(rates[registration_type]["rate"]))
         computed  = base * rate
         minimum   = computed < flat
-        reg_tax   = flat if minimum else _truncate(computed, unit)
+        reg_tax   = flat if minimum else truncate_to_unit(computed, unit)
 
-    edu_tax = _truncate(reg_tax * edu_pct, unit)
+    edu_tax = truncate_to_unit(reg_tax * edu_pct, unit)
     total   = reg_tax + edu_tax
 
     trace.step("rate",                str(rate))

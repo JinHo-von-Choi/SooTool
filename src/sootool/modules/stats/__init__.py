@@ -2,7 +2,7 @@
 
 Importing this package registers all stats tools in REGISTRY.
 
-Internal dtype: float64 (numpy/scipy/statsmodels).
+Internal dtype: float64 (numpy/scipy).
 Boundary casting: Decimal strings via sootool.core.cast.
 See README.md for full dtype and casting policy.
 """

@@ -7,8 +7,9 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+from typing import Any
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # Common
@@ -481,18 +482,382 @@ class KrFourInsurancePolicyData(BaseModel):
 # Domain schema registry
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 구조 스키마: 나머지 정책 문서의 data 가 갖춰야 할 키와 값의 종류. 같은 정책의 모든 버전 파일이 공통으로
+# 가진 키를 필수로 하고, 선언하지 않은 키는 허용한다(값의 법적 정합성은 시험과 조문 인용으로 다룬다).
+# ---------------------------------------------------------------------------
+
+class KrHealthIncomePremiumPolicyData(BaseModel):
+    """payroll/kr_health_income_premium 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    evaluation_rates: dict[str, Any]
+    financial_income_exclusion_max: Decimal
+    income_premium_max_monthly: Decimal
+    non_salary_income_threshold_annual: Decimal
+    settlement_installment: dict[str, Any]
+
+
+class KrLaborPayPolicyData(BaseModel):
+    """payroll/kr_labor_pay 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    amount_rounding: dict[str, Any]
+    holiday_daily_limit_hours: Decimal
+    monthly_hours: dict[str, Any]
+    night_window: dict[str, Any]
+    premium_rates: dict[str, Any]
+    small_workplace_max_employees: Decimal
+    weekly_holiday: dict[str, Any]
+
+
+class KrMinimumWagePolicyData(BaseModel):
+    """payroll/kr_minimum_wage 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    hourly_minimum_wage: Decimal
+    inclusion: dict[str, Any]
+    notice_monthly_amount: Decimal
+    notice_monthly_hours: Decimal
+    probation: dict[str, Any]
+
+
+class KrNationalPensionBenefitPolicyData(BaseModel):
+    """payroll/kr_national_pension_benefit 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    a_value: Decimal
+    deferral_increment_per_month: Decimal
+    deferral_max_months: Decimal
+    deferral_ratios: list[Any]
+    dependent_annual: dict[str, Any]
+    early_max_months: Decimal
+    early_reduction_per_month: Decimal
+    extension_rate_per_year: Decimal
+    full_benefit_months: Decimal
+    minimum_months: Decimal
+    monthly_truncation_unit: Decimal
+    partial_base_ratio: Decimal
+    partial_increment_per_year: Decimal
+    proportional_constants: list[Any]
+    revaluation_rates: dict[str, Any]
+
+
+class KrSeverancePolicyData(BaseModel):
+    """payroll/kr_severance 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    converted_salary_deduction_brackets: list[Any]
+    service_deduction_brackets: list[Any]
+    tax_brackets: list[Any]
+
+
+class KrYearendDeductionsPolicyData(BaseModel):
+    """payroll/kr_yearend_deductions 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    donation: dict[str, Any]
+    education: dict[str, Any]
+    housing_loan_interest: dict[str, Any]
+    medical: dict[str, Any]
+
+
+class KrComprehensivePolicyData(BaseModel):
+    """realestate/kr_comprehensive 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    base_deduction: dict[str, Any]
+    burden_cap_ratio: Decimal
+    corporate_rates: dict[str, Any]
+    fair_market_ratio: Decimal
+    multi_bracket_min_house_count: Decimal
+    multi_house_brackets: list[Any]
+    one_house_brackets: list[Any]
+    one_house_credit: dict[str, Any]
+    property_tax_credit: dict[str, Any]
+    rural_special_rate: Decimal
+
+
+class KrLocalPropertyPolicyData(BaseModel):
+    """realestate/kr_local_property 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    acquisition_brackets: list[Any]
+    acquisition_coefficient: dict[str, Any]
+    fair_market_ratio: Decimal
+    one_house_fair_market_ratio: list[Any]
+    one_house_special: dict[str, Any]
+    property_brackets: list[Any]
+    property_coefficient: dict[str, Any]
+    surcharges: dict[str, Any]
+    urban_area_applicable: dict[str, Any]
+
+
+class KrPropertyTaxPolicyData(BaseModel):
+    """realestate/kr_property_tax 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    brackets: list[Any]
+    fair_market_ratio: Decimal
+    one_house_fair_market_ratio: list[Any]
+    one_house_special: dict[str, Any]
+    surcharges: dict[str, Any]
+    tax_base_cap_rate: Decimal
+
+
+class KrSubscriptionPolicyData(BaseModel):
+    """realestate/kr_subscription 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    dependents: dict[str, Any]
+    homeless_period: dict[str, Any]
+    max_total_points: Decimal
+    savings_period: dict[str, Any]
+    spouse_savings: dict[str, Any]
+
+
+class KrComprehensiveIncomePolicyData(BaseModel):
+    """tax/kr_comprehensive_income 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    additional_deduction: dict[str, Any]
+    child_tax_credit: dict[str, Any]
+    dividend_gross_up_rate: Decimal
+    financial_income_threshold: Decimal
+    financial_withholding_rate: Decimal
+    other_income_deemed_expense_rate: Decimal
+    other_income_separate_threshold: Decimal
+    other_income_withholding_rate: Decimal
+    standard_tax_credit_non_wage: dict[str, Any]
+
+
+class KrCorporatePolicyData(BaseModel):
+    """tax/kr_corporate 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    brackets: list[Any]
+    minimum_tax: dict[str, Any]
+    small_rental_brackets: list[Any]
+
+
+class KrEitcPolicyData(BaseModel):
+    """tax/kr_eitc 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    business_adjustment_rates: dict[str, Any]
+    calculation_table: list[Any]
+    dual_earner_min_each: Decimal
+    earnings_excluded_industries: list[Any]
+    household_types: dict[str, Any]
+    late_application_rate: Decimal
+    minimum_award: dict[str, Any]
+    property_limit: Decimal
+    property_reduction_rate: Decimal
+    property_reduction_threshold: Decimal
+
+
+class KrGiftPolicyData(BaseModel):
+    """tax/kr_gift 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    brackets: list[Any]
+    deduction_lookback_years: Decimal
+    filing_credit_rate: Decimal
+    generation_skip_surcharge: dict[str, Any]
+    marriage_birth_deduction: Decimal
+    relationship_deduction: dict[str, Any]
+
+
+class KrInheritancePolicyData(BaseModel):
+    """tax/kr_inheritance 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    brackets: list[Any]
+    deductions: dict[str, Any]
+    filing_credit_rate: Decimal
+    generation_skip_surcharge: dict[str, Any]
+    pre_gift_limit_threshold: Decimal
+
+
+class KrPensionIncomePolicyData(BaseModel):
+    """tax/kr_pension_income 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    deferred_retirement_ratios: list[Any]
+    lifetime_annuity_rate: Decimal
+    local_income_tax_ratio: Decimal
+    non_pension_withdrawal_rate: Decimal
+    pension_income_deduction: dict[str, Any]
+    pension_receipt_min_age: Decimal
+    private_pension_age_rates: list[Any]
+    separate_taxation_option_rate: Decimal
+    separate_taxation_threshold: Decimal
+
+
+class KrRegistrationLicenseTaxPolicyData(BaseModel):
+    """tax/kr_registration_license_tax 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    local_education_tax_rate: Decimal
+    other_registration_flat: Decimal
+    real_estate_rates: dict[str, Any]
+    rounding_unit: Decimal
+
+
+class KrSecuritiesTransactionPolicyData(BaseModel):
+    """tax/kr_securities_transaction 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    markets: dict[str, Any]
+    statutory_rate: Decimal
+
+
+class KrSimplifiedVatPolicyData(BaseModel):
+    """tax/kr_simplified_vat 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    card_sales_credit: dict[str, Any]
+    input_credit_rate: Decimal
+    nonpayment_threshold: Decimal
+    restricted_threshold_amount: Decimal
+    threshold_amount: Decimal
+    value_added_rates: dict[str, Any]
+    vat_rate: Decimal
+
+
+class KrVehicleTaxPolicyData(BaseModel):
+    """tax/kr_vehicle_tax 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    age_reduction: dict[str, Any]
+    annual_payment: dict[str, Any]
+    local_education_tax_rate: Decimal
+    other_passenger_annual: dict[str, Any]
+    passenger_cc_rates: dict[str, Any]
+    rounding_unit: Decimal
+
+
+class CapitalGainsPolicyData(BaseModel):
+    """tax_us/capital_gains 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    ltcg_brackets: dict[str, Any]
+    niit: dict[str, Any]
+
+
+class FederalIncomePolicyData(BaseModel):
+    """tax_us/federal_income 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    brackets: dict[str, Any]
+    standard_deduction: dict[str, Any]
+
+
+class FicaPolicyData(BaseModel):
+    """tax_us/fica 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    additional_medicare: dict[str, Any]
+    medicare: dict[str, Any]
+    self_employment: dict[str, Any]
+    social_security: dict[str, Any]
+
+
+class StateTaxCaPolicyData(BaseModel):
+    """tax_us/state_tax_ca 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    brackets: dict[str, Any]
+    has_income_tax: bool
+    standard_deduction: dict[str, Any]
+    surcharge: dict[str, Any]
+
+
+class StateTaxNyPolicyData(BaseModel):
+    """tax_us/state_tax_ny 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    brackets: dict[str, Any]
+    has_income_tax: bool
+    recapture: dict[str, Any]
+    standard_deduction: dict[str, Any]
+
+
+class StateTaxTxPolicyData(BaseModel):
+    """tax_us/state_tax_tx 정책 data 의 구조(필수 키와 값의 종류). 선언하지 않은 키는 허용한다."""
+
+    model_config = ConfigDict(extra="allow")
+
+    brackets: dict[str, Any]
+    has_income_tax: bool
+    standard_deduction: dict[str, Any]
+
+
 _DOMAIN_SCHEMAS: dict[str, dict[str, type[BaseModel]]] = {
     "tax": {
         "kr_income":      KrIncomePolicyData,
         "kr_capital_gains": KrCapitalGainsPolicyData,
         "kr_withholding": KrWithholdingPolicyData,
+        "kr_comprehensive_income": KrComprehensiveIncomePolicyData,
+        "kr_corporate": KrCorporatePolicyData,
+        "kr_eitc": KrEitcPolicyData,
+        "kr_gift": KrGiftPolicyData,
+        "kr_inheritance": KrInheritancePolicyData,
+        "kr_pension_income": KrPensionIncomePolicyData,
+        "kr_registration_license_tax": KrRegistrationLicenseTaxPolicyData,
+        "kr_securities_transaction": KrSecuritiesTransactionPolicyData,
+        "kr_simplified_vat": KrSimplifiedVatPolicyData,
+        "kr_vehicle_tax": KrVehicleTaxPolicyData,
     },
     "realestate": {
         "kr_acquisition": KrAcquisitionPolicyData,
         "kr_dsr_ltv":     KrDsrLtvPolicyData,
+        "kr_comprehensive": KrComprehensivePolicyData,
+        "kr_local_property": KrLocalPropertyPolicyData,
+        "kr_property_tax": KrPropertyTaxPolicyData,
+        "kr_subscription": KrSubscriptionPolicyData,
     },
     "payroll": {
         "kr_4insurance": KrFourInsurancePolicyData,
+        "kr_health_income_premium": KrHealthIncomePremiumPolicyData,
+        "kr_labor_pay": KrLaborPayPolicyData,
+        "kr_minimum_wage": KrMinimumWagePolicyData,
+        "kr_national_pension_benefit": KrNationalPensionBenefitPolicyData,
+        "kr_severance": KrSeverancePolicyData,
+        "kr_yearend_deductions": KrYearendDeductionsPolicyData,
+    },
+    "tax_us": {
+        "capital_gains": CapitalGainsPolicyData,
+        "federal_income": FederalIncomePolicyData,
+        "fica": FicaPolicyData,
+        "state_tax_ca": StateTaxCaPolicyData,
+        "state_tax_ny": StateTaxNyPolicyData,
+        "state_tax_tx": StateTaxTxPolicyData,
     },
 }
 
