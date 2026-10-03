@@ -17,13 +17,13 @@ def call(**kwargs):
 
 class TestDonationDeductionBasic:
     def test_legal_low_tier(self):
-        """법정기부금 500만 × 15% = 75만."""
+        """특례기부금 500만 × 15% = 75만."""
         r = call(earned_income="50000000", year=2026, legal_donation="5000000")
         assert Decimal(r["legal_credit"]) == Decimal("750000")
         assert Decimal(r["total_credit"]) == Decimal("750000")
 
     def test_legal_high_tier(self):
-        """법정 2000만: 1천만 × 15% + 1천만 × 30% = 150만 + 300만 = 450만."""
+        """특례 2000만: 1천만 × 15% + 1천만 × 30% = 150만 + 300만 = 450만."""
         r = call(earned_income="100000000", year=2026, legal_donation="20000000")
         assert Decimal(r["legal_credit"]) == Decimal("4500000")
 
@@ -72,7 +72,7 @@ class TestDonationDeductionCombined:
         assert Decimal(r["total_credit"]) == Decimal("120909")
 
     def test_all_categories_combined(self):
-        """법정+지정+정치자금 동시."""
+        """특례+일반+정치자금 동시."""
         r = call(
             earned_income="100000000",
             year=2026,
@@ -86,6 +86,108 @@ class TestDonationDeductionCombined:
         assert Decimal(r["legal_credit"]) == Decimal("750000")
         assert Decimal(r["designated_credit"]) == Decimal("450000")
         assert Decimal(r["political_small_credit"]) == Decimal("45454")
+
+    def test_legal_and_designated_share_one_tier(self):
+        """특례 1500만 + 일반 1500만 합계 3000만에 15%/30% 한 번 적용 (소득세법 §59의4④).
+
+        합계: 1000만 × 15% + 2000만 × 30% = 750만.
+        특례 먼저: 1000만 × 15% + 500만 × 30% = 300만, 일반 = 750만 - 300만 = 450만.
+        """
+        r = call(
+            earned_income="100000000",
+            year=2026,
+            legal_donation="15000000",
+            designated_donation="15000000",
+        )
+        assert Decimal(r["legal_credit"]) == Decimal("3000000")
+        assert Decimal(r["designated_credit"]) == Decimal("4500000")
+        assert Decimal(r["total_credit"]) == Decimal("7500000")
+
+
+class TestDonationDeductionLimits:
+    def test_legal_limited_by_income(self):
+        """특례기부금 한도 = 소득금액 - 이월결손금 (시행령 §81④1). 소득 1000만, 특례 1500만 → 1000만 × 15%."""
+        r = call(earned_income="10000000", year=2026, legal_donation="15000000")
+        assert Decimal(r["legal_qualifying"]) == Decimal("10000000")
+        assert Decimal(r["legal_credit"]) == Decimal("1500000")
+
+    def test_political_precedes_legal_in_limit(self):
+        """소득 1000만, 정치자금 400만이 먼저 한도를 쓰고 특례는 600만까지 (시행령 §81④)."""
+        r = call(
+            earned_income="10000000",
+            year=2026,
+            legal_donation="10000000",
+            political_donation="4000000",
+        )
+        assert Decimal(r["legal_qualifying"]) == Decimal("6000000")
+        assert Decimal(r["legal_credit"]) == Decimal("900000")
+        # 정치자금: 10만 × 100/110 → 90909, (400만 - 10만) × 15% = 58.5만
+        assert Decimal(r["political_small_credit"]) == Decimal("90909")
+        assert Decimal(r["political_credit"]) == Decimal("585000")
+
+    def test_designated_base_excludes_legal(self):
+        """일반기부금 한도 기준에서 특례기부금을 뺀다 (시행령 §81④3).
+
+        소득 5000만, 특례 2000만 → 기준 3000만 × 30% = 900만.
+        합계 2900만: 1000만 × 15% + 1900만 × 30% = 720만, 특례 450만, 일반 270만.
+        """
+        r = call(
+            earned_income="50000000",
+            year=2026,
+            legal_donation="20000000",
+            designated_donation="20000000",
+        )
+        assert Decimal(r["designated_limit"]) == Decimal("9000000")
+        assert Decimal(r["legal_credit"]) == Decimal("4500000")
+        assert Decimal(r["designated_credit"]) == Decimal("2700000")
+        assert Decimal(r["total_credit"]) == Decimal("7200000")
+
+    def test_religious_limit(self):
+        """종교단체 기부가 있으면 기준 × 10% + min(기준 × 20%, 종교단체 외) (소득세법 §59의4④2가).
+
+        소득 5000만, 종교 1000만, 종교 외 200만 → 한도 500만 + 200만 = 700만 × 15% = 105만.
+        """
+        r = call(
+            earned_income="50000000",
+            year=2026,
+            designated_donation="2000000",
+            religious_donation="10000000",
+        )
+        assert Decimal(r["designated_limit"]) == Decimal("7000000")
+        assert Decimal(r["designated_qualifying"]) == Decimal("7000000")
+        assert Decimal(r["designated_credit"]) == Decimal("1050000")
+
+    def test_carryover_loss_reduces_base(self):
+        """이월결손금 2000만 → 기준 3000만 × 30% = 900만 × 15% = 135만."""
+        r = call(
+            earned_income="50000000",
+            year=2026,
+            designated_donation="20000000",
+            carryover_loss="20000000",
+        )
+        assert Decimal(r["designated_credit"]) == Decimal("1350000")
+
+    def test_hometown_and_esop_reduce_base(self):
+        """고향사랑 500만, 우리사주 500만 → 기준 4000만 × 30% = 1200만.
+
+        1000만 × 15% + 200만 × 30% = 210만.
+        """
+        r = call(
+            earned_income="50000000",
+            year=2026,
+            designated_donation="20000000",
+            hometown_donation="5000000",
+            esop_donation="5000000",
+        )
+        assert Decimal(r["designated_limit"]) == Decimal("12000000")
+        assert Decimal(r["designated_credit"]) == Decimal("2100000")
+
+    def test_political_high_tier_25_percent(self):
+        """정치자금 5000만: 10만 × 100/110 + 3000만 × 15% + 1990만 × 25% (조특법 §76①)."""
+        r = call(earned_income="100000000", year=2026, political_donation="50000000")
+        assert Decimal(r["political_small_credit"]) == Decimal("90909")
+        assert Decimal(r["political_credit"]) == Decimal("9475000")
+        assert Decimal(r["total_credit"]) == Decimal("9565909")
 
 
 class TestDonationDeductionValidation:
@@ -104,6 +206,14 @@ class TestDonationDeductionValidation:
     def test_negative_political_raises(self):
         with pytest.raises(InvalidInputError):
             call(earned_income="50000000", year=2026, political_donation="-1")
+
+    def test_negative_religious_raises(self):
+        with pytest.raises(InvalidInputError):
+            call(earned_income="50000000", year=2026, religious_donation="-1")
+
+    def test_negative_carryover_loss_raises(self):
+        with pytest.raises(InvalidInputError):
+            call(earned_income="50000000", year=2026, carryover_loss="-1")
 
     def test_trace_and_policy_version(self):
         r = call(earned_income="50000000", year=2026, legal_donation="1000000")

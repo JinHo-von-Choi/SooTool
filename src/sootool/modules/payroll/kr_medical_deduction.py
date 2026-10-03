@@ -2,13 +2,15 @@
 
 Author: 최진호
 Date: 2026-04-24
+Modified: 2026-10-03
 
 소득세법 제59조의4 제2항 의료비 세액공제:
   - 공제 대상액 = max(0, 지출 의료비 - 총급여의 3%)
-  - 일반 의료비: 15% 세액공제, 연 700만원 한도
-  - 본인·장애인·65세 이상·6세 이하: 15%, 한도 없음
-  - 난임시술비: 30%, 한도 없음
-  - 미숙아·선천성이상아: 20%, 한도 없음
+  - 제1호 일반 의료비: 15% 세액공제, 연 700만원 한도
+  - 제2호 본인·6세 이하·65세 이상·장애인·중증질환자·희귀난치성질환자·결핵환자: 15%, 한도 없음
+  - 제3호 미숙아·선천성이상아: 20%, 한도 없음
+  - 제4호 난임시술비: 30%, 한도 없음
+  - 총급여 3% 미달분은 제1호 → 제2호 → 제3호 → 제4호 순으로 뺀다(각 호 단서).
 
 입력은 범주별 의료비 지출액(원)을 문자열로 받는다.
 """
@@ -34,7 +36,7 @@ from sootool.policy_mgmt.trace_ext import enrich_response
         "한국 의료비 세액공제(소득세법 §59의4) 계산. "
         "총급여 3% 초과분에 대해 일반 15%·난임 30%·미숙아 20% 공제."
     ),
-    version="1.0.0",
+    version="1.1.0",
     policy=True,
 )
 def payroll_kr_medical_deduction(
@@ -51,7 +53,7 @@ def payroll_kr_medical_deduction(
         gross_income:     총급여(원).
         general_medical:  일반 의료비 지출액(원). 본인·장애인 등 특수대상 제외.
         year:             과세연도.
-        special_medical:  본인·장애인·65세 이상·6세 이하 의료비(한도 없음).
+        special_medical:  본인·6세 이하·65세 이상·장애인·중증질환자 등 의료비(한도 없음).
         infertility:      난임시술비(원).
         premature:        미숙아·선천성이상아 의료비(원).
 
@@ -65,7 +67,7 @@ def payroll_kr_medical_deduction(
         formula=(
             "threshold = 총급여 × 3%; "
             "deductible = max(0, (일반+특수+난임+미숙아) - threshold); "
-            "각 범주별 공제는 해당 지출액에서 threshold를 일반→특수→난임→미숙아 순 차감 후 "
+            "각 범주별 공제는 해당 지출액에서 threshold를 일반→특수→미숙아→난임 순 차감 후 "
             "rate × (한도 적용)로 계산"
         ),
     )
@@ -109,7 +111,7 @@ def payroll_kr_medical_deduction(
     if deductible < Decimal("0"):
         deductible = Decimal("0")
 
-    # threshold를 범주 우선순위 (일반 → 특수 → 난임 → 미숙아) 순으로 차감
+    # threshold 미달분을 제1호(일반) → 제2호(특수) → 제3호(미숙아) → 제4호(난임) 순으로 차감
     remaining = threshold
     # 일반: 먼저 threshold와 한도 적용
     gen_after_thr = gen - min(gen, remaining)
@@ -119,11 +121,10 @@ def payroll_kr_medical_deduction(
     spe_after_thr = spe - min(spe, remaining)
     remaining     = remaining - min(spe, remaining)
 
-    inf_after_thr = inf - min(inf, remaining)
-    remaining     = remaining - min(inf, remaining)
-
     pre_after_thr = pre - min(pre, remaining)
-    # remaining은 마지막 이후 사용 안 함
+    remaining     = remaining - min(pre, remaining)
+
+    inf_after_thr = inf - min(inf, remaining)
 
     general_credit    = round_apply(gen_after_lim * credit_rate, 0, RoundingPolicy.DOWN)
     special_credit    = round_apply(spe_after_thr * credit_rate, 0, RoundingPolicy.DOWN)

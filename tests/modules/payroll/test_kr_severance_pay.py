@@ -71,9 +71,25 @@ class TestKrSeverancePayValidation:
             )
 
     def test_small_severance_under_deduction_yields_zero_tax(self):
-        # 3년, 300만원 — 근속공제 300만 → taxable 0
+        # 3년, 300만원: 근속연수공제 300만 → 과세 대상 0
         r = call(severance_amount="3000000", service_years="3", year=2026)
         assert Decimal(r["tax"]) == Decimal("0")
+
+    def test_service_deduction_capped_at_severance_income(self):
+        """퇴직소득금액이 근속연수공제에 미달하면 퇴직소득금액을 공제액으로 한다 (소득세법 §48②).
+
+        3년 표 금액 300만 > 퇴직소득금액 200만 → 공제액 200만.
+        """
+        r = call(severance_amount="2000000", service_years="3", year=2026)
+        assert Decimal(r["service_deduction"]) == Decimal("2000000")
+        assert Decimal(r["converted_salary"]) == Decimal("0")
+        assert Decimal(r["tax"]) == Decimal("0")
+
+    def test_partial_year_rounds_up(self):
+        """1년 미만 기간은 1년으로 본다 (소득세법 §48①): 4.2년 → 5년, 공제 500만."""
+        r = call(severance_amount="30000000", service_years="4.2", year=2026)
+        assert Decimal(r["service_years"]) == Decimal("5")
+        assert Decimal(r["service_deduction"]) == Decimal("5000000")
 
 
 class TestKrSeverancePayBatch:

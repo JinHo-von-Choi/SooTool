@@ -7,7 +7,7 @@ import pytest
 
 import sootool.modules.payroll  # noqa: F401
 from sootool.core.batch import BatchExecutor
-from sootool.core.errors import InvalidInputError
+from sootool.core.errors import InvalidInputError, PolicyNotEnactedError
 from sootool.core.registry import REGISTRY
 
 
@@ -57,7 +57,7 @@ class TestHousingLoanDeductionBasic:
         assert Decimal(r["deductible_amount"]) == Decimal("1000000")
 
     def test_15plus_other(self):
-        """15년 이상 기타 조건 → 한도 500만."""
+        """15년 이상 기타 조건 → 한도 800만 (소득세법 §52⑤ 단서)."""
         r = call(
             interest_paid="10000000",
             term_years=20,
@@ -66,22 +66,23 @@ class TestHousingLoanDeductionBasic:
             year=2026,
         )
         assert r["limit_key"] == "15+_other"
-        assert Decimal(r["limit"]) == Decimal("5000000")
-        # 1000만 > 500만 한도 → 500만
-        assert Decimal(r["deductible_amount"]) == Decimal("5000000")
+        assert Decimal(r["limit"]) == Decimal("8000000")
+        # 1000만 > 800만 한도 → 800만
+        assert Decimal(r["deductible_amount"]) == Decimal("8000000")
 
     def test_10_to_15_fixed_or_nongrace(self):
-        """10~15년 고정금리 또는 비거치식 → 한도 300만."""
+        """10년 이상 고정금리 또는 비거치식 → 한도 600만 (소득세법 §52⑥3)."""
         r = call(
-            interest_paid="5000000",
+            interest_paid="7000000",
             term_years=12,
             is_fixed_rate=True,
             is_non_grace=False,
             year=2026,
         )
         assert r["limit_key"] == "10_15_fixed_or_ng"
-        assert Decimal(r["limit"]) == Decimal("3000000")
-        assert Decimal(r["deductible_amount"]) == Decimal("3000000")
+        assert Decimal(r["limit"]) == Decimal("6000000")
+        # 700만 > 600만 한도 → 600만
+        assert Decimal(r["deductible_amount"]) == Decimal("6000000")
 
 
 class TestHousingLoanDeductionIneligible:
@@ -109,6 +110,33 @@ class TestHousingLoanDeductionIneligible:
         )
         assert r["limit_key"] == ""
         assert Decimal(r["deductible_amount"]) == Decimal("0")
+
+
+class TestHousingLoanDeductionProposed:
+    def test_2027_requires_include_proposed(self):
+        """2027 귀속은 국회 의결 전 개정안만 있어 확정 버전이 없다."""
+        with pytest.raises(PolicyNotEnactedError):
+            call(
+                interest_paid="1000000",
+                term_years=20,
+                is_fixed_rate=True,
+                is_non_grace=True,
+                year=2027,
+            )
+
+    def test_2027_proposed_keeps_limits(self):
+        """2026 세제개편안은 공제한도를 유지한다(상세본 136쪽 좌동): 15년 이상 기타 800만."""
+        r = call(
+            interest_paid="10000000",
+            term_years=20,
+            is_fixed_rate=False,
+            is_non_grace=False,
+            year=2027,
+            include_proposed=True,
+        )
+        assert r["policy_status"] == "proposed"
+        assert Decimal(r["limit"]) == Decimal("8000000")
+        assert Decimal(r["deductible_amount"]) == Decimal("8000000")
 
 
 class TestHousingLoanDeductionValidation:

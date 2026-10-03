@@ -1,0 +1,80 @@
+sha256: "02b5d694d4924cbf14f29b53da9e6beb27aa899f608b457a3190eed46178eaeb"
+meta:
+  domain: payroll
+  name:   kr_yearend_deductions
+  year:   2027
+effective_date: "2027-01-01"
+status: proposed
+notice_no: "재정경제부 「2026년 세제개편안」 정부안(2026.8.3. 발표, 2026.9.1. 국무회의 의결): 소득세법 제52조제5항·제59조의4제3항 개정안. 공제율·한도는 현행 유지"
+source_url: "https://mofe.go.kr/nw/nes/detailNesDtaView.do?searchBbsId1=MOSFBBS_000000000028&searchNttId1=MOSF_000000000078809&menuNo=4010100"
+citations:
+  - law: "2026년 세제개편안(재정경제부, 정부안)"
+    article: "소득세법 제52조제5항, 같은 법 시행령 제112조 개정안(상세본 136쪽)"
+    url: "https://mofe.go.kr/nw/nes/detailNesDtaView.do?searchBbsId1=MOSFBBS_000000000028&searchNttId1=MOSF_000000000078809&menuNo=4010100"
+    note: "장기주택저당차입금 이자 소득공제에 세대구성원 전원 실거주 요건 추가(과세기간 종료일 기준). 공제한도 2천만·1천800만·800만·600만원 현행 유지. 2027.1.1. 이후 이자 지급분부터, 2026.12.31. 이전 설정 저당은 2027~2029년 종전 규정."
+  - law: "2026년 세제개편안(재정경제부, 정부안)"
+    article: "소득세법 제59조의4제3항, 같은 법 시행령 제118조의6제1항 개정안(상세본 137쪽)"
+    url: "https://mofe.go.kr/nw/nes/detailNesDtaView.do?searchBbsId1=MOSFBBS_000000000028&searchNttId1=MOSF_000000000078809&menuNo=4010100"
+    note: "취학 전 아동 학원비를 예능(음악·미술·무용) 학원으로 한정, 특별법에 따른 대학의 입학전형료 추가. 공제율 15%·1명당 한도 현행 유지. 2027.1.1. 이후 지급분부터."
+  - law: "2026년 세제개편안 정부안 확정(재정경제부 보도자료)"
+    article: "국무회의 의결 수정사항"
+    url: "https://www.korea.kr/briefing/pressReleaseView.do?newsId=156776418"
+    note: "2026.9.1. 국무회의 의결, 9.3.까지 국회 제출. 수정사항(ISA, 종합부동산세 등)에 위 두 항목은 포함되지 않음. 국회 의결 전 개정안."
+  - law: "소득세법"
+    article: "제59조의4제2항~제4항, 제52조제5항·제6항"
+    url: "https://www.law.go.kr/법령/소득세법/제59조의4"
+    note: "의료비·교육비·기부금 공제율과 한도, 장기주택저당차입금 이자 한도는 개정안에 변경이 없어 법률 제21221호(2025.12.23.) 판 현행 값을 따른다."
+  - law: "조세특례제한법"
+    article: "제76조제1항"
+    url: "https://www.law.go.kr/법령/조세특례제한법/제76조"
+    note: "정치자금 10만원까지 110분의 100, 10만원 초과 금액의 15%(3천만원 초과분 25%). 개정안에 변경 없음."
+data:
+  # 의료비 세액공제
+  medical:
+    gross_income_floor_rate: "0.03"     # 총급여 3% 초과분만 공제 대상
+    credit_rate:             "0.15"     # 일반 의료비 15%
+    infertility_rate:        "0.30"     # 난임시술비 30%
+    premature_rate:          "0.20"     # 미숙아·선천성이상아 20%
+    general_limit:           7000000    # 일반 의료비 연 700만원 한도
+    # 본인·6세 이하·65세 이상·장애인·중증질환자 등(제2호)은 한도 없음
+    special_limit:           null
+
+  # 교육비 세액공제
+  education:
+    credit_rate:             "0.15"
+    limits:
+      self:                  null          # 근로자 본인: 한도 없음
+      preschool:             3000000       # 영유아(취학 전) 연 300만원
+      elementary:            3000000       # 초·중·고 연 300만원
+      middle_high:           3000000
+      university:            9000000       # 대학(원 제외) 연 900만원
+      disabled_special:      null          # 장애인 특수교육비: 한도 없음
+
+  # 기부금 세액공제
+  donation:
+    # 특례기부금 + 일반기부금 합계에 적용 (소득세법 제59조의4제4항)
+    rate_low:                "0.15"        # 1천만원 이하분
+    rate_high:               "0.30"        # 1천만원 초과분
+    threshold:               10000000      # 1천만원 분기선
+    # 특례기부금 한도: (소득금액 - 이월결손금 - 정치자금 - 고향사랑) × 100% (시행령 제81조제4항제1호)
+    legal_limit_rate:        "1.00"
+    # 일반기부금 한도 (시행령 제81조제4항제3호, 기준 = 소득금액 - 기부금등합계액)
+    designated_limit_rate:   "0.30"        # 종교단체 기부가 없는 경우
+    designated_religious_base_rate:  "0.10"   # 종교단체 기부가 있는 경우 기준 × 10%
+    designated_religious_extra_rate: "0.20"   # + min(기준 × 20%, 종교단체 외 기부액)
+    # 정치자금 (조세특례제한법 제76조제1항)
+    political_credit_rate:   "0.9090909091"   # 10만원 이하: 110분의 100
+    political_small_cap:     100000        # 110분의 100 적용 상한
+    political_rate_low:      "0.15"        # 10만원 초과 금액의 15%
+    political_rate_high:     "0.25"        # 그 금액이 3천만원을 초과하는 분 25%
+    political_threshold:     30000000      # 10만원 초과 금액 기준 분기선
+
+  # 장기주택저당차입금 이자상환액 소득공제 (소득세법 제52조제5항·제6항)
+  housing_loan_interest:
+    # 상환기간별, 조건별 한도 (원)
+    # key = "{term_years}_{condition}"
+    limits:
+      "15+_fixed_nongrace":  20000000      # 15년 이상, 고정금리 + 비거치식 (제6항제1호)
+      "15+_fixed_or_ng":     18000000      # 15년 이상, 고정금리 또는 비거치식 (제6항제2호)
+      "15+_other":           8000000       # 15년 이상, 기타 (제5항 단서)
+      "10_15_fixed_or_ng":   6000000       # 10년 이상, 고정금리 또는 비거치식 (제6항제3호)

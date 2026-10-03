@@ -2,11 +2,13 @@
 
 Author: 최진호
 Date: 2026-04-24
+Modified: 2026-10-03
 
 퇴직소득세 계산 (소득세법 제48조·제55조, 시행령 제105조):
 
   1. 퇴직급여 - 비과세 = 퇴직소득금액
-  2. 환산급여 = (퇴직소득금액 - 근속연수공제) * 12 / 근속연수
+  2. 근속연수공제 = min(근속연수 구간 공제액, 퇴직소득금액)  (제48조제2항)
+     환산급여 = (퇴직소득금액 - 근속연수공제) * 12 / 근속연수
   3. 환산급여공제 테이블 적용 -> 과세표준(환산과세표준)
   4. 기본세율 적용 -> 환산산출세액
   5. 산출세액 = 환산산출세액 * 근속연수 / 12
@@ -94,6 +96,7 @@ def payroll_kr_severance_pay(
     trace = CalcTrace(
         tool="payroll.kr_severance_pay",
         formula=(
+            "근속연수공제 = min(구간 공제액, 퇴직소득금액); "
             "환산급여 = (퇴직소득금액 - 근속연수공제) * 12 / 근속연수; "
             "환산과세표준 = 환산급여 - 환산급여공제; "
             "환산산출세액 = progressive(환산과세표준); "
@@ -126,15 +129,13 @@ def payroll_kr_severance_pay(
 
     taxable_severance = total - nontax
 
-    # 근속연수공제 (올림 연수 기준: 세법은 1년 미만 절상. 안전하게 ceil 적용)
-    # 다만 소수 입력 허용을 위해 decimal 그대로 사용하는 옵션도 있으나
-    # 국세청 지침 기준 1년 미만은 1년으로 하므로 올림 처리.
+    # 근속연수의 1년 미만 기간은 1년으로 본다 (제48조제1항 각 호 외의 부분)
     service_years_ceil = years.to_integral_value(rounding="ROUND_CEILING")
-    service_ded = _service_deduction(service_years_ceil, data["service_deduction_brackets"])
+    service_ded_table  = _service_deduction(service_years_ceil, data["service_deduction_brackets"])
 
+    # 퇴직소득금액이 근속연수공제에 미달하면 퇴직소득금액을 공제액으로 한다 (제48조제2항)
+    service_ded   = service_ded_table if service_ded_table <= taxable_severance else taxable_severance
     after_service = taxable_severance - service_ded
-    if after_service < Decimal("0"):
-        after_service = Decimal("0")
 
     # 환산급여
     converted = after_service * Decimal("12") / service_years_ceil
@@ -157,6 +158,7 @@ def payroll_kr_severance_pay(
 
     trace.step("taxable_severance",    str(taxable_severance))
     trace.step("service_years_ceil",   str(service_years_ceil))
+    trace.step("service_deduction_table", str(service_ded_table))
     trace.step("service_deduction",    str(service_ded))
     trace.step("converted_salary",     str(converted))
     trace.step("converted_deduction",  str(conv_ded))

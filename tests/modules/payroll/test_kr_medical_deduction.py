@@ -48,7 +48,7 @@ class TestMedicalDeductionBasic:
             year=2026,
             infertility="5000000",
         )
-        # 일반 0, 특수 0, 난임 500만. threshold 150만 차감 순서: 일반→특수→난임
+        # 일반 0, 특수 0, 미숙아 0, 난임 500만. threshold 150만 차감 순서: 일반→특수→미숙아→난임
         # 난임 after_thr = 500만 - 150만 = 350만
         # credit = 350만 * 30% = 105만
         assert Decimal(r["infertility_credit"]) == Decimal("1050000")
@@ -79,7 +79,7 @@ class TestMedicalDeductionEdgeCases:
         assert Decimal(r["premature_credit"]) == Decimal("100000")
 
     def test_threshold_applied_in_priority_order(self):
-        """일반→특수→난임→미숙아 순서로 threshold 차감."""
+        """일반→특수→미숙아→난임 순서로 threshold 차감."""
         r = call(
             gross_income="50000000",
             general_medical="1000000",    # 100만 (threshold 150만에 모두 소진)
@@ -94,6 +94,24 @@ class TestMedicalDeductionEdgeCases:
         assert Decimal(r["special_credit"]) == Decimal("75000")
         assert Decimal(r["infertility_credit"]) == Decimal("600000")
         assert Decimal(r["total_credit"]) == Decimal("675000")
+
+    def test_premature_shortfall_before_infertility(self):
+        """3% 미달분은 제3호(미숙아)에서 먼저, 남은 미달분을 제4호(난임)에서 뺀다 (소득세법 §59의4②).
+
+        총급여 1억 → threshold 300만. 미숙아 200만 전액 차감, 남은 100만은 난임에서 차감.
+        난임: (300만 - 100만) × 30% = 60만.
+        """
+        r = call(
+            gross_income="100000000",
+            general_medical="0",
+            year=2026,
+            premature="2000000",
+            infertility="3000000",
+        )
+        assert Decimal(r["threshold"]) == Decimal("3000000")
+        assert Decimal(r["premature_credit"]) == Decimal("0")
+        assert Decimal(r["infertility_credit"]) == Decimal("600000")
+        assert Decimal(r["total_credit"]) == Decimal("600000")
 
 
 class TestMedicalDeductionValidation:
