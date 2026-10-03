@@ -27,6 +27,7 @@ from sootool.core.audit import CalcTrace
 from sootool.core.cast import decimal_to_float64, float64_to_decimal_str
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 
 _DEFAULT_N = 1000
@@ -92,6 +93,7 @@ def monte_carlo_schedule(
         raise InvalidInputError("tasks는 비어있지 않은 리스트여야 합니다.")
     if not isinstance(n, int) or isinstance(n, bool) or n < 100:
         raise InvalidInputError(f"n은 100 이상의 정수여야 합니다: {n}")
+    ensure_max("MONTE_CARLO_TRIALS", n, "n")
     if not isinstance(seed, int) or isinstance(seed, bool):
         raise InvalidInputError(f"seed는 정수여야 합니다: {seed!r}")
 

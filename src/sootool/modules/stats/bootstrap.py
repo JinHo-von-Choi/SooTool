@@ -15,6 +15,7 @@ import numpy as np
 from sootool.core.audit import CalcTrace
 from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 from sootool.modules.stats.descriptive import _to_float_array
 
@@ -73,6 +74,7 @@ def stats_bootstrap_ci(
         raise InvalidInputError("confidence는 (0, 1) 범위여야 합니다.")
     if n_resamples < 100:
         raise InvalidInputError("n_resamples는 100 이상이어야 합니다.")
+    ensure_max("BOOTSTRAP_RESAMPLES", n_resamples, "n_resamples")
 
     arr = _to_float_array(values)
     if len(arr) < 2:

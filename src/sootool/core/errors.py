@@ -14,6 +14,22 @@ class PrecisionLossError(SooToolError):
     pass
 
 
+class InputLimitError(DomainConstraintError):
+    """도구 입력이 호출 단위 한도를 초과함.
+
+    attributes:
+        field:    한도가 적용된 입력 이름.
+        limit:    허용 상한.
+        observed: 실제 입력값.
+    """
+
+    def __init__(self, field: str, limit: int, observed: int) -> None:
+        self.field    = field
+        self.limit    = limit
+        self.observed = observed
+        super().__init__(f"{field}: {observed} 이(가) 한도 {limit} 을(를) 초과합니다.")
+
+
 class InvalidExpressionError(SooToolError):
     """core.calc: ast.parse 실패 또는 문법 오류.
 

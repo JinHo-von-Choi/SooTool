@@ -23,6 +23,7 @@ from typing import Any
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, mul, power, sub
 from sootool.core.errors import InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 from sootool.core.rounding import RoundingPolicy, apply
 
@@ -91,6 +92,7 @@ def loan_schedule(
         raise InvalidInputError("annual_rate는 0 이상이어야 합니다.")
     if months <= 0:
         raise InvalidInputError("months는 1 이상이어야 합니다.")
+    ensure_max("LOAN_MONTHS", months, "months")
 
     trace.input("principal",   principal)
     trace.input("annual_rate", annual_rate)

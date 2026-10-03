@@ -18,6 +18,7 @@ from typing import Any
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, power
 from sootool.core.errors import InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 from sootool.core.rounding import RoundingPolicy, apply
 
@@ -141,6 +142,7 @@ def irr(
 
     if len(cashflows) < 2:
         raise InvalidInputError("cashflows는 최소 2개 이상이어야 합니다.")
+    ensure_max("SOLVER_ITERATIONS", max_iter, "max_iter")
 
     cashflows_d = [D(cf) for cf in cashflows]
     tol_d       = D(tol)

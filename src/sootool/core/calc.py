@@ -30,6 +30,7 @@ from sootool.core.errors import (
     InvalidExpressionError,
     UndefinedVariableError,
 )
+from sootool.core.limits import ensure_max
 
 # ----------------------------------------------------------------------------
 # 화이트리스트 정의
@@ -711,6 +712,7 @@ def calc(
         raise InvalidExpressionError("expression must be a string")
     if not isinstance(precision, int) or precision < 1:
         raise DomainConstraintError("precision must be a positive integer")
+    ensure_max("CALC_PRECISION", precision, "precision")
 
     bindings: dict[str, str] = dict(variables) if variables else {}
     for k, v in bindings.items():

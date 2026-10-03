@@ -6,6 +6,7 @@ from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 
 
@@ -116,6 +117,7 @@ def is_prime(n: str, k: int = 20) -> dict[str, Any]:
 
     if k < 1:
         raise InvalidInputError(f"k 는 1 이상이어야 합니다: {k}")
+    ensure_max("PRIME_ROUNDS", k, "k")
 
     result = _is_prime_miller_rabin(ni, k)
 

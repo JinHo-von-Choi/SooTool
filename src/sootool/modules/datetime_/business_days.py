@@ -8,6 +8,7 @@ import holidays
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 
 
@@ -62,6 +63,7 @@ def add_business_days(
     )
     if extra_holidays is None:
         extra_holidays = []
+    ensure_max("BUSINESS_DAYS_SPAN", days, "days")
 
     start = _parse_date(start_date)
     trace.input("start_date",     start_date)

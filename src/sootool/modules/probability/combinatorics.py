@@ -11,12 +11,14 @@
 from __future__ import annotations
 
 import math
+from decimal import Decimal
 from typing import Any
 
 import mpmath
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import DomainConstraintError, InvalidInputError
+from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
 
 _MPMATH_FACTORIAL_THRESHOLD = 1000
@@ -27,6 +29,15 @@ def _validate_non_negative_int(value: int, name: str) -> None:
         raise InvalidInputError(f"{name}은(는) 정수여야 합니다: {value!r}")
     if value < 0:
         raise DomainConstraintError(f"{name}은(는) 음수가 될 수 없습니다: {value}")
+
+
+def _int_to_str(value: int) -> str:
+    """정수를 자릿수 제한 없이 문자열로 직렬화한다.
+
+    파이썬의 int -> str 변환은 4300자리를 넘으면 ValueError 를 내므로 Decimal 경유로
+    직렬화한다. Decimal(int) 생성은 정확하며 컨텍스트 정밀도의 영향을 받지 않는다.
+    """
+    return str(Decimal(value))
 
 
 def _factorial_int(n: int) -> int:
@@ -60,10 +71,11 @@ def factorial(n: int) -> dict[str, Any]:
     """
     trace = CalcTrace(tool="probability.factorial", formula="n!")
     _validate_non_negative_int(n, "n")
+    ensure_max("COMBINATORICS_N", n, "n")
     trace.input("n", n)
 
     result = _factorial_int(n)
-    result_str = str(result)
+    result_str = _int_to_str(result)
 
     trace.step("engine", "math.factorial" if n < _MPMATH_FACTORIAL_THRESHOLD else "mpmath.factorial")
     trace.step("result", result_str)
@@ -91,6 +103,7 @@ def nCr(n: int, r: int) -> dict[str, Any]:
     trace = CalcTrace(tool="probability.nCr", formula="n! / (r! * (n-r)!)")
     _validate_non_negative_int(n, "n")
     _validate_non_negative_int(r, "r")
+    ensure_max("COMBINATORICS_N", n, "n")
     if r > n:
         raise DomainConstraintError(f"r({r})은(는) n({n})을 초과할 수 없습니다.")
 
@@ -98,7 +111,7 @@ def nCr(n: int, r: int) -> dict[str, Any]:
     trace.input("r", r)
 
     result = math.comb(n, r)
-    result_str = str(result)
+    result_str = _int_to_str(result)
 
     trace.step("result", result_str)
     trace.output({"result": result_str})
@@ -125,6 +138,7 @@ def nPr(n: int, r: int) -> dict[str, Any]:
     trace = CalcTrace(tool="probability.nPr", formula="n! / (n-r)!")
     _validate_non_negative_int(n, "n")
     _validate_non_negative_int(r, "r")
+    ensure_max("COMBINATORICS_N", n, "n")
     if r > n:
         raise DomainConstraintError(f"r({r})은(는) n({n})을 초과할 수 없습니다.")
 
@@ -132,7 +146,7 @@ def nPr(n: int, r: int) -> dict[str, Any]:
     trace.input("r", r)
 
     result = math.perm(n, r)
-    result_str = str(result)
+    result_str = _int_to_str(result)
 
     trace.step("result", result_str)
     trace.output({"result": result_str})
