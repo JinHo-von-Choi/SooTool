@@ -5,6 +5,8 @@
 # SooTool
 Precision Calc MCP for LLM tool use.
 
+<!-- mcp-name: io.github.JinHo-von-Choi/sootool -->
+
 [![CI](https://github.com/JinHo-von-Choi/SooTool/actions/workflows/ci.yml/badge.svg)](https://github.com/JinHo-von-Choi/SooTool/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/sootool.svg)](https://pypi.org/project/sootool/)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)

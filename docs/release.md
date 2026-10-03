@@ -55,6 +55,8 @@ https://github.com/JinHo-von-Choi/SooTool/actions 에서
 version = "0.1.4"
 ```
 
+`server.json`의 `version`과 `packages[0].version`도 같은 값으로 맞춘다. `tests/test_packaging.py`가 세 값의 일치를 검사한다.
+
 ---
 
 ## 4. CHANGELOG.md 업데이트
@@ -170,6 +172,16 @@ pip 설치로도 확인할 수 있다:
 ```
 pip install --upgrade sootool
 python -c "import sootool; print(sootool.__version__)"
+```
+
+### 공식 MCP Registry 반영 (선택)
+
+PyPI 반영이 확인된 뒤 `mcp-publisher`로 `server.json`을 게시한다. 소유권은 README의 `mcp-name:` 문자열로 검증된다.
+
+```
+mcp-publisher login github
+mcp-publisher publish --dry-run
+mcp-publisher publish
 ```
 
 ---

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.JinHo-von-Choi/sootool",
+  "title": "SooTool",
+  "description": "Deterministic Decimal calculation MCP server: Korean tax, finance, accounting, statistics",
+  "version": "0.1.4",
+  "repository": {
+    "url": "https://github.com/JinHo-von-Choi/SooTool",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "sootool",
+      "version": "0.1.4",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
