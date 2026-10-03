@@ -12,7 +12,7 @@ Precision Calc MCP for LLM tool use.
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하고, 그 틀리는 작업을 한 번에 500건까지 결정적 병렬로 돌려 실무에 투입할 수 있게 만드는 정밀 계산 MCP 서버. Python 3.12 · Decimal 전용 커널 · 18개 계산 도메인 255개 기본 도구 + 10개 admin 정책 도구 · `core.batch` 500 items 병렬 · `core.pipeline` DAG 체인 · 감사 트레이스 · 정책 YAML 외부화 · 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE).
+LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하고, 그 틀리는 작업을 한 번에 500건까지 결정적 병렬로 돌려 실무에 투입할 수 있게 만드는 정밀 계산 MCP 서버. Python 3.12 · Decimal 전용 커널 · 18개 계산 도메인 259개 기본 도구 + 10개 admin 정책 도구 · `core.batch` 500 items 병렬 · `core.pipeline` DAG 체인 · 감사 트레이스 · 정책 YAML 외부화 · 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE).
 
 ## 왜 필요한가
 
@@ -141,28 +141,30 @@ cd SooTool
 claude mcp add sootool -- uv run python -m sootool
 ```
 
-## 도구 카탈로그 (255개 기본 + 10개 admin, 18 계산 도메인 + sootool 운영 도구)
+## 도구 카탈로그 (259개 기본 + 10개 admin, 18 계산 도메인 + sootool 운영 도구)
 
 |Namespace|Count|대표 도구|
 |-|-|-|
-|core|8|add, sub, mul, div, calc, batch, pipeline, pipeline_resume|
-|accounting|11|vat_extract, vat_add, balance, depreciation 3종, interest_compound 외|
-|finance|15|pv, fv, npv, irr, loan_schedule, bond_ytm, bond_duration, black_scholes, var_parametric, sharpe 외|
-|tax|10|progressive, kr_income, kr_withholding_simple, capital_gains_kr, kr_local_income_tax, kr_education_tax_add, kr_rural_special_tax 외|
-|realestate|8|kr_ltv, kr_dti, kr_dsr, kr_acquisition_tax, kr_transfer_tax, rental_yield 외|
-|stats|14|descriptive, ttest 3종, chi_square_independence, ci_mean, regression_linear, anova, correlation 외|
+|core|11|add, sub, mul, div, calc, batch, pipeline, pipeline_resume, solve_for(역산), compare(시나리오 비교), explain(설명)|
+|accounting|11|vat_extract, vat_add, balance, depreciation 3종, dupont 2종, ratios, income_statement, cashflow_operating|
+|finance|15|pv, fv, npv, irr, loan_schedule, bond_ytm, bond_duration, black_scholes, var 2종, sharpe, sortino 외|
+|tax|11|progressive, kr_income, kr_withholding_simple, capital_gains_kr, kr_gift, kr_inheritance, kr_corporate, kr_simplified_vat, kr_local_income_tax, kr_education_tax_add, kr_rural_special_tax|
+|tax_us|3|federal_income, capital_gains, state_tax|
+|payroll|10|kr_salary, kr_gross_from_net(세후에서 세전 역산), hourly_to_monthly_net, kr_severance_pay, kr_year_end_tax_settlement, kr_bonus_tax, 공제 4종|
+|realestate|9|kr_ltv, kr_dti, kr_dsr, kr_acquisition_tax, kr_transfer_tax, kr_property_tax, kr_comprehensive, kr_local_property, rental_yield|
+|stats|14|descriptive, ttest 3종, chi_square_independence, ci_mean, regression_linear, anova, bootstrap_ci 외|
 |probability|30|normal/binomial/poisson, gamma, beta, exponential, lognormal, chi_square, F, bayes, factorial, nCr, nPr, expected_value|
 |datetime|14|add/count_business_days, day_count, age, diff, tz_convert, solar↔lunar, solar_terms, lunar_holiday, fiscal_year, fiscal_quarter, tax_period_kr, payroll_period|
 |math|10|integrate_simpson, integrate_gauss_legendre, diff_central, diff_five_point, interpolate_linear, interpolate_cubic_spline, polynomial_roots, polynomial_horner, fft, ifft|
 |geometry|15|area·volume 7종, vector dot/cross/norm, matrix 4종, haversine|
 |engineering|56|electrical_*, electrical_ac 11종, fluid, thermal, mechanical, structural, control 5종, si_prefix_convert|
 |units|8|convert (pint), fx_convert, fx_triangulate, temperature, energy_convert, pressure_convert, data_size_convert, time_small_convert|
-|medical|12|bmi, bsa, dose_weight_based, egfr, pregnancy_weeks, cha2ds2_vasc, has_bled, framingham_cvd_10y, qtc_bazett/fridericia/framingham/hodges|
+|medical|12|bmi, bsa, dose_weight_based, egfr, pregnancy_weeks, cha2ds2_vasc, has_bled, framingham_cvd_10y, qtc 4종|
 |science|11|half_life, ideal_gas, molar_mass, stoichiometry, nernst, faraday_electrolysis, battery_capacity, snell_law, thin_lens, bragg, intensity|
 |crypto|10|gcd, lcm, hash, is_prime, modinv, modpow, egcd, crt, euler_totient, carmichael_lambda|
 |pm|5|critical_path (CPM), evm, pert, earned_schedule, monte_carlo_schedule|
-|payroll|5|kr_net_monthly, kr_severance_pay, kr_year_end_tax_settlement, kr_bonus_tax, hourly_to_monthly_net|
-|sootool|1+10|skill_guide (항시) + policy_mgmt 10종 (admin 모드)|
+|symbolic|2|solve, diff (선택 extra `sootool[symbolic]`)|
+|sootool|2+10|skill_guide, verify_receipt (항시) + policy_mgmt 10종(쓰기 4종은 로컬 전송과 관리자 모드)|
 
 전체 도구 사양은 `docs/user_guide.md` 및 `sootool.skill_guide` MCP 호출로 조회한다.
 

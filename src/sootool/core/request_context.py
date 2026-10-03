@@ -25,7 +25,8 @@ REQUEST_LOCALE: ContextVar[str | None] = ContextVar("sootool_request_locale", de
 # True 이면 호출 이력(세션)을 쓰지 않는 요청이다. 네트워크 전송의 요청이 해당한다.
 STATELESS_REQUEST: ContextVar[bool] = ContextVar("sootool_stateless_request", default=False)
 
-# 요청의 인증 범위. None 이면 로컬 신뢰 컨텍스트(범위 검사 없음)다.
+# 요청의 인증 범위. None 이면 범위가 부여되지 않은 요청이다. 로컬(stdio, 프로세스 내)은 모든 범위를
+# 가진 것으로 보고, 네트워크 요청은 아무 범위도 갖지 않은 것으로 본다(has_scope 참고).
 REQUEST_SCOPES: ContextVar[frozenset[str] | None] = ContextVar("sootool_request_scopes", default=None)
 
 
@@ -51,9 +52,17 @@ def request_context(
 
 
 def has_scope(scope: str) -> bool:
-    """현재 요청이 범위를 가졌는지 반환한다. 로컬 신뢰 컨텍스트(None)는 모든 범위를 가진다."""
+    """현재 요청이 범위를 가졌는지 반환한다.
+
+    범위가 부여되지 않은 요청(None)은 출처에 따라 갈린다. 로컬 호출(stdio, 프로세스 내)은 모든 범위를
+    가진 것으로 보지만, 네트워크 요청(무상태 표식이 있는 요청)은 아무 범위도 갖지 않은 것으로 거부한다.
+    인증을 구성하지 않았거나 미들웨어를 거치지 않은 네트워크 경로가 쓰기 권한을 얻지 못하게 하는
+    기본 거부다. 신뢰하는 네트워크 계열 전송(Unix 소켓)은 미들웨어가 범위를 명시적으로 부여한다.
+    """
     scopes = REQUEST_SCOPES.get()
-    return scopes is None or scope in scopes
+    if scopes is None:
+        return not STATELESS_REQUEST.get()
+    return scope in scopes
 
 
 def submit_with_context(pool: Executor, fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Future[Any]:

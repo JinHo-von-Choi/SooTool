@@ -8,7 +8,12 @@ from starlette.routing import Route
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from sootool.core.request_context import SCOPE_POLICY_WRITE, SCOPE_READ
-from sootool.middleware.auth import AuthMiddleware, BearerTokenValidator, TokenValidator
+from sootool.middleware.auth import (
+    AuthMiddleware,
+    BearerTokenValidator,
+    LocalTrustMiddleware,
+    TokenValidator,
+)
 from sootool.middleware.cors import build_cors_middleware
 from sootool.middleware.logging import LoggingMiddleware
 from sootool.middleware.request_context import RequestContextMiddleware
@@ -68,9 +73,16 @@ def wrap_with_middleware(
     require_auth: bool       = True,
     admin_token:  str | None = None,
 ) -> ASGIApp:
-    """미들웨어 순서(안쪽부터): 인증, 요청 컨텍스트, 로깅, 요청 id, CORS."""
+    """미들웨어 순서(안쪽부터): 인증(또는 로컬 신뢰), 요청 컨텍스트, 로깅, 요청 id, CORS.
+
+    ``require_auth=False`` 는 파일 권한으로 접근을 통제하는 로컬 전송(Unix 소켓)용이며 모든 범위를
+    명시적으로 부여한다. 인증을 켰지만 검증기가 없으면(토큰 미설정) 범위가 부여되지 않아 네트워크 요청은
+    쓰기 권한을 얻지 못한다.
+    """
     if require_auth:
         app = AuthMiddleware(app, build_validators(auth_token, admin_token))
+    else:
+        app = LocalTrustMiddleware(app)
     app = RequestContextMiddleware(app)
     app = LoggingMiddleware(app)
     app = RequestIDMiddleware(app)

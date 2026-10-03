@@ -124,3 +124,18 @@ def test_error_contract_over_http(serve_app) -> None:
     error = result.structured_content["error"]
     assert error["code"] == "input_limit"
     assert error["details"]["limit"] > 0
+
+
+def test_policy_write_is_denied_when_no_tokens_are_configured(serve_app, monkeypatch, tmp_path: Path) -> None:
+    """인증을 구성하지 않은 네트워크 서버는 쓰기 도구가 노출되어 있어도 쓰기를 허용하지 않는다."""
+    monkeypatch.setenv("SOOTOOL_ADMIN_MODE", "1")
+    monkeypatch.setenv("SOOTOOL_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("SOOTOOL_POLICY_DIR", str(tmp_path / "policies"))
+    monkeypatch.delenv("SOOTOOL_AUTH_TOKEN", raising=False)
+    monkeypatch.delenv("SOOTOOL_ADMIN_TOKEN", raising=False)
+    app = build_http_app(build_server(expose_writes=True), None, [])
+    with serve_app(app) as base_url:
+        result = asyncio.run(_call(
+            base_url, "sootool.policy_rollback", {"domain": "tax", "name": "kr_income", "year": 2026},
+        ))
+    assert result.structured_content["error"] == "admin_required"

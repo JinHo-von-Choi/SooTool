@@ -24,6 +24,8 @@ _DEFAULTS: Final[dict[str, int]] = {
     "BUSINESS_DAYS_SPAN":     100_000,
     "CALC_PRECISION":         10_000,
     "SOLVER_ITERATIONS":      10_000,
+    "SOLVER_EVALUATIONS":     200,
+    "SCENARIOS":              50,
     "MATRIX_DIM":             200,
     "POLYNOMIAL_DEGREE":      256,
     "FFT_SAMPLES":            65_536,

@@ -114,4 +114,8 @@ ALIASES: Final[dict[str, tuple[str, ...]]] = {
     "core.batch":                        ("일괄 계산", "병렬 계산", "여러 건", "bulk"),
     "core.pipeline":                     ("연속 계산", "단계별 계산", "체인", "workflow"),
     "sootool.verify_receipt":            ("영수증 검증", "계산 증빙", "재실행 검증", "receipt"),
+    "core.solve_for":                    ("역산", "목표값 찾기", "거꾸로 계산", "goal seek", "inverse"),
+    "core.compare":                      ("시나리오 비교", "비교 계산", "what-if", "대안 비교"),
+    "core.explain":                      ("계산 설명", "근거 설명", "계산 과정", "explain", "평문 풀이"),
+    "payroll.kr_gross_from_net":         ("세후에서 세전", "연봉 역산", "세전 월급 구하기", "실수령액으로 월급 역산", "gross up"),
 }

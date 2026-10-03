@@ -9,6 +9,7 @@ from sootool.modules.payroll import (
     kr_bonus_tax,
     kr_donation_deduction,
     kr_education_deduction,
+    kr_gross_from_net,
     kr_housing_loan_deduction,
     kr_medical_deduction,
     kr_salary,
@@ -18,6 +19,7 @@ from sootool.modules.payroll import (
 
 __all__ = [
     "kr_salary",
+    "kr_gross_from_net",
     "kr_severance_pay",
     "kr_year_end_tax_settlement",
     "kr_bonus_tax",

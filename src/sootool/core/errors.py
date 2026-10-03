@@ -119,6 +119,26 @@ class ToolTimeoutError(SooToolError):
         return {"tool": self.tool, "seconds": self.seconds}
 
 
+class SolverBracketError(DomainConstraintError):
+    """근 찾기 구간이 올바르지 않거나 양 끝의 함수값 부호가 같아 해가 보장되지 않는다."""
+
+    code = "no_sign_change"
+
+    def __init__(self, message: str, lower: Any, upper: Any, f_lower: Any, f_upper: Any) -> None:
+        self.lower   = lower
+        self.upper   = upper
+        self.f_lower = f_lower
+        self.f_upper = f_upper
+        super().__init__(message)
+
+    def details(self) -> dict[str, Any]:
+        return {
+            "lower": str(self.lower), "upper": str(self.upper),
+            "f_lower": None if self.f_lower is None else str(self.f_lower),
+            "f_upper": None if self.f_upper is None else str(self.f_upper),
+        }
+
+
 class PolicyFormatError(SooToolError, ValueError):
     """정책 YAML 의 필수 필드 누락이나 값 형식 오류."""
 

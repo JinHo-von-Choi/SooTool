@@ -6,9 +6,9 @@ from typing import Protocol
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Receive, Scope, Send
 
-from sootool.core.request_context import REQUEST_SCOPES, SCOPE_READ
+from sootool.core.request_context import REQUEST_SCOPES, SCOPE_POLICY_WRITE, SCOPE_READ
 
 _SKIP_PATHS = frozenset({"/healthz"})
 
@@ -73,3 +73,23 @@ class AuthMiddleware(BaseHTTPMiddleware):
             return await _call_next(request)
         finally:
             REQUEST_SCOPES.reset(scope_token)
+
+
+class LocalTrustMiddleware:
+    """접근 통제를 전송 바깥(소켓 파일 권한)에 맡기는 로컬 전송용 미들웨어.
+
+    네트워크 계열 요청은 범위가 없으면 읽기·쓰기 모두 거부되므로, 파일 권한으로 보호되는 Unix 소켓
+    요청에는 모든 범위를 명시적으로 부여한다.
+    """
+
+    _SCOPES = frozenset({SCOPE_READ, SCOPE_POLICY_WRITE})
+
+    def __init__(self, app: ASGIApp) -> None:
+        self._app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        token = REQUEST_SCOPES.set(self._SCOPES)
+        try:
+            await self._app(scope, receive, send)
+        finally:
+            REQUEST_SCOPES.reset(token)

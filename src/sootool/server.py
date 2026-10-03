@@ -333,6 +333,7 @@ def _load_modules() -> None:
         import sootool.modules.symbolic  # noqa: F401
     except ImportError:
         pass  # optional extra: pip install 'sootool[symbolic]'
+    import sootool.core.analysis_tools  # noqa: F401
     import sootool.modules.tax  # noqa: F401
     import sootool.modules.tax_us  # noqa: F401
     import sootool.modules.units  # noqa: F401

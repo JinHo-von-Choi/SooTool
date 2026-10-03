@@ -64,6 +64,10 @@ _QUERIES = [
     ("계산기 sqrt", "core.calc"),
     ("영수증 검증", "sootool.verify_receipt"),
     ("여러 건 일괄 계산", "core.batch"),
+    ("세후 300만원이면 세전 월급", "payroll.kr_gross_from_net"),
+    ("역산 목표값 찾기", "core.solve_for"),
+    ("시나리오 비교", "core.compare"),
+    ("계산 과정 설명", "core.explain"),
 ]
 
 

@@ -50,6 +50,21 @@ def test_has_scope_is_true_for_the_local_context():
     assert has_scope(SCOPE_POLICY_WRITE) is True
 
 
+def test_network_requests_without_granted_scopes_are_denied_by_default():
+    """미들웨어가 범위를 부여하지 않은 네트워크(무상태) 요청은 아무 범위도 갖지 않는다."""
+    with request_context(stateless=True):
+        assert has_scope(SCOPE_POLICY_WRITE) is False
+        assert has_scope(SCOPE_READ) is False
+
+
+def test_admin_gate_denies_unscoped_network_requests_even_in_admin_mode(monkeypatch):
+    from sootool.policy_mgmt.tools import _is_admin
+
+    monkeypatch.setenv("SOOTOOL_ADMIN_MODE", "1")
+    with request_context(stateless=True):
+        assert _is_admin() is False
+
+
 def test_has_scope_checks_membership_when_scopes_are_set():
     with request_context(scopes=frozenset({SCOPE_READ})):
         assert has_scope(SCOPE_READ) is True

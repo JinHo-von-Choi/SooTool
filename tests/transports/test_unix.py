@@ -206,3 +206,19 @@ def test_default_socket_path_lives_in_private_runtime_directory(monkeypatch, tmp
     path = Path(_effective_socket_path(None))
     assert path == tmp_path / "sootool" / "sootool.sock"
     assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
+
+
+def test_local_socket_requests_hold_the_write_scope(monkeypatch, tmp_path) -> None:
+    """파일 권한으로 보호되는 소켓은 쓰기 범위를 명시적으로 부여받는다(관리자 모드가 켜진 경우)."""
+    monkeypatch.setenv("SOOTOOL_ADMIN_MODE", "1")
+    monkeypatch.setenv("SOOTOOL_STATE_DIR", str(tmp_path / "state"))
+    monkeypatch.setenv("SOOTOOL_POLICY_DIR", str(tmp_path / "policies"))
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sock_path = os.path.join(tmpdir, "admin.sock")
+        _start_transport(sock_path)
+        _wait_for_socket(sock_path)
+        result = asyncio.run(_mcp_call(
+            sock_path, "sootool.policy_rollback", {"domain": "tax", "name": "kr_income", "year": 2026},
+        ))
+        assert "error" not in result.structured_content  # type: ignore[attr-defined]
+        assert result.structured_content["rolled_back"] is False  # type: ignore[attr-defined]
