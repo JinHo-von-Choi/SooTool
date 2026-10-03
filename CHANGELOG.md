@@ -80,6 +80,7 @@ REGISTRY 수치: 18 domains, 272 base tools, 10 admin policy-management tools (0
 - `symbolic.solve` 와 `symbolic.diff` 가 소수 리터럴과 치환 값을 배정밀도로 처리해 해의 자릿수를 잃던 문제(정확한 유리수로 처리).
 - 영업일 가감(`datetime.add_business_days`)이 과거 방향 계산에서 이전 연도 공휴일을 빠뜨리던 오류.
 - `payroll.kr_gross_from_net` 이 간이세액표 행 경계에서 실수령액이 줄어드는 구간을 이분법으로 잘못 풀 수 있던 문제.
+- `tax.kr_inheritance` 에 세대생략 할증(상증법 제27조) 입력 `skipped_generation_amount`, `skipped_generation_minor` 를 추가했다. 결과에 `computed_tax`, `generation_skip_surcharge` 가 추가되고 `tax` 는 할증 포함 금액이다(할증이 없으면 이전과 같다).
 - 건강보험료와 장기요양보험료의 근로자 부담분을 10원 미만 절사로 계산한다(4대사회보험 정보연계센터 모의계산 기준). 이전에는 원 미만 절사였다. 정책 키 `premium_truncation_unit`.
 - 국민연금 노령연금 월 지급액을 10원 미만 절사하고 국민연금법 제53조 최고한도(평균 기준소득월액, 최종 5년 평균과 전체 평균 중 큰 금액)를 적용한다. 결과에 `pension_cap_monthly`, `pension_capped` 가 추가됐다.
 - 에이전트 가이드의 플레이북과 예시 다수가 실행되지 않던 문제(인자 이름, 단계 결과 참조 경로, 지원하지 않는 연도). 모든 플레이북과 예시를 실행하는 시험을 추가했다.

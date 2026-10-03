@@ -206,3 +206,43 @@ class TestKrInheritanceFilingCredit:
         )
         assert Decimal(r["filing_credit"]) == Decimal("0")
         assert Decimal(r["tax_after_filing_credit"]) == Decimal("90000000")
+
+
+class TestKrInheritanceGenerationSkip:
+    """상속세및증여세법 제27조 세대생략 할증: 산출세액 x (세대를 건너뛴 상속인의 재산 / 과세가액) x 30% (미성년 20억 초과 40%)."""
+
+    def test_surcharge_is_proportional_to_the_skipped_share(self):
+        # 과세가액 20억, 일괄공제 5억 -> 과세표준 15억 -> 15억 x 40% - 1.6억 = 4.4억
+        # 할증 = 4.4억 x (10억 / 20억) x 30% = 6,600만원, 합계 5.06억, 신고세액공제 3% = 1,518만원
+        r = call(gross_estate="2000000000", spouse_inheritance="0", year=2026, skipped_generation_amount="1000000000")
+        assert r["computed_tax"] == "440000000"
+        assert r["generation_skip_surcharge"] == "66000000"
+        assert r["tax"] == "506000000"
+        assert r["filing_credit"] == "15180000"
+        assert r["tax_after_filing_credit"] == "490820000"
+
+    def test_minor_heir_above_two_billion_pays_forty_percent(self):
+        # 과세가액 30억 -> 과세표준 25억 -> 25억 x 40% - 1.6억 = 8.4억. 미성년이 25억(20억 초과)을 받으면 8.4억 x (25/30) x 40% = 2.8억
+        r = call(
+            gross_estate="3000000000", spouse_inheritance="0", year=2026,
+            skipped_generation_amount="2500000000", skipped_generation_minor=True,
+        )
+        assert r["computed_tax"] == "840000000"
+        assert r["generation_skip_surcharge"] == "280000000"
+
+    def test_minor_heir_at_or_below_two_billion_pays_thirty_percent(self):
+        r = call(
+            gross_estate="3000000000", spouse_inheritance="0", year=2026,
+            skipped_generation_amount="2000000000", skipped_generation_minor=True,
+        )
+        # 8.4억 x (20/30) x 30% = 1.68억
+        assert r["generation_skip_surcharge"] == "168000000"
+
+    def test_no_surcharge_by_default(self):
+        r = call(gross_estate="2000000000", spouse_inheritance="0", year=2026)
+        assert r["generation_skip_surcharge"] == "0"
+        assert r["tax"] == r["computed_tax"] == "440000000"
+
+    def test_skipped_amount_cannot_exceed_the_estate(self):
+        with pytest.raises(InvalidInputError):
+            call(gross_estate="1000000000", spouse_inheritance="0", year=2026, skipped_generation_amount="2000000000")

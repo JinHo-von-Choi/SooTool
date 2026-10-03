@@ -1,9 +1,13 @@
-sha256: "34ed505a94dcb7c68eeec972169ceea748cfef5d4c64372a9ef2efc6ad018ac4"
+sha256: "743e8549ddb6a844aa5f51d714619f0ca3e5096e124672fce734cedb0b9481e4"
 effective_date: "2026-01-01"
 status: enacted
 notice_no: "상속세 및 증여세법 제18조·제19조·제20조·제21조·제24조·제26조·제69조 (법률 제21219호, 2025-12-23 공포, 2026-01-01 시행 기준)"
 source_url: "https://www.law.go.kr/법령/상속세및증여세법"
 citations:
+  - law: "상속세 및 증여세법"
+    article: "제27조"
+    url: "https://www.law.go.kr/법령/상속세및증여세법/제27조"
+    note: "세대를 건너뛴 상속에 대한 할증과세: 상속인이 피상속인의 자녀를 제외한 직계비속이면 산출세액 x 그 상속인이 받은 재산의 비율 x 30%, 미성년자가 받은 재산이 20억원 초과면 40%"
   - law: "상속세 및 증여세법"
     article: "제18조"
     url: "https://www.law.go.kr/법령/상속세및증여세법/제18조"
@@ -59,5 +63,11 @@ data:
       disabled_per_life_year: 10000000  # 장애인 1천만 x 기대여명 연수
   # 공제 종합한도 중 사전증여재산 차감 기준 (제24조 단서)
   pre_gift_limit_threshold: 500000000
+  # 세대생략 할증 (제27조): 산출세액 x (세대를 건너뛴 상속인이 받은 재산 / 상속세 과세가액) x 30%,
+  # 미성년자가 받은 재산이 20억원을 넘으면 40%. 민법 제1001조 대습상속에는 적용하지 않는다.
+  generation_skip_surcharge:
+    rate: "0.30"
+    minor_large_estate_rate: "0.40"
+    minor_large_estate_threshold: 2000000000
   # 신고세액공제율 (제69조제1항)
   filing_credit_rate: "0.03"
