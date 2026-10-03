@@ -294,6 +294,7 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 - 선택 서명: 환경변수 `SOOTOOL_RECEIPT_KEY_FILE` 이 가리키는 파일의 base64 ed25519 개인 키로 `signature` 를 제외한 스탬프의 정규화 JSON 에 서명하고 `key_id`(공개 키 sha256 앞 16자)를 함께 싣는다. 키는 파일 경로로만 참조하며 도구 인자로 받지 않는다. 키를 읽을 수 없으면 계산 결과는 그대로 반환하고 `signature_error` 코드를 남긴다.
 - 서명 기반 함수는 `sootool.core.signing` 에 두고 정책 번들 서명(`policy_mgmt.signatures`)과 공유한다.
 - 벽시계 시각은 영수증에 넣지 않는다(결정성 유지). 시각이 필요한 감사 기록은 별도 로그 계층의 책임이다.
+- 정확도 등급: 응답 `_meta.engine` 은 도구가 사용하는 수치 엔진(`decimal`, `mpmath`, `float64`, `composite`, `none`)을 알린다. 정의 모듈의 임포트를 정적으로 분석하는 보수적 분류(`core/engines.py`)이며 영수증 해시에는 포함하지 않는다. `float64` 는 IEEE 754 배정밀도 근사임을 뜻한다.
 
 상태: 수용됨(Accepted). 2026-10-03.
 

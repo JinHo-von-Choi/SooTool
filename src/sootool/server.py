@@ -16,6 +16,7 @@ from sootool.core.decimal_ops import add as d_add
 from sootool.core.decimal_ops import div as d_div
 from sootool.core.decimal_ops import mul as d_mul
 from sootool.core.decimal_ops import sub as d_sub
+from sootool.core.engines import engine_of
 from sootool.core.receipts import sign_stamp
 from sootool.core.registry import REGISTRY, ToolEntry
 from sootool.skill_guide.hints import generate_hints, inject_meta
@@ -176,6 +177,8 @@ def _integrity_post_processor(response: dict[str, Any], tool_name: str) -> dict[
     result = dict(response)
     meta = dict(result.get("_meta", {}))
     meta["integrity"] = stamp
+    if entry is not None:
+        meta["engine"] = engine_of(entry)
     result["_meta"] = meta
     return result
 

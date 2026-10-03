@@ -12,6 +12,7 @@ import inspect
 import re
 from typing import Any
 
+from sootool.core.engines import engine_of
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import ToolEntry, ToolRegistry
 
@@ -116,6 +117,7 @@ def describe_tool(entry: ToolEntry) -> dict[str, Any]:
         "read_only":   entry.read_only,
         "destructive": entry.destructive,
         "idempotent":  entry.idempotent,
+        "engine":      engine_of(entry),
         "parameters":  parameters,
         "doc":         inspect.getdoc(entry.fn) or "",
     }
