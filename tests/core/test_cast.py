@@ -9,6 +9,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import mpmath
+import pytest
 
 from sootool.core.cast import (
     decimal_to_float64,
@@ -136,3 +137,21 @@ class TestQuantitySnapshot:
         q2 = snapshot_to_quantity(snap)
         # Converting between quantities from the same registry should work
         assert q2.to("centimeter").magnitude == Decimal("100")
+
+
+class TestFloat64ToDecimalStrExponent:
+    """지수 표기 결과에서 지수의 끝 0 을 지우면 값이 바뀐다."""
+
+    @pytest.mark.parametrize(("value", "expected"), [
+        (7.330758263609511e-10, "7.330758264e-10"),
+        (1e-10, "1e-10"),
+        (2.5e-20, "2.5e-20"),
+        (1e-300, "1e-300"),
+        (1.5e-5, "1.5e-5"),
+        (0.000123456789012, "0.000123456789"),
+        (123456.789, "123456.789"),
+        (42.0, "42"),
+    ])
+    def test_value_round_trips(self, value, expected):
+        assert float64_to_decimal_str(value, 10) == expected
+        assert float(float64_to_decimal_str(value, 10)) == pytest.approx(value, rel=1e-9)

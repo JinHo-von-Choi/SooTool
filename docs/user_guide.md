@@ -88,8 +88,7 @@ VaR, Sharpe/Sortino ratio를 포함한다.
 
 ### datetime
 날짜 차이, 영업일 가감산, 한국 회계연도·세무기간 추출, 음양력 변환, 24절기
-조회, 급여 기간 분리 도구를 제공한다. 공휴일 데이터베이스는 `holidays` +
-`workalendar` 이중 소스로 검증된다.
+조회, 급여 기간 분리 도구를 제공한다. 공휴일 데이터베이스는 `holidays` 패키지를 사용한다.
 
 ### geometry / engineering / science / medical / pm / crypto / units / math
 각 도메인은 대표 도구 예시를 통해 역할이 설명된다. 정확한 파라미터는

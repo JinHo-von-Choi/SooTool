@@ -57,10 +57,12 @@ def float64_to_decimal_str(x: float, digits: int = 15) -> str:
     mp_val = mpmath.mpf(x)
     # nstr produces a minimal string representation at the given number of digits
     raw: str = str(mpmath.nstr(mp_val, digits, strip_zeros=True))
-    # Remove trailing dot and ".0" suffix (e.g. "42." or "42.0" -> "42")
-    if "." in raw:
-        raw = raw.rstrip("0").rstrip(".")
-    return raw
+    # Remove trailing dot and ".0" suffix (e.g. "42." or "42.0" -> "42").
+    # 지수 표기(7.33e-10)는 가수부의 끝 0 만 지운다. 지수의 0(e-10)을 지우면 값이 10배로 바뀐다.
+    mantissa, marker, exponent = raw.partition("e")
+    if "." in mantissa:
+        mantissa = mantissa.rstrip("0").rstrip(".")
+    return mantissa + marker + exponent
 
 
 def mpmath_to_decimal(x: mpmath.mpf, digits: int = 50) -> Decimal:

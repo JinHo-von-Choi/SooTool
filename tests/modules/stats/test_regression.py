@@ -109,3 +109,29 @@ class TestRegressionLinear:
     def test_empty_raises(self):
         with pytest.raises(InvalidInputError):
             call_regression(X=[], y=[])
+
+
+class TestAgainstStatsmodels:
+    """자체 OLS 구현이 statsmodels 와 같은 계수, p값, 결정계수, 잔차를 내는지 교차 확인한다."""
+
+    @pytest.mark.parametrize("seed", range(8))
+    @pytest.mark.parametrize("add_intercept", [True, False])
+    def test_matches_statsmodels(self, seed: int, add_intercept: bool) -> None:
+        sm  = pytest.importorskip("statsmodels.api")
+        np  = pytest.importorskip("numpy")
+        rng = np.random.default_rng(seed)
+        n, k = int(rng.integers(8, 40)), int(rng.integers(1, 4))
+        X = rng.normal(size=(n, k)) * rng.uniform(0.5, 50)
+        y = X @ rng.normal(size=k) + rng.normal(size=n) * 2 + 5
+
+        result = call_regression(
+            X=[[repr(float(v)) for v in row] for row in X], y=[repr(float(v)) for v in y],
+            add_intercept=add_intercept,
+        )
+        fit = sm.OLS(y, sm.add_constant(X, has_constant="add") if add_intercept else X).fit()
+        offset = 1 if add_intercept else 0
+        assert float(result["intercept"]) == pytest.approx(float(fit.params[0]) if add_intercept else 0.0, rel=1e-8, abs=1e-8)
+        assert [float(c) for c in result["coefficients"]] == pytest.approx(list(fit.params[offset:]), rel=1e-8, abs=1e-8)
+        assert [float(p) for p in result["p_values"]] == pytest.approx(list(fit.pvalues[offset:]), rel=1e-6, abs=1e-9)
+        assert float(result["r_squared"]) == pytest.approx(float(fit.rsquared), rel=1e-9, abs=1e-9)
+        assert [float(r) for r in result["residuals"]] == pytest.approx(list(fit.resid), rel=1e-8, abs=1e-8)

@@ -38,6 +38,11 @@ REGISTRY 수치: 18 domains, 271 base tools, 10 admin policy-management tools (0
 - `sootool.core.lazy`: 무거운 의존 모듈의 지연 로딩 프록시.
 - 노출 프로파일 `--profile {full,lean}`(환경변수 `SOOTOOL_PROFILE`). `lean`은 `sootool.search`, `sootool.describe`, `sootool.call`, `sootool.skill_guide` 4종만 노출한다(`tools/list` 약 2.4KB, `full`은 약 173KB). 기본값은 `full`이며 동작이 바뀌지 않는다.
 - `sootool.core.catalog`: 도구 검색(결정적 점수 순위), 설명, 인자 검증.
+- 신규 도구 12개: `tax_us.fica`(FICA, 자영업자 SECA 포함), `tax.kr_eitc`(근로장려금), `tax.kr_securities_transaction`(증권거래세와 농특세), `tax.kr_pension_income`(연금소득 원천징수와 분리과세), `tax.kr_vehicle_tax`, `tax.kr_registration_license_tax`, `realestate.kr_subscription_score`(청약 가점), `payroll.kr_overtime_pay`, `payroll.kr_weekly_holiday_pay`, `payroll.kr_minimum_wage_check`, `payroll.kr_national_pension_benefit`, `payroll.kr_health_income_premium`. 법정 상수는 정책 YAML(조문 인용 포함)에 있고 시행일별 버전을 지원한다.
+- 도구 결과 스키마: 모든 도구가 도구별 TypedDict 로 결과 구조를 선언하고 `outputSchema` 로 공개한다(`sootool.core.result_types`). 시험 중 모든 도구 호출의 결과를 선언한 타입으로 검증한다. 공개 스키마는 공통 외피(`_meta`, `trace`, 정책 출처)를 줄여 `tools/list` 응답을 약 0.4MB 로 유지한다.
+- 응답 `_meta.input_coerced`: JSON 부동소수로 받은 문자열 숫자 인자가 배정밀도 표기로 바뀐 경우 인자 이름과 변환값을 알린다.
+- 정책 시행일별 버전 파일: 4대보험(2026-07-01, 2026-11-01), 간이세액표(2026-03-01 자녀 세액공제), 최저임금(2027), 양도소득세와 종합부동산세 등 2027 개정안(proposed).
+- 도구 설명 전체를 목적, 입력 단위, 반올림 규칙, 대표 오용 순으로 보강하고 검색 별칭을 확대했다.
 
 ### Breaking
 
@@ -52,6 +57,7 @@ REGISTRY 수치: 18 domains, 271 base tools, 10 admin policy-management tools (0
 
 ### Changed
 
+- 선형회귀(`stats.regression_linear`)를 statsmodels 대신 numpy/scipy 로 계산한다(교차 시험으로 같은 결과 확인). 기본 의존성에서 statsmodels(pandas 포함)와 사용하지 않던 workalendar, numpy-financial 을 뺐다. statsmodels 는 교차 시험용 dev 의존성이다.
 - scipy.stats, scipy.interpolate, statsmodels를 해당 도구의 첫 호출 시점에 불러온다. 전체 모듈 로드 기동 시간이 약 4.2~4.7초에서 약 2.2~2.6초로, 기동 직후 메모리가 약 209MB에서 약 92MB로 줄었다(측정 환경 기준).
 - 정책 초안 기본 경로를 `/tmp` 대신 `$XDG_RUNTIME_DIR` 또는 `$XDG_STATE_HOME/sootool/drafts`로 옮겼다. 초안, 정책 덮어쓰기, 감사 로그 디렉터리는 소유자 전용(0700)으로 준비하며 심볼릭 링크, 다른 사용자 소유, 비디렉터리는 `UnsafeDirectoryError`로 거부한다.
 - `core.batch`와 `core.pipeline`이 읽기 전용으로 선언된 도구만 실행한다(`ToolRegistry.invoke_read_only`). 두 도구의 `readOnlyHint` 선언과 `sootool.call`의 읽기 전용 제한이 중첩 호출에도 일관되게 적용된다.
@@ -61,6 +67,17 @@ REGISTRY 수치: 18 domains, 271 base tools, 10 admin policy-management tools (0
 - `mcp[cli]` 의존 범위를 `>=1.27,<2`로 지정했다.
 - `_meta.integrity.input_hash`가 기본값 인자를 채운 정규화 입력으로 계산된다. 직접 호출과 MCP 호출, 기본값 생략과 명시 호출이 같은 해시를 갖는다.
 - 확률 조합 도구의 대형 정수 결과가 4300자리 변환 한계와 무관하게 문자열로 직렬화된다.
+
+### Fixed
+
+- 법정 값과 계산 규칙을 조문 기준으로 정정했다: 근로소득 간이세액표(별표 2 전체를 데이터로 내장, 근사 공식 폐기), 양도소득세(1세대1주택 비과세, 고가주택 안분, 표 2 장기보유특별공제, 중과), 증여세와 상속세 공제, 법인세율, 간이과세 매입세액 공제, 취득세·종합부동산세·재산세, 대출 규제 비율, 국민연금·건강보험·장기요양 요율과 기준소득월액, 퇴직소득세와 연말정산 공제 한도, 미국 연방·CA·NY 세율과 장기 양도소득 누적 과세.
+- `float64` 엔진 도구가 지수 표기 결과의 지수 끝 0 을 지워 값이 10배로 바뀌던 오류(예: `7.33e-10` 이 `7.33e-1`).
+- `symbolic.solve` 와 `symbolic.diff` 가 소수 리터럴과 치환 값을 배정밀도로 처리해 해의 자릿수를 잃던 문제(정확한 유리수로 처리).
+- 영업일 가감(`datetime.add_business_days`)이 과거 방향 계산에서 이전 연도 공휴일을 빠뜨리던 오류.
+- `payroll.kr_gross_from_net` 이 간이세액표 행 경계에서 실수령액이 줄어드는 구간을 이분법으로 잘못 풀 수 있던 문제.
+- 에이전트 가이드의 플레이북과 예시 다수가 실행되지 않던 문제(인자 이름, 단계 결과 참조 경로, 지원하지 않는 연도). 모든 플레이북과 예시를 실행하는 시험을 추가했다.
+- 형식이 잘못된 정책 YAML 이 예외로 끝나던 문제를 검증 오류 보고로 바꿨다. 정책 저장 경로에 쓰이는 입력(영역, 이름, 시행일, 초안 식별자)의 형식을 검증하고 검증에 실패한 초안은 활성화하지 않는다.
+- 신고 유형별 구간표를 가진 정책(tax_us)을 `policy_validate` 와 `policy_propose` 로 검증하면 오류로 멈추던 문제.
 
 ## [0.1.4] - 2026-04-24
 
