@@ -1,0 +1,842 @@
+# 한국 세무·노무 공식 계산 예시 시나리오 세트
+#
+# 각 시나리오의 expected 는 출처(국세청, 국가법령정보센터, 행정안전부·서울시, 고용노동부,
+# 국민연금공단, 재정경제부 등)에 적힌 계산 결과 숫자 그대로다. 도구 출력에서 옮겨 적은 값은 없다.
+# source.base_year 는 출처가 전제한 연도이며 inputs.year 와 같아야 한다. 연도 표기가 없는 현행
+# 안내(2026년판 책자, 현행 안내 페이지)는 2026 으로 둔다.
+# 현행과 다른 가정이거나 해당 연도 정책이 없는 예시, 대응 도구가 없는 예시는 excluded 에 사유와 함께 둔다.
+#
+# 작성자: 최진호
+# 작성일: 2026-10-04
+
+meta:
+  title: 한국 세무 실무 재현율 시나리오 세트
+  collected_on: "2026-10-04"
+
+scenarios:
+  # ---------------------------------------------------------------- 최저임금
+  - id: minwage_2026_notice
+    area: 최저임금
+    tool: payroll.kr_minimum_wage_check
+    inputs: {wage_amount: "2156880", year: 2026}
+    expected:
+      statutory_hourly_minimum: "10320"
+      notice_monthly_amount: "2156880"
+    source:
+      title: 2026년 적용 최저임금 고시(고용노동부고시 제2025-47호)
+      url: https://www.moel.go.kr/info/lawinfo/instruction/view.do?bbs_seq=20250800121
+      base_year: 2026
+      quote: "모든 산업 10,320원 / 월 환산액 2,156,880원: 주 소정근로 40시간을 근무할 경우, 월 환산 기준시간 수 209시간"
+
+  - id: minwage_2027_notice
+    area: 최저임금
+    tool: payroll.kr_minimum_wage_check
+    inputs: {wage_amount: "2236300", year: 2027}
+    expected:
+      statutory_hourly_minimum: "10700"
+      notice_monthly_amount: "2236300"
+    source:
+      title: 2027년도 적용 최저임금 시간급 10,700원(고용노동부 보도자료 2026.8.5.)
+      url: https://www.moel.go.kr/news/enews/report/enewsView.do?news_seq=19744
+      base_year: 2027
+      quote: "월 환산액은 2,236,300원(1주 소정근로 40시간, 월 209시간 기준)"
+
+  # ---------------------------------------------------------------- 연장·야간·휴일근로수당
+  - id: labor_overtime_16h
+    area: 근로기준법 수당
+    tool: payroll.kr_overtime_pay
+    inputs: {ordinary_wage: "12000", year: 2026, employee_count: 10, overtime_hours: "16"}
+    expected:
+      total_pay: "288000"
+    source:
+      title: 고용노동부 임금명세서 작성 안내(연장·야간·휴일근로수당 계산 방법)
+      url: https://www.moel.go.kr/wageCal.do
+      base_year: 2026
+      quote: "연장근로수당 288,000원 = 16시간 X 12,000원 X 1.5"
+    note: 연도 표기 없는 현행 안내. 상시 5인 이상 사업장 전제라 상시 근로자 수를 10명으로 둔다.
+
+  - id: labor_overtime_night_4h
+    area: 근로기준법 수당
+    tool: payroll.kr_overtime_pay
+    inputs: {ordinary_wage: "12000", year: 2026, employee_count: 10, overtime_hours: "4", night_hours: "4"}
+    expected:
+      total_pay: "96000"
+    source:
+      title: 고용노동부 임금명세서 작성 안내(연장·야간·휴일근로수당 계산 방법)
+      url: https://www.moel.go.kr/wageCal.do
+      base_year: 2026
+      quote: "연장근로수당 96,000원 = 4시간 X 12,000원 X 2.0 / 연장근로수당 72,000원 = 4시간 X 12,000원 X 1.5, 야간근로수당 24,000원 = 4시간 X 12,000원 X 0.5"
+    note: 연장근로 4시간이 모두 야간(22시~06시)에 이루어진 경우.
+
+  - id: labor_holiday_8h
+    area: 근로기준법 수당
+    tool: payroll.kr_overtime_pay
+    inputs: {ordinary_wage: "12000", year: 2026, employee_count: 10, holiday_hours_by_day: ["8"]}
+    expected:
+      total_pay: "144000"
+    source:
+      title: 고용노동부 임금명세서 작성 안내(연장·야간·휴일근로수당 계산 방법)
+      url: https://www.moel.go.kr/wageCal.do
+      base_year: 2026
+      quote: "휴일근로수당 144,000원 = 8시간 X 12,000원 X 1.5"
+
+  - id: labor_holiday_10h
+    area: 근로기준법 수당
+    tool: payroll.kr_overtime_pay
+    inputs: {ordinary_wage: "12000", year: 2026, employee_count: 10, holiday_hours_by_day: ["10"]}
+    expected:
+      total_pay: "192000"
+    source:
+      title: 고용노동부 임금명세서 작성 안내(연장·야간·휴일근로수당 계산 방법)
+      url: https://www.moel.go.kr/wageCal.do
+      base_year: 2026
+      quote: "휴일근로수당 192,000원 = (8시간 X 12,000원 X 1.5) + (2시간 X 12,000원 X 2.0)"
+
+  # ---------------------------------------------------------------- 4대보험
+  - id: insurance_health_ltc_2m
+    area: 4대보험
+    tool: payroll.kr_salary
+    inputs: {monthly_salary: "2000000", year: 2026}
+    expected:
+      insurances.health_insurance: "71900"
+      insurances.long_term_care: "9440"
+    source:
+      title: 4대사회보험 정보연계센터 4대사회보험료 모의계산(건강보험 직장가입자 본인 부담분 계산식)
+      url: https://www.4insure.or.kr/pbiz/ntcn/inscSmlCalcView.do
+      base_year: 2026
+      quote: "보수월액이 2,000,000 원인 경우 - 건강보험료 : 2,000,000 ⅹ 7.19% ⅹ 50% = 71,900 원 - 장기요양보험료 : 71,900 ⅹ ((0.9448%)/(7.19%)) = 9,440 원"
+    note: 출처는 두 보험료 모두 끝수를 절사(원 단위 절사로 표기)해 10원 단위로 적는다.
+
+  # ---------------------------------------------------------------- 국민연금 노령연금
+  - id: pension_b1m_10y
+    area: 국민연금
+    tool: payroll.kr_national_pension_benefit
+    inputs: {year: 2026, b_value: "1000000", contribution_months: 120, contribution_end_year: 2035}
+    expected:
+      monthly_pension: "225400"
+    source: &nps_table
+      title: 국민연금공단 노령연금 예상연금월액표(2026년 7월 상·하한액 반영)
+      url: https://www.nps.or.kr/html/download/easy_pension/easypension_1_2026_3.xlsx
+      base_year: 2026
+      quote: "B값 1,000,000 / 연금보험료 95,000 / 10년 225,400 / 20년 450,800 / 40년 901,600 (2026년 1월 최초 가입 가정, 2026년 적용 A값 3,193,511원)"
+    note: 표는 2026년 1월 최초 가입을 가정하므로 가입기간을 2026년부터 시작하도록 contribution_end_year 를 둔다. 부양가족연금 제외.
+
+  - id: pension_b3m_20y
+    area: 국민연금
+    tool: payroll.kr_national_pension_benefit
+    inputs: {year: 2026, b_value: "3000000", contribution_months: 240, contribution_end_year: 2045}
+    expected:
+      monthly_pension: "665800"
+    source:
+      <<: *nps_table
+      quote: "B값 3,000,000 / 연금보험료 285,000 / 10년 332,900 / 20년 665,800 / 40년 1,331,600"
+
+  - id: pension_b5m_40y
+    area: 국민연금
+    tool: payroll.kr_national_pension_benefit
+    inputs: {year: 2026, b_value: "5000000", contribution_months: 480, contribution_end_year: 2065}
+    expected:
+      monthly_pension: "1761600"
+    source:
+      <<: *nps_table
+      quote: "B값 5,000,000 / 연금보험료 475,000 / 10년 440,400 / 20년 880,800 / 40년 1,761,600"
+
+  - id: pension_b410k_40y_cap
+    area: 국민연금
+    tool: payroll.kr_national_pension_benefit
+    inputs: {year: 2026, b_value: "410000", contribution_months: 480, contribution_end_year: 2065}
+    expected:
+      monthly_pension: "410000"
+    source:
+      <<: *nps_table
+      quote: "B값 410,000 / 10년 193,680 / 20년 387,370 / 25년~40년 410,000 (유의사항 5: 연금의 월지급액은 ... 기준소득월액의 평균액 ... 중 많은 금액을 초과할 수 없습니다)"
+    note: 월지급액 상한(가입기간 평균소득월액 초과 불가) 적용 칸.
+
+  # ---------------------------------------------------------------- 근로장려금
+  - id: eitc_single_4m
+    area: 근로장려금
+    tool: tax.kr_eitc
+    inputs: {year: 2025, household_type: single, property_total: "0", earned_income: "4000000"}
+    expected:
+      eitc_amount: "1650000"
+    source: &eitc_table
+      title: 조세특례제한법 시행령 [별표 11] 근로장려금 산정표(개정 2025.2.28.)
+      url: https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=170016365&bylClsCd=110201
+      base_year: 2025
+      quote: "4,000,000 4,100,000 1,650,000 1,670,000 해당 없음"
+    note: 산정표는 2025.1.1. 이후 신청분(2024년 귀속 이후)부터 적용하며 2025년 귀속분(2026년 신청)에 그대로 쓰인다.
+
+  - id: eitc_single_15m
+    area: 근로장려금
+    tool: tax.kr_eitc
+    inputs: {year: 2025, household_type: single, property_total: "0", earned_income: "15000000"}
+    expected:
+      eitc_amount: "889000"
+    source:
+      <<: *eitc_table
+      quote: "15,000,000 15,100,000 889,000 2,692,000 3,300,000"
+
+  - id: eitc_one_earner_8m
+    area: 근로장려금
+    tool: tax.kr_eitc
+    inputs: {year: 2025, household_type: one_earner, property_total: "0", earned_income: "8000000"}
+    expected:
+      eitc_amount: "2850000"
+    source:
+      <<: *eitc_table
+      quote: "8,000,000 8,100,000 1,650,000 2,850,000 3,300,000"
+
+  - id: eitc_one_earner_30m
+    area: 근로장려금
+    tool: tax.kr_eitc
+    inputs: {year: 2025, household_type: one_earner, property_total: "0", earned_income: "30000000"}
+    expected:
+      eitc_amount: "317000"
+    source:
+      <<: *eitc_table
+      quote: "30,000,000 30,100,000 - 317,000 1,712,000"
+
+  - id: eitc_dual_earner_20m
+    area: 근로장려금
+    tool: tax.kr_eitc
+    inputs: {year: 2025, household_type: dual_earner, property_total: "0", earned_income: "12000000", spouse_earned_income: "8000000"}
+    expected:
+      eitc_amount: "2934000"
+    source:
+      <<: *eitc_table
+      quote: "20,000,000 20,100,000 254,000 1,900,000 2,934,000"
+    note: 맞벌이 가구의 총급여액 등은 부부 합산액이므로 신청자 1,200만원과 배우자 800만원으로 나눈다.
+
+  - id: eitc_dual_earner_43m
+    area: 근로장려금
+    tool: tax.kr_eitc
+    inputs: {year: 2025, household_type: dual_earner, property_total: "0", earned_income: "30000000", spouse_earned_income: "13000000"}
+    expected:
+      eitc_amount: "123000"
+    source:
+      <<: *eitc_table
+      quote: "43,000,000 43,100,000 - - 123,000"
+
+  # ---------------------------------------------------------------- 청약 가점
+  - id: subscription_spouse_12m
+    area: 청약 가점
+    tool: realestate.kr_subscription_score
+    inputs: {year: 2026, homeless_months: 0, dependents: 0, savings_months: 0, homeless_period_applicable: false, spouse_savings_months: 12}
+    expected:
+      spouse_savings_points: 2
+    source: &applyhome
+      title: 청약홈 청약가점계산(배우자 청약통장 가입기간 점수)
+      url: https://www.applyhome.co.kr/ap/apg/selectAddpntCalculatorView.do
+      base_year: 2026
+      quote: "(예)배우자의 통장가입기간이 12개월인 경우: 50% 적용 시 6개월로 2점"
+
+  - id: subscription_spouse_30m_cap
+    area: 청약 가점
+    tool: realestate.kr_subscription_score
+    inputs: {year: 2026, homeless_months: 0, dependents: 0, savings_months: 0, homeless_period_applicable: false, spouse_savings_months: 30}
+    expected:
+      spouse_savings_points: 3
+    source:
+      <<: *applyhome
+      quote: "배우자의 통장가입기간이 30개월인 경우: 50% 적용 시 15개월로 3점(최대 3점을 초과할 수 없음)"
+
+  - id: subscription_savings_total_cap
+    area: 청약 가점
+    tool: realestate.kr_subscription_score
+    inputs: {year: 2026, homeless_months: 0, dependents: 0, savings_months: 180, homeless_period_applicable: false, spouse_savings_months: 30}
+    expected:
+      savings_total_points: 17
+    source:
+      <<: *applyhome
+      quote: "배우자는 청약통장 가입기간의 50%만 인정되며, 최대 3점까지 인정(본인과 배우자의 통장가입기간 합산 점수는 최대 17점까지 인정)"
+    note: 본인 가입기간 15년(최고 구간)에 배우자 3점이 더해져도 합산 점수는 17점을 넘지 않는다.
+
+  # ---------------------------------------------------------------- 취득세·등록면허세
+  - id: acquisition_house_230m_200sqm
+    area: 취득세
+    tool: realestate.kr_acquisition_tax
+    inputs: {price: "230000000", house_count: 1, is_regulated: false, area_m2: "200", year: 2026}
+    expected:
+      acquisition_tax: "2300000"
+      surcharges.rural_special: "460000"
+      surcharges.local_edu: "230000"
+      total_tax: "2990000"
+    source:
+      title: 서울특별시 2026 알기 쉬운 지방세, 취득세 과세표준액 및 세액 산출 사례2(유상취득)
+      url: https://news.seoul.go.kr/gov/files/2026/03/69c38abf948b43.25100859.pdf
+      base_year: 2026
+      quote: "<취득세 등> 2,990,000원 (취득세2,300,000원+농특세460,000원+지방교육세230,000원)"
+    note: 단독주택 200㎡ 개인 간 유상취득. 보유 주택 수는 예시에 없어 1주택으로 둔다(6억 이하 1% 세율 전제).
+
+  - id: registration_license_other_flat
+    area: 등록면허세
+    tool: tax.kr_registration_license_tax
+    inputs: {registration_type: other, year: 2026}
+    expected:
+      registration_tax: "6000"
+    source:
+      title: 서울특별시 2026 알기 쉬운 지방세, 등록면허세 세율(부동산 등기)
+      url: https://news.seoul.go.kr/gov/files/2026/03/69c38abf948b43.25100859.pdf
+      base_year: 2026
+      quote: "그 밖의 등기 매 1건당 6,000원"
+
+  # ---------------------------------------------------------------- 종합부동산세(1세대 1주택, 2026 현행)
+  - id: comprehensive_1house_15b_60y_10y
+    area: 종합부동산세
+    tool: realestate.kr_comprehensive
+    inputs: {total_published_price: "1500000000", year: 2026, house_count: 1, age: 60, holding_years: 10}
+    expected:
+      total_tax: "276000"
+    display_unit: "1000"
+    source: &mofe_qa
+      title: 재정경제부 2026년 세제개편안 문답자료(종합부동산세 개편 적용사례, 현행 열)
+      url: https://www.mofe.go.kr/com/cmm/fms/FileDown.do?atchFileId=ATCH_000000000032335&fileSn=8
+      base_year: 2026
+      quote: "60세, 10년 거주 (공제율 현행60%) / 공시가 15억 / 현행 종부세 27.6 (단위: 만원, 종부세는 농특세 포함)"
+    note: 출처는 만원 단위 소수 첫째 자리(1,000원)까지 적으므로 display_unit 1,000원 안의 차이는 같은 값으로 본다.
+
+  - id: comprehensive_1house_35b_60y_10y
+    area: 종합부동산세
+    tool: realestate.kr_comprehensive
+    inputs: {total_published_price: "3500000000", year: 2026, house_count: 1, age: 60, holding_years: 10}
+    expected:
+      total_tax: "4539000"
+    display_unit: "1000"
+    source:
+      <<: *mofe_qa
+      quote: "60세, 10년 거주 (공제율 현행60%) / 공시가 35억 / 현행 종부세 453.9 (단위: 만원, 종부세는 농특세 포함)"
+
+  - id: comprehensive_1house_20b_50y_2y
+    area: 종합부동산세
+    tool: realestate.kr_comprehensive
+    inputs: {total_published_price: "2000000000", year: 2026, house_count: 1, age: 50, holding_years: 2}
+    expected:
+      total_tax: "2275000"
+    display_unit: "1000"
+    source:
+      <<: *mofe_qa
+      quote: "50세, 2년 거주 (공제율 현행0%) / 공시가 20억 / 현행 종부세 227.5 (단위: 만원, 종부세는 농특세 포함)"
+
+  - id: comprehensive_1house_50b_50y_2y
+    area: 종합부동산세
+    tool: realestate.kr_comprehensive
+    inputs: {total_published_price: "5000000000", year: 2026, house_count: 1, age: 50, holding_years: 2}
+    expected:
+      total_tax: "23443000"
+    display_unit: "1000"
+    source:
+      <<: *mofe_qa
+      quote: "50세, 2년 거주 (공제율 현행0%) / 공시가 50억 / 현행 종부세 2,344.3 (단위: 만원, 종부세는 농특세 포함)"
+
+  - id: comprehensive_1house_30b_70y_10y
+    area: 종합부동산세
+    tool: realestate.kr_comprehensive
+    inputs: {total_published_price: "3000000000", year: 2026, house_count: 1, age: 70, holding_years: 10}
+    expected:
+      one_house_credit: "5165000"
+      total_tax: "1549000"
+    display_unit: "1000"
+    source:
+      <<: *mofe_qa
+      quote: "(사례①) 공시가 30억원, 70세 10년 거주 / '26년<현행> 공제율 80% / 세액공제액 516.5 / 종부세 합계(농특세 포함) 154.9"
+
+  - id: comprehensive_1house_50b_70y_10y
+    area: 종합부동산세
+    tool: realestate.kr_comprehensive
+    inputs: {total_published_price: "5000000000", year: 2026, house_count: 1, age: 70, holding_years: 10}
+    expected:
+      one_house_credit: "15629000"
+      total_tax: "4689000"
+    display_unit: "1000"
+    source:
+      <<: *mofe_qa
+      quote: "(사례③) 공시가 50억원, 70세 10년 거주 / '26년<현행> 공제율 80% / 세액공제액 1,562.9 / 종부세 합계(농특세 포함) 468.9"
+
+  # ---------------------------------------------------------------- 증여세
+  - id: gift_generation_skip_surcharge
+    area: 증여세
+    tool: tax.kr_gift
+    inputs: {gift_amount: "150000000", relationship: lineal_ascendant, year: 2026, generation_skip: true}
+    expected:
+      computed_tax: "10000000"
+      tax: "13000000"
+    source: &guide2
+      title: 국세청 2026 세금절약 가이드 II(양도소득세·상속세·증여세), 증여세 알뜰정보 14
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=a8e05f0656503a89e08a343f4229f6b5
+      base_year: 2026
+      quote: "일반적으로 계산한 증여세액이 1,000만 원이라고 할 경우 세대를 건너 뛰어 증여하면 1,300만 원의 증여세를 내야 한다."
+    note: 일반 산출세액이 1,000만원이 되도록 성년 손자녀가 조부모에게서 1억5천만원(증여재산공제 5천만원 후 과세표준 1억원)을 받는 경우로 둔다.
+
+  - id: gift_timely_filing_credit
+    area: 증여세
+    tool: tax.kr_gift
+    inputs: {gift_amount: "150000000", relationship: lineal_ascendant, year: 2026}
+    expected:
+      tax: "10000000"
+      filing_credit: "300000"
+      tax_after_filing_credit: "9700000"
+    source:
+      <<: *guide2
+      quote: "정상신고 시 납부할 세금: ① - ② = 9,700,000원 ① 납부세액: 10,000,000원 ② 신고세액공제: (10,000,000원×3%) = 300,000원"
+    note: 증여세 산출세액이 1,000만원이 되도록 성년 자녀가 부모에게서 1억5천만원을 받는 경우로 둔다.
+
+  # ---------------------------------------------------------------- 상속세
+  - id: inheritance_timely_filing_credit
+    area: 상속세
+    tool: tax.kr_inheritance
+    inputs: {gross_estate: "600000000", spouse_inheritance: "0", year: 2026, has_spouse: false}
+    expected:
+      tax: "10000000"
+      filing_credit: "300000"
+      tax_after_filing_credit: "9700000"
+    source:
+      <<: *guide2
+      quote: "1천만 원의 상속세를 내야하는 상속인이 ... 정상신고 시 납부할 세금: ①－② = 9,700,000원 ① 납부세액: 10,000,000원 ② 신고세액공제: (10,000,000원×3%) = 300,000원"
+    note: 상속세 산출세액이 1,000만원이 되도록 배우자 없이 과세가액 6억원(일괄공제 5억원 후 과세표준 1억원)으로 둔다.
+
+  - id: inheritance_pregift_over_10y
+    area: 상속세
+    tool: tax.kr_inheritance
+    inputs: {gross_estate: "2500000000", spouse_inheritance: "0", year: 2026, has_spouse: false, children_count: 2}
+    expected:
+      taxable_base: "2000000000"
+      tax: "640000000"
+    source:
+      <<: *guide2
+      quote: "사망하기 전 12년 전에 자녀에게 5억 원을 증여하고 사망했다면 상속세 과세표준은 20억 원(상속재산 25억 원－일괄공제 5억 원)이 되고 이에 대한 상속세의 산출세액은 6억 4천만 원"
+
+  - id: inheritance_pregift_within_10y
+    area: 상속세
+    tool: tax.kr_inheritance
+    inputs: {gross_estate: "3000000000", spouse_inheritance: "0", year: 2026, has_spouse: false, children_count: 2}
+    expected:
+      taxable_base: "2500000000"
+      tax: "840000000"
+    source:
+      <<: *guide2
+      quote: "사망하기 8년 전(10년 이내)에 자녀에게 5억 원을 증여하고 사망했다면 상속세 과세표준은 25억 원(상속재산 25억 원+상속개시 전 10년 이내에 증여한 재산 5억 원－일괄공제 5억 원)이 되며 이에 대한 상속세의 산출세액은 8억 4천만 원"
+    note: 과세가액은 상속재산 25억원에 10년 이내 증여재산 5억원을 더한 30억원이다.
+
+  - id: inheritance_spouse_nothing
+    area: 상속세
+    tool: tax.kr_inheritance
+    inputs: {gross_estate: "3500000000", spouse_inheritance: "0", year: 2026, has_spouse: true, children_count: 2}
+    expected:
+      taxable_base: "2500000000"
+      tax: "840000000"
+    source:
+      <<: *guide2
+      quote: "35억 원에서 일괄공제 5억 원, 배우자공제 5억 원을 차감하면 상속세 과세표준이 25억 원이 되며, 이에 대한 상속세는 8억 4천만 원이 나온다."
+
+  - id: inheritance_spouse_legal_share
+    area: 상속세
+    tool: tax.kr_inheritance
+    inputs: {gross_estate: "3500000000", spouse_inheritance: "1500000000", year: 2026, has_spouse: true, children_count: 2, spouse_legal_share_cap: "1500000000"}
+    expected:
+      taxable_base: "1500000000"
+      tax: "440000000"
+    source:
+      <<: *guide2
+      quote: "35억 원에서 일괄공제 5억 원, 배우자공제 15억 원을 차감하면 상속세 과세표준은 15억 원이 되며, 이에 대한 상속세는 4억 4천만 원이 된다."
+    note: 법정상속지분(모 3/7)대로 배우자가 15억원을 상속받는 경우. 배우자공제 한도도 15억원이다.
+
+  # ---------------------------------------------------------------- 증권거래세(연도별 탄력세율)
+  - id: securities_kospi_2024
+    area: 증권거래세
+    tool: tax.kr_securities_transaction
+    inputs: {transfer_amount: "10000000", market: kospi, year: 2024}
+    expected:
+      securities_tax_rate: "0.0003"
+    source: &stt_reason
+      title: 증권거래세법 시행령 제정·개정이유(대통령령 제33209호 2023.1.1. 시행, 제36001호 2026.1.1. 시행)
+      url: https://www.law.go.kr/lsRvsRsnListP.do?lsId=005028
+      base_year: 2024
+      quote: "유가증권시장에서 양도되는 주권에 대해서는 ... 2024년 1월 1일부터 2024년 12월 31일까지는 1만분의 3의 세율을 적용하고, 코스닥시장에서 ... 2024년 1월 1일부터 2024년 12월 31일까지는 1만분의 18의 세율"
+
+  - id: securities_kosdaq_2025
+    area: 증권거래세
+    tool: tax.kr_securities_transaction
+    inputs: {transfer_amount: "10000000", market: kosdaq, year: 2025}
+    expected:
+      securities_tax_rate: "0.0015"
+    source:
+      <<: *stt_reason
+      base_year: 2025
+      quote: "코스닥시장에서 양도되는 주권 또는 금융투자협회를 통하여 양도되는 주권에 대하여 1만분의 15의 세율을 적용하는 시기를 2023년 1월 1일에서 2025년 1월 1일로 2년 유예"
+
+  - id: securities_kospi_2026
+    area: 증권거래세
+    tool: tax.kr_securities_transaction
+    inputs: {transfer_amount: "10000000", market: kospi, year: 2026}
+    expected:
+      securities_tax_rate: "0.0005"
+    source:
+      <<: *stt_reason
+      base_year: 2026
+      quote: "증권거래세율을 유가증권시장에서 양도되는 주권의 경우 영(零)에서 1만분의 5로, 코스닥시장에서 양도되는 주권 또는 금융투자협회를 통해 양도되는 주권의 경우 1만분의 15에서 1만분의 20으로 환원"
+
+  - id: securities_kosdaq_2026
+    area: 증권거래세
+    tool: tax.kr_securities_transaction
+    inputs: {transfer_amount: "10000000", market: kosdaq, year: 2026}
+    expected:
+      securities_tax_rate: "0.0020"
+    source:
+      <<: *stt_reason
+      base_year: 2026
+      quote: "코스닥시장에서 양도되는 주권 또는 금융투자협회를 통해 양도되는 주권의 경우 1만분의 15에서 1만분의 20으로 환원"
+
+  # ---------------------------------------------------------------- 근로소득 간이세액표(2026.3.1. 이후)
+  - id: withholding_2500k_1
+    area: 원천징수 간이세액표
+    tool: tax.kr_withholding_simple
+    inputs: {monthly_salary: "2500000", dependents: 1, year: 2026}
+    expected:
+      table_tax: "35600"
+    source: &wht_table
+      title: 소득세법 시행령 [별표 2] 근로소득 간이세액표(개정 2026.2.27., 2026.3.1. 이후 원천징수분)
+      url: https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=169798151&bylClsCd=110201
+      base_year: 2026
+      quote: "2,500 2,510 35,600 28,600 16,530 13,150"
+    note: 월급여액 천원 단위 구간 이상~미만, 공제대상가족 수 1·2·3·4인 순.
+
+  - id: withholding_2500k_3
+    area: 원천징수 간이세액표
+    tool: tax.kr_withholding_simple
+    inputs: {monthly_salary: "2500000", dependents: 3, year: 2026}
+    expected:
+      table_tax: "16530"
+    source:
+      <<: *wht_table
+      quote: "2,500 2,510 35,600 28,600 16,530 13,150"
+
+  - id: withholding_3000k_2
+    area: 원천징수 간이세액표
+    tool: tax.kr_withholding_simple
+    inputs: {monthly_salary: "3000000", dependents: 2, year: 2026}
+    expected:
+      table_tax: "56850"
+    source:
+      <<: *wht_table
+      quote: "3,000 3,020 74,350 56,850 31,940 26,690"
+
+  - id: withholding_3000k_4
+    area: 원천징수 간이세액표
+    tool: tax.kr_withholding_simple
+    inputs: {monthly_salary: "3000000", dependents: 4, year: 2026}
+    expected:
+      table_tax: "26690"
+    source:
+      <<: *wht_table
+      quote: "3,000 3,020 74,350 56,850 31,940 26,690"
+
+  - id: withholding_3500k_1
+    area: 원천징수 간이세액표
+    tool: tax.kr_withholding_simple
+    inputs: {monthly_salary: "3500000", dependents: 1, year: 2026}
+    expected:
+      table_tax: "127220"
+    source:
+      <<: *wht_table
+      quote: "3,500 3,520 127,220 102,220 62,460 49,340"
+
+  - id: withholding_3500k_4_two_children
+    area: 원천징수 간이세액표
+    tool: tax.kr_withholding_simple
+    inputs: {monthly_salary: "3500000", dependents: 4, year: 2026, children_8_20: 2}
+    expected:
+      table_tax: "49340"
+      child_reduction: "45830"
+    source:
+      <<: *wht_table
+      quote: "3,500 3,520 127,220 102,220 62,460 49,340 / 나. 8세 이상 20세 이하 자녀가 2명인 경우 : 45,830원"
+
+  - id: withholding_5000k_2
+    area: 원천징수 간이세액표
+    tool: tax.kr_withholding_simple
+    inputs: {monthly_salary: "5000000", dependents: 2, year: 2026}
+    expected:
+      table_tax: "306710"
+    source:
+      <<: *wht_table
+      quote: "5,000 5,020 335,470 306,710 237,850 219,100"
+
+  - id: withholding_5000k_4
+    area: 원천징수 간이세액표
+    tool: tax.kr_withholding_simple
+    inputs: {monthly_salary: "5000000", dependents: 4, year: 2026}
+    expected:
+      table_tax: "219100"
+    source:
+      <<: *wht_table
+      quote: "5,000 5,020 335,470 306,710 237,850 219,100"
+
+  # ---------------------------------------------------------------- 법인세
+  - id: corporate_startup_sme_2025
+    area: 법인세
+    tool: tax.kr_corporate
+    inputs: {taxable_income: "231000000", year: 2025, is_small: true, reductions: "11371640"}
+    expected:
+      base_tax: "23890000"
+      minimum_tax: "16170000"
+      tax: "16170000"
+    source:
+      title: 국세청 창업한 중소기업법인 신고서 작성사례(사업연도 2025.1.1.~12.31.)
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=fd0f03de58e907c4952803c39fa58e28
+      base_year: 2025
+      quote: "② 산출세액 : 231,000,000(과세표준)×(19%)* = 23,890,000 / 1) 231,000,000(과세표준) × 7%(최저한세율) = 16,170,000 / 아래 1)과 2)중 많은 금액 16,170,000원을 납부하여야 함"
+    note: reductions 는 출처가 계산한 창업중소기업 세액감면 11,371,640원이다. 2026.1.1. 이후 개시 사업연도부터는 세율이 달라 2025 정책으로 실행한다.
+
+excluded:
+  - id: income_rate_2025_example
+    area: 종합소득세
+    tool: tax.kr_income
+    category: policy_year_absent
+    source:
+      title: 국세청 종합소득세 세율
+      url: https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=2227&cntntsId=7667
+      base_year: 2025
+      quote: "【예시】 2025년 귀속 과세표준 30,000,000원 × 세율 15% - 1,260,000원 = 3,240,000원"
+    reason: 2025년 귀속 예시인데 tax.kr_income 은 2026 정책만 있다.
+
+  - id: severance_2023_20y_100m
+    area: 퇴직소득세
+    tool: payroll.kr_severance_pay
+    category: policy_year_absent
+    source:
+      title: 국세청 퇴직소득세 계산방법 및 계산사례
+      url: https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=6444&cntntsId=7880
+      base_year: 2023
+      quote: "2004.01.01 입사하였고 2023.12.31 퇴사 ... 퇴직급여는 1억원 / ⑧산출세액 1,120천원=672천원÷12×20년"
+    reason: 2023년 퇴직 사례인데 퇴직소득 정책은 2026 만 있다.
+
+  - id: capital_gains_high_value_house_2022
+    area: 양도소득세
+    tool: tax.capital_gains_kr
+    category: policy_year_absent
+    source:
+      title: 국세청 1세대 1주택 고가주택의 양도소득금액 계산
+      url: https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=12271&cntntsId=8799
+      base_year: 2022
+      quote: "양도일：2022.1.3. ... 과세대상 양도소득금액 : 1억 3천4백만 원 - 1억 7백2십만 원 = 2천6백8십만 원"
+    reason: 2022년 양도 사례인데 양도소득세 정책은 2026·2027 만 있다.
+
+  - id: capital_gains_land_2020
+    area: 양도소득세
+    tool: tax.capital_gains_kr
+    category: superseded_law
+    source:
+      title: 국세청 사례1 토지를 양도한 경우로서 실지취득가액이 있는 경우
+      url: https://www.nts.go.kr/upload/ti_tax/01/토지를%20양도한%20경우로서%20실지취득가액이%20있는%20경우.pdf
+      base_year: 2020
+      quote: "산출세액 21,398,500원 = 103,710,000원 × 0.35 - 14,900,000원(누진공제)"
+    reason: 2020년 양도 사례로 2023년 개정 전 누진공제(1,490만원)를 쓰며 2020 정책이 없다.
+
+  - id: capital_gains_rate_compare_guide
+    area: 양도소득세
+    tool: tax.capital_gains_kr
+    category: superseded_law
+    source:
+      title: 국세청 2026 세금절약 가이드 II, 보유기간별 세율 비교와 세율 적용 방법
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=a8e05f0656503a89e08a343f4229f6b5
+      base_year: 2024
+      quote: "a, b 중 큰 금액인 216,600,000원이 납부할 세액입니다."
+    reason: 2021·2024년 양도 예시가 2023년 개정 전 누진공제(14,900,000·25,400,000·35,400,000원)를 써서 해당 연도 법령과도 다르며 2021·2024 정책이 없다.
+
+  - id: gift_burden_vs_general_2021
+    area: 증여세
+    tool: tax.kr_gift
+    category: policy_year_absent
+    source:
+      title: 국세청 2026 세금절약 가이드 II, 부담부증여 사례
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=a8e05f0656503a89e08a343f4229f6b5
+      base_year: 2021
+      quote: "일반증여의 경우 ... 증여세로 7천760만 원을 납부 ... 부담부 증여의 경우 ... 3천880만 원을 납부하고 아버지가 양도소득세로 2천623만 원"
+    reason: 2021.1.1. 증여 사례이며 양도소득세 부분은 2023년 개정 전 누진공제를 쓴다. 2021 정책이 없다.
+
+  - id: inheritance_generation_skip_guide
+    area: 상속세
+    tool: tax.kr_inheritance
+    category: simplified_assumption
+    source:
+      title: 국세청 2026 세금절약 가이드 II, 상속세 알뜰정보 22
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=a8e05f0656503a89e08a343f4229f6b5
+      base_year: 2026
+      quote: "상속의 포기로 5억 원을 후순위 상속인인 손자, 손녀에게 상속하면 상속공제 한도액이 5억 원으로 상속세 과세표준 5억 원에 상속세 30% 할증하여 상속세액 1억 1천 7백만 원"
+    reason: 상속재산 10억원 중 5억원만 손자녀에게 갔는데 산출세액 전체에 30%를 더해, 손자녀 상속분 비율로 안분하는 상증법 제27조와 다른 단순화 예시다. tax.kr_inheritance 에는 세대생략 할증 입력도 없다.
+
+  - id: simplified_vat_food_2022
+    area: 부가가치세 간이과세
+    tool: tax.kr_simplified_vat
+    category: policy_year_absent
+    source:
+      title: 국세청 (2022년 확정) 간이과세자 신고서 작성사례 음식업
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=72690979c4238bf9b7200045fc3ee285
+      base_year: 2022
+      quote: "(5) 64,000,000 15/100 10/100 960,000 ... (27) 140,500"
+    reason: 2022년 과세기간 사례(간이과세 기준 8,000만원 당시)이며 간이과세 정책은 2026·2027 만 있다.
+
+  - id: simplified_vat_retail_2022
+    area: 부가가치세 간이과세
+    tool: tax.kr_simplified_vat
+    category: policy_year_absent
+    source:
+      title: 국세청 (2022년 확정) 간이과세자 신고서 작성사례 소매업
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=edb7300c4744b7199794aa4321d353bf
+      base_year: 2022
+      quote: "(5) 60,000,000 15/100 10/100 900,000 ... (27) 92,000"
+    reason: 2022년 과세기간 사례이며 간이과세 정책은 2026·2027 만 있다.
+
+  - id: yearend_medical_2025
+    area: 근로소득 연말정산
+    tool: payroll.kr_medical_deduction
+    category: policy_year_absent
+    source:
+      title: 국세청 2025년 원천징수의무자를 위한 연말정산 신고안내(의료비 세액공제 사례)
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=88c482e8d69eb1653515871654a4ab42
+      base_year: 2025
+      quote: "1,335천원 [ =(“가”+“나”) × 15% + “다” × 30% ]"
+    reason: 2025년 귀속 사례인데 연말정산 공제 정책은 2026·2027 만 있다.
+
+  - id: yearend_education_2025
+    area: 근로소득 연말정산
+    tool: payroll.kr_education_deduction
+    category: policy_year_absent
+    source:
+      title: 국세청 2025년 원천징수의무자를 위한 연말정산 신고안내(교육비 세액공제 사례)
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=88c482e8d69eb1653515871654a4ab42
+      base_year: 2025
+      quote: "교육비 세액공제액 = 2,870만원 × 15% = 4,305,000원"
+    reason: 2025년 귀속 사례인데 연말정산 공제 정책은 2026·2027 만 있다.
+
+  - id: yearend_donation_2025
+    area: 근로소득 연말정산
+    tool: payroll.kr_donation_deduction
+    category: policy_year_absent
+    source:
+      title: 국세청 2025년 원천징수의무자를 위한 연말정산 신고안내(종합사례 기부금)
+      url: https://www.nts.go.kr/comm/nttFileDownload.do?fileKey=88c482e8d69eb1653515871654a4ab42
+      base_year: 2025
+      quote: "기부금 세액공제 ⇨ 271,818원"
+    reason: 2025년 귀속 사례인데 연말정산 공제 정책은 2026·2027 만 있다.
+
+  - id: withholding_nts_page_old_child_credit
+    area: 원천징수 간이세액표
+    tool: tax.kr_withholding_simple
+    category: superseded_law
+    source:
+      title: 국세청 근로소득 원천징수방법(간이세액표)
+      url: https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?mi=6583&cntntsId=7862
+      base_year: 2026
+      quote: "이 경우 원천징수세액은 49,340원 - 29,160원 = 20,180원"
+    reason: 안내 페이지가 2026.2.27. 개정 전 자녀 2명 공제액(29,160원)을 쓴다. 현행 별표 2 는 45,830원이다.
+
+  - id: acquisition_7eok_1house_2023
+    area: 취득세
+    tool: realestate.kr_acquisition_tax
+    category: policy_year_absent
+    source:
+      title: 서울특별시 2026 알기 쉬운 지방세, 참고4 취득세 계산사례
+      url: https://news.seoul.go.kr/gov/files/2026/03/69c38abf948b43.25100859.pdf
+      base_year: 2023
+      quote: "60일내 11,666,900원의 취득세(지방교육세 1,166,690원을 포함한 합계세액은 12,833,590원)"
+    reason: 2023년 3월 취득 사례인데 취득세 정책은 2026 만 있다.
+
+  - id: acquisition_gift_villa_2025
+    area: 취득세
+    tool: realestate.kr_acquisition_tax
+    category: tool_scope
+    source:
+      title: 서울특별시 2026 알기 쉬운 지방세, 취득세 과세표준액 및 세액 산출 사례1(무상취득)
+      url: https://news.seoul.go.kr/gov/files/2026/03/69c38abf948b43.25100859.pdf
+      base_year: 2025
+      quote: "<취득세 등> 4,940,000원 (취득세4,550,000원 + 지방교육세390,000원)"
+    reason: 2025.8.1. 증여 취득 사례로 2025 정책이 없고, 도구는 주택 유상취득만 계산한다.
+
+  - id: acquisition_heavy_multi_house_mois
+    area: 취득세
+    tool: realestate.kr_acquisition_tax
+    category: policy_year_absent
+    source:
+      title: 행정안전부 보도자료(2024.3.19. 소형 신축주택, 2025.4.22. 지방 저가주택)
+      url: https://www.mois.go.kr/cmm/fms/FileDown.do?atchFileId=FILE_00135479Bsqom_7&fileSn=1
+      base_year: 2025
+      quote: "200만 원(2억 원×1%)"
+    reason: 2024·2025년 취득 사례인데 취득세 정책은 2026 만 있다. 2022.12. 발표 중과 완화안 사례는 입법되지 않았다.
+
+  - id: property_tax_3eok_2024
+    area: 재산세
+    tool: realestate.kr_property_tax
+    category: policy_year_absent
+    source:
+      title: 서울특별시 2026 알기 쉬운 지방세, 참고2 재산세 계산사례
+      url: https://news.seoul.go.kr/gov/files/2026/03/69c38abf948b43.25100859.pdf
+      base_year: 2024
+      quote: "총 628,700원을 납부 / 279,600원의 재산세를 납부"
+    reason: 2024년도 재산세 사례인데 재산세 정책은 2026 만 있다.
+
+  - id: property_tax_4eok_2025
+    area: 재산세
+    tool: realestate.kr_property_tax
+    category: policy_year_absent
+    source:
+      title: 행정안전부 1주택자 재산세 부담 올해도 지속 완화(2025)
+      url: https://www.mois.go.kr/cmm/fms/FileDown.do?atchFileId=FILE_00135228WqBEC5V&fileSn=1
+      base_year: 2025
+      quote: "약 40% 낮은 수준인 17만 2천 원의 재산세가 부과된다"
+    reason: 2025년 재산세 예시인데 재산세 정책은 2026 만 있다.
+
+  - id: vehicle_tax_prorata_2025
+    area: 자동차세
+    tool: tax.kr_vehicle_tax
+    category: policy_year_absent
+    source:
+      title: 서울특별시 2026 알기 쉬운 지방세, 자동차세 일할계산 금액 예시
+      url: https://news.seoul.go.kr/gov/files/2026/03/69c38abf948b43.25100859.pdf
+      base_year: 2025
+      quote: "양도자 519,480원×1/2×( 16일/181일) = 22,960원"
+    reason: 2025.1.17. 양도 사례인데 자동차세 정책은 2026 만 있고, 도구는 소유권 이전 일할계산을 하지 않는다.
+
+  - id: vehicle_tax_age_2025
+    area: 자동차세
+    tool: tax.kr_vehicle_tax
+    category: policy_year_absent
+    source:
+      title: 서울특별시 2026 알기 쉬운 지방세, 중고자동차 차등과세 계산예시
+      url: https://news.seoul.go.kr/gov/files/2026/03/69c38abf948b43.25100859.pdf
+      base_year: 2025
+      quote: "’25년도 제1기분 자동차세 등 세액계산：155,760원(자동차세+지방교육세)"
+    reason: 2025년 제1기분 사례인데 자동차세 정책은 2026 만 있다.
+
+  - id: weekly_holiday_pay_consult_2022
+    area: 근로기준법 수당
+    tool: payroll.kr_weekly_holiday_pay
+    category: policy_year_absent
+    source:
+      title: 고용노동부 빠른인터넷상담(주 40시간 이하 주휴수당)
+      url: https://www.moel.go.kr/minwon/fastcounsel/fastcounselView.do?inetDcssMngId=202205161509553271000
+      base_year: 2022
+      quote: "10,000원 x 6시간 = 60,000원 / 10,000원 x (18시간 x 4주 ÷ 20일) = 36,000원"
+    reason: 2022년 상담 답변인데 노무 수당 정책은 2026·2027 만 있다.
+
+  - id: employment_insurance_durunuri_2024
+    area: 4대보험
+    tool: payroll.kr_salary
+    category: superseded_law
+    source:
+      title: 고용노동부 고용보험 안내(2024년 2월 기준) 두루누리 보험료지원금 예시
+      url: https://moel.go.kr/common/downloadFile.do?file_seq=20240701777&bbs_seq=20240700806&bbs_id=23&file_ext=pdf
+      base_year: 2024
+      quote: "근로자 22,500(20,000) 112,500 18,000(16,000) 90,000"
+    reason: 국민연금 보험료율 9%(2026년 9.5%) 시점의 2024년 예시이며 2024 정책이 없다.
+
+  - id: public_pension_withholding_table
+    area: 연금소득세
+    tool: tax.kr_pension_income
+    category: tool_scope
+    source:
+      title: 소득세법 시행령 [별표 3] 연금소득 간이세액표(개정 2023.2.28.)
+      url: https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=169798209&bylClsCd=110201
+      base_year: 2026
+      quote: "2,000 2,020 80,510 63,200 55,700 48,200"
+    reason: 공적연금 원천징수 간이세액표 조회는 tax.kr_pension_income 의 계산 범위(사적연금 원천징수, 연금소득공제)에 없다.

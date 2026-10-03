@@ -52,7 +52,7 @@ class TestBasicPension:
         assert Decimal(r["weighted_amount"]) == Decimal("8239258.38")
         assert Decimal(r["extension_factor"]) == Decimal("2")
         assert r["basic_pension_annual"] == "16478516"
-        assert r["monthly_pension"] == "1373209"
+        assert r["monthly_pension"] == "1373200"
         assert r["periods"] == [{"from_year": 2026, "to_year": None, "constant": "1.29", "b_weight": "1", "months": 480}]
 
     def test_twenty_years_ending_2025_uses_yearly_constants(self):
@@ -64,7 +64,7 @@ class TestBasicPension:
         assert r["periods"][-1] == {"from_year": 2025, "to_year": 2025, "constant": "1.245", "b_weight": "1", "months": 12}
         assert r["basic_pension_annual"] == "8765366"
         assert r["payment_rate"] == "1"
-        assert r["monthly_pension"] == "730447"
+        assert r["monthly_pension"] == "730440"
 
     def test_income_history_applies_revaluation_and_pre_1999_formula(self):
         """1995~2014년 월 100만원. B = sum(100만원 x 12 x 재평가율) / 240 = 2,199,900원.
@@ -74,17 +74,17 @@ class TestBasicPension:
         assert r["input_mode"] == "income_history"
         assert Decimal(r["b_value"]) == Decimal("2199900")
         assert r["periods"][0] == {"from_year": 1988, "to_year": 1998, "constant": "2.4", "b_weight": "0.75", "months": 48}
-        assert r["monthly_pension"] == "786675"
+        assert r["monthly_pension"] == "786670"
 
 
 class TestContributionPeriod:
     @pytest.mark.parametrize(
         ("months", "rate", "monthly"),
         [
-            (120, "0.5", "343302"),   # 10년: 기본연금액의 1천분의 500
-            (180, "0.75", "514953"),  # 15년: 500 + 5년 x 50
-            (239, None, "683744"),    # 0.5 + 0.05 x 119/12
-            (241, "1", "689465"),     # 20년 1개월 초과: 1 + 0.05 x 1/12 가산
+            (120, "0.5", "343300"),   # 10년: 기본연금액의 1천분의 500
+            (180, "0.75", "514950"),  # 15년: 500 + 5년 x 50
+            (239, None, "683740"),    # 0.5 + 0.05 x 119/12
+            (241, "1", "689460"),     # 20년 1개월 초과: 1 + 0.05 x 1/12 가산
         ],
     )
     def test_payment_rate_by_months(self, months, rate, monthly):
@@ -104,19 +104,19 @@ class TestClaimTiming:
         """조기 60개월: 1 - 0.005 x 60 = 0.70. 16,478,516.76 x 0.7 / 12 = 961,246원."""
         r = full_career(claim_offset_months=-60)
         assert Decimal(r["adjustment_factor"]) == Decimal("0.7")
-        assert r["monthly_pension"] == "961246"
+        assert r["monthly_pension"] == "961240"
 
     def test_full_deferral_sixty_months_adds_36_percent(self):
         """연기 60개월: 1 + 0.006 x 60 = 1.36. 월 1,867,565원."""
         r = full_career(claim_offset_months=60)
         assert Decimal(r["adjustment_factor"]) == Decimal("1.36")
-        assert r["monthly_pension"] == "1867565"
+        assert r["monthly_pension"] == "1867560"
 
     def test_partial_deferral_adds_only_on_deferred_share(self):
         """50% 12개월 연기: 0.5 + 0.5 x 1.072 = 1.036. 월 1,422,645원."""
         r = full_career(claim_offset_months=12, deferral_ratio="0.5")
         assert Decimal(r["adjustment_factor"]) == Decimal("1.036")
-        assert r["monthly_pension"] == "1422645"
+        assert r["monthly_pension"] == "1422640"
 
     @pytest.mark.parametrize("offset", [-61, 61])
     def test_offset_over_five_years_is_rejected(self, offset):
@@ -136,7 +136,7 @@ def test_dependent_pension_added_after_adjustment():
     """배우자 연 306,630원 + 자녀·부모 2명 x 연 204,360원. 조기 감액 대상이 아니다."""
     r = full_career(dependent_spouse=True, dependent_children_parents=2)
     assert r["dependent_pension_annual"] == "715350"
-    assert r["monthly_pension"] == "1432822"
+    assert r["monthly_pension"] == "1432820"
     early = full_career(claim_offset_months=-60, dependent_spouse=True, dependent_children_parents=2)
     assert early["dependent_pension_annual"] == "715350"
 
@@ -147,7 +147,7 @@ class TestMonthlyIncomeMode:
         r = full_career(b_value=None, monthly_income="3001500")
         assert r["b_value"] == "3001000"
         assert r["income_capped"] is False
-        assert r["monthly_pension"] == "1331819"
+        assert r["monthly_pension"] == "1331810"
 
     def test_cap_follows_as_of(self):
         """상한 6,370,000원(2026.1~6월) 과 6,590,000원(2026.7월~)."""
@@ -156,8 +156,8 @@ class TestMonthlyIncomeMode:
         assert before["b_value"] == "6370000"
         assert after["b_value"] == "6590000"
         assert before["income_capped"] is True
-        assert before["monthly_pension"] == "2056154"
-        assert after["monthly_pension"] == "2103454"
+        assert before["monthly_pension"] == "2056150"
+        assert after["monthly_pension"] == "2103450"
 
 
 class TestInputErrors:
@@ -208,3 +208,38 @@ class TestPolicyPeriod:
     def test_unpublished_year_is_unsupported(self):
         with pytest.raises(UnsupportedPolicyError):
             full_career(year=2027)
+
+
+class TestMonthlyCapAndUnit:
+    """제53조 최고한도와 월 지급액 10원 단위(국민연금공단 예상연금월액표 값)."""
+
+    def test_monthly_pension_is_truncated_to_ten_won(self):
+        r = call(year=2026, b_value="1000000", contribution_months=120, contribution_end_year=2035)
+        assert r["monthly_pension"] == "225400"
+        assert int(r["monthly_pension"]) % 10 == 0
+
+    @pytest.mark.parametrize(("b", "months", "end_year", "expected"), [
+        ("3000000", 240, 2045, "665800"),
+        ("5000000", 480, 2065, "1761600"),
+    ])
+    def test_official_table_values(self, b, months, end_year, expected):
+        """국민연금공단 노령연금 예상연금월액표(2026년 7월 상·하한 반영, 2026년 1월 최초 가입 가정)."""
+        r = call(year=2026, b_value=b, contribution_months=months, contribution_end_year=end_year)
+        assert r["monthly_pension"] == expected
+        assert r["pension_capped"] is False
+
+    def test_pension_cannot_exceed_the_average_standard_income(self):
+        """B값 410,000원, 40년: 산식 774,754원이지만 월 지급액은 평균 기준소득월액 410,000원을 넘지 못한다."""
+        r = call(year=2026, b_value="410000", contribution_months=480, contribution_end_year=2065)
+        assert r["monthly_pension"] == "410000"
+        assert r["pension_capped"] is True
+        assert r["pension_cap_monthly"] == "410000"
+
+    def test_dependent_pension_is_added_after_the_cap(self):
+        """상한 적용 410,000원 + 배우자 부양가족연금 연 306,630원 / 12 = 25,552.5 -> 435,552.5, 10원 미만 절사 435,550."""
+        r = call(
+            year=2026, b_value="410000", contribution_months=480, contribution_end_year=2065,
+            dependent_spouse=True,
+        )
+        assert r["monthly_pension"] == "435550"
+        assert r["pension_capped"] is True

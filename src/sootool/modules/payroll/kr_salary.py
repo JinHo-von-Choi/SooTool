@@ -11,7 +11,7 @@ Modified: 2026-10-03
   5. 고용보험 = 과세급여 x 근로자 요율, 산재보험 근로자 부담 없음
   6. 소득세 = 근로소득 간이세액표(소득세법 시행령 별표 2) 조회, 8세 이상 20세 이하 자녀 차감
   7. 지방소득세 = 소득세 x 10% (지방세법 제103조의13제1항)
-  보험료와 지방소득세는 원 미만을 버린다.
+  건강보험료와 장기요양보험료는 10원 미만(원 단위)을 버리고 나머지 보험료와 지방소득세는 원 미만을 버린다.
 """
 from __future__ import annotations
 
@@ -83,6 +83,11 @@ def _clip(value: Decimal, lo: Decimal, hi: Decimal) -> Decimal:
     return value
 
 
+def _truncate_premium(value: Decimal, unit: Decimal) -> Decimal:
+    """보험료를 unit 원 단위로 절사한다. 비율의 자릿수 한계로 생기는 미소 오차는 먼저 정리한다."""
+    return _truncate_to_unit(round_apply(value, 6, RoundingPolicy.HALF_UP), unit)
+
+
 def _truncate_to_unit(value: Decimal, unit: Decimal) -> Decimal:
     """unit 원 미만을 버린다 (unit=1000 이면 천원 미만 버림)."""
     return round_apply(value / unit, 0, RoundingPolicy.DOWN) * unit
@@ -94,7 +99,7 @@ def _truncate_to_unit(value: Decimal, unit: Decimal) -> Decimal:
     description=(
         "세전 월급(원, 문자열)에서 한국 실수령액을 구한다. 비과세 식대 한도를 뺀 과세급여로 4대보험 근로자 부담분"
         "(국민연금 상·하한, 건강보험, 장기요양, 고용보험)과 근로소득 간이세액표 소득세, 지방소득세(소득세의 10%)를 "
-        "공제하며 보험료와 지방소득세는 원 미만 버림이다. 시행일별 정책을 as_of 로 고른다. 연봉을 월급 자리에 넣으면 안 된다."
+        "공제하며 건강보험과 장기요양은 10원 미만 버림, 그 밖의 보험료와 지방소득세는 원 미만 버림이다. 시행일별 정책을 as_of 로 고른다. 연봉을 월급 자리에 넣으면 안 된다."
     ),
     version="2.0.0",
     policy=True,
@@ -178,15 +183,16 @@ def payroll_kr_salary(
     hi_cfg    = data["health_insurance"]
     hi_rate   = D(str(hi_cfg["employee_rate"]))
     hi_share  = hi_rate / (hi_rate + D(str(hi_cfg["employer_rate"])))
-    health_insurance  = _round_krw(taxable * hi_rate)
+    hi_unit           = D(str(hi_cfg.get("premium_truncation_unit", 1)))
+    health_insurance  = _truncate_premium(taxable * hi_rate, hi_unit)
     if hi_cfg.get("premium_min_monthly_total") is not None:
-        hi_floor = _round_krw(D(str(hi_cfg["premium_min_monthly_total"])) * hi_share)
+        hi_floor = _truncate_premium(D(str(hi_cfg["premium_min_monthly_total"])) * hi_share, hi_unit)
         health_insurance = max(health_insurance, hi_floor)
     if hi_cfg.get("premium_max_monthly_total") is not None:
-        hi_ceiling = _round_krw(D(str(hi_cfg["premium_max_monthly_total"])) * hi_share)
+        hi_ceiling = _truncate_premium(D(str(hi_cfg["premium_max_monthly_total"])) * hi_share, hi_unit)
         health_insurance = min(health_insurance, hi_ceiling)
     ltc_rate  = D(str(hi_cfg["long_term_care_rate_of_health"]))
-    long_term_care    = _round_krw(health_insurance * ltc_rate)
+    long_term_care    = _truncate_premium(health_insurance * ltc_rate, hi_unit)
 
     # --- 고용보험 ---
     ei_rate   = D(str(data["employment_insurance"]["employee_rate"]))

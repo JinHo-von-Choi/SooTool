@@ -115,19 +115,19 @@ class TestKrSalaryStatutory:
         r = call(monthly_salary="3010000", year=2026)
         ins = r["insurances"]
         assert ins["national_pension"]     == "142975"   # 3,010,000 x 4.75%
-        assert ins["health_insurance"]     == "108209"   # 3,010,000 x 3.595% = 108,209.5, 원 미만 버림
-        assert ins["long_term_care"]       == "14218"    # 108,209 x 0.1314 = 14,218.66
+        assert ins["health_insurance"]     == "108200"   # 3,010,000 x 3.595% = 108,209.5, 원 단위 절사(10원 단위)
+        assert ins["long_term_care"]       == "14210"    # 108,200 x 0.1314 = 14,217.48, 원 단위 절사
         assert ins["employment_insurance"] == "27090"    # 3,010,000 x 0.9%
         assert ins["industrial_accident"]  == "0"
         assert r["taxes"]["income_tax"]       == "74350"  # 간이세액표 3,000~3,020천원, 1명
         assert r["taxes"]["local_income_tax"] == "7435"
-        assert r["net"] == "2635723"
+        assert r["net"] == "2635740"
 
     def test_3010k_family_2(self):
         r = call(monthly_salary="3010000", year=2026, num_dependents=2)
         assert r["taxes"]["income_tax"]       == "56850"
         assert r["taxes"]["local_income_tax"] == "5685"
-        assert r["net"] == "2654973"
+        assert r["net"] == "2654990"
 
     def test_child_reduction_after_march(self):
         """가족 4명, 8세 이상 20세 이하 자녀 1명: 26,690 - 20,830 = 5,860."""
@@ -141,13 +141,14 @@ class TestKrSalaryStatutory:
         assert with_meal["income_tax_lookup"]["salary_k"] == "2810"
 
     def test_long_term_care_ratio_before_november(self):
-        """2026년 1월~10월분: 108,209 x 0.9448 / 7.19 = 14,219.17."""
-        r = call(monthly_salary="3010000", year=2026, as_of="2026-03-15")
-        assert r["insurances"]["long_term_care"] == "14219"
-        r = call(monthly_salary="3010000", year=2026, as_of="2026-10-31")
-        assert r["insurances"]["long_term_care"] == "14219"
-        r = call(monthly_salary="3010000", year=2026, as_of="2026-11-01")
-        assert r["insurances"]["long_term_care"] == "14218"
+        """월 1,700,000원: 건강보험료 61,110 -> 절사 후 61,110.
+        1~10월분 61,110 x 0.9448 / 7.19 = 8,030.14(절사 8,030), 11월분부터 x 0.1314 = 8,029.85(절사 8,020)."""
+        r = call(monthly_salary="1700000", year=2026, as_of="2026-03-15")
+        assert r["insurances"]["long_term_care"] == "8030"
+        r = call(monthly_salary="1700000", year=2026, as_of="2026-10-31")
+        assert r["insurances"]["long_term_care"] == "8030"
+        r = call(monthly_salary="1700000", year=2026, as_of="2026-11-01")
+        assert r["insurances"]["long_term_care"] == "8020"
 
     def test_national_pension_limits_by_period(self):
         """상한 6,370,000(2026.6.30.까지)과 6,590,000(2026.7.1.부터), 하한 400,000과 410,000."""
@@ -164,10 +165,10 @@ class TestKrSalaryStatutory:
         assert r["insurances"]["national_pension"] == "142500"
 
     def test_health_insurance_monthly_floor(self):
-        """보수월액보험료 하한 20,160원의 근로자 부담 10,080원. 장기요양 10,080 x 0.1314 = 1,324.51."""
+        """보수월액보험료 하한 20,160원의 근로자 부담 10,080원. 장기요양 10,080 x 0.1314 = 1,324.5, 원 단위 절사 1,320."""
         r = call(monthly_salary="200000", year=2026)
         assert r["insurances"]["health_insurance"] == "10080"
-        assert r["insurances"]["long_term_care"]   == "1324"
+        assert r["insurances"]["long_term_care"]   == "1320"
 
     def test_health_insurance_monthly_ceiling(self):
         """보수월액보험료 상한 9,183,480원의 근로자 부담 4,591,740원."""

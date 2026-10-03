@@ -1,4 +1,4 @@
-sha256: "da9c988a07d8d67176b8d7e16d8a5af6143e1d62921a3d9d8c64ed11020004eb"
+sha256: "95eb25c31f898a75f7c4247ef2fb425f44bf1abaed9fa8a73ae9ec9c836236b9"
 effective_date: "2026-07-01"
 effective_to: "2026-10-31"
 status: enacted
@@ -79,6 +79,9 @@ data:
     long_term_care_rate_of_health: "0.13140472878998609179"
     # 보수월액보험료(근로자·사업주 합계) 월 하한·상한
     premium_min_monthly_total: 20160
+    # 보수월액보험료와 장기요양보험료는 원 단위에서 절사해 10원 단위로 부과한다
+    # (4대사회보험 정보연계센터 모의계산: 건강보험료 7.19% x 50%, 장기요양보험료 건강보험료 x 0.9448%/7.19%, 원 단위 절사)
+    premium_truncation_unit: 10
     premium_max_monthly_total: 9183480
   employment_insurance:
     # 근로자 부담: 실업급여 보험료율 1.8%의 2분의 1

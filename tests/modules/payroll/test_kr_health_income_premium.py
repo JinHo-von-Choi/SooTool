@@ -98,26 +98,28 @@ class TestIncomePremium:
 class TestSettlement:
     def test_annual_settlement_difference(self):
         """보수총액 6천만원 / 12 = 500만원. 근로자 179,750원 x 12 = 2,157,000원.
-        장기요양 1~10월 179,750 x 0.131404... = 23,619원, 11·12월 x 0.1314 = 23,619원 -> 283,428원."""
+        장기요양 1~10월 179,750 x 0.9448 / 7.19 = 23,620원, 11·12월 x 0.1314 = 23,619.15 -> 원 단위 절사 23,610원
+        -> 10 x 23,620 + 2 x 23,610 = 283,420원."""
         r = call(
             year=2026, annual_remuneration_total="60000000",
             health_premium_paid="2040000", ltc_premium_paid="264000",
         )["settlement"]
         assert r["remuneration_monthly"] == "5000000"
         assert r["recalculated_health_premium"] == "2157000"
-        assert r["recalculated_long_term_care"] == "283428"
+        assert r["recalculated_long_term_care"] == "283420"
         assert r["health_difference"] == "117000"
-        assert r["long_term_care_difference"] == "19428"
-        assert r["total_difference"] == "136428"
+        assert r["long_term_care_difference"] == "19420"
+        assert r["total_difference"] == "136420"
 
     def test_long_term_care_ratio_changes_in_november(self):
-        """보수월액 280만원: 건강 100,660원. 장기요양 9·10월 13,227원, 11·12월 13,226원."""
+        """보수월액 280만원: 건강 100,660원. 장기요양 9·10월 100,660 x 0.9448 / 7.19 = 13,226.9 -> 13,220원(원 단위 절사),
+        11·12월 x 0.1314 = 13,226.7 -> 13,220원."""
         r = call(
             year=2026, annual_remuneration_total="11200000", start_month=9, end_month=12,
-            health_premium_paid="402640", ltc_premium_paid="52906",
+            health_premium_paid="402640", ltc_premium_paid="52880",
         )["settlement"]
         assert r["months_worked"] == 4
-        assert [m["long_term_care_premium"] for m in r["months"]] == ["13227", "13227", "13226", "13226"]
+        assert [m["long_term_care_premium"] for m in r["months"]] == ["13220", "13220", "13220", "13220"]
         assert r["total_difference"] == "0"
         assert r["installment_eligible"] is False
 

@@ -23,7 +23,7 @@ B 입력 방식은 셋 중 하나다.
 b_value 와 monthly_income 방식은 가입이 contribution_end_year 12월까지 끊김 없이 이어졌다고 보고
 가입월수를 연도에 거꾸로 배분해 구간별 비례상수를 정한다.
 
-모델링하지 않는 범위: 군복무·출산·실업 크레딧, 연금액 최고한도(제53조), 소득활동에 따른 감액
+모델링하지 않는 범위: 군복무·출산·실업 크레딧, 소득활동에 따른 감액
 (제63조의2), 지급 개시 뒤 물가변동률 조정(제51조제2항), 특수직종근로자 연령 특례.
 금액은 원 미만 버림으로 표시하며 공단 실제 지급액의 끝수 처리와 다를 수 있다.
 """
@@ -46,6 +46,7 @@ _ZERO          = Decimal("0")
 _ONE           = Decimal("1")
 _TWELVE        = Decimal("12")
 _MONTHS_A_YEAR = 12
+_FINAL_YEARS_MONTHS = 60  # 제53조제1호: 가입자였던 최종 5년
 
 
 class PensionPeriod(TypedDict):
@@ -76,11 +77,18 @@ class KrNationalPensionBenefitResult(PolicyResult):
     dependent_pension_annual: str
     total_pension_annual:     str
     monthly_pension:          str
+    pension_cap_monthly:      str
+    pension_capped:           bool
     income_capped:            NotRequired[bool]
 
 
 def _floor_won(value: Decimal) -> Decimal:
     return round_apply(value, 0, RoundingPolicy.DOWN)
+
+
+def _truncate_to_unit(value: Decimal, unit: Decimal) -> Decimal:
+    """unit 원 미만을 버린다(unit=10 이면 10원 미만 버림)."""
+    return round_apply(value / unit, 0, RoundingPolicy.DOWN) * unit
 
 
 def _positive_amount(name: str, value: str) -> Decimal:
@@ -111,12 +119,13 @@ def _months_backward(total_months: int, end_year: int, first_year: int) -> dict[
 def _history_months_and_b(
     history:     list[dict[str, Any]],
     revaluation: dict[str, Any],
-) -> tuple[dict[int, int], Decimal]:
-    """연도별 기준소득월액 이력에서 가입월수 배분과 재평가된 평균소득월액(B)을 구한다."""
+) -> tuple[dict[int, int], Decimal, Decimal]:
+    """연도별 기준소득월액 이력에서 가입월수 배분, 재평가된 평균소득월액(B), 최종 5년 재평가 평균을 구한다."""
     if not history:
         raise InvalidInputError("income_history는 비어 있을 수 없습니다.")
     months_by_year: dict[int, int] = {}
     revalued_total = _ZERO
+    revalued_by_year: dict[int, Decimal] = {}
     for index, entry in enumerate(history):
         if not isinstance(entry, dict) or set(entry) != {"year", "monthly_income", "months"}:
             raise InvalidInputError(
@@ -138,9 +147,18 @@ def _history_months_and_b(
             )
         income = _positive_amount(f"income_history[{index}].monthly_income", str(entry["monthly_income"]))
         months_by_year[year] = months
-        revalued_total      += income * Decimal(months) * D(str(rate))
+        revalued_by_year[year] = income * D(str(rate))
+        revalued_total        += income * Decimal(months) * D(str(rate))
     total_months = sum(months_by_year.values())
-    return months_by_year, revalued_total / Decimal(total_months)
+    recent_total, remaining = _ZERO, _FINAL_YEARS_MONTHS
+    for year in sorted(months_by_year, reverse=True):
+        take = min(months_by_year[year], remaining)
+        recent_total += revalued_by_year[year] * Decimal(take)
+        remaining    -= take
+        if remaining == 0:
+            break
+    recent_months = _FINAL_YEARS_MONTHS - remaining
+    return months_by_year, revalued_total / Decimal(total_months), recent_total / Decimal(recent_months)
 
 
 def _periods(months_by_year: dict[int, int], regimes: list[dict[str, Any]]) -> list[PensionPeriod]:
@@ -176,7 +194,7 @@ def _periods(months_by_year: dict[int, int], regimes: list[dict[str, Any]]) -> l
         "국민연금 노령연금 예상액을 국민연금법 제51조 기본연금액 산식(A값, 구간별 비례상수 2.4~1.29, 20년 초과 연 5% 가산), "
         "제63조 가입기간별 지급률, 조기수령 월 0.5% 감액(최대 60개월), 연기 월 0.6% 가산(최대 60개월), 부양가족연금으로 계산한다. "
         "year 는 지급 개시 연도, 금액은 원 문자열, B는 b_value·monthly_income(현재 소득 유지 가정)·income_history(재평가율 적용) 중 하나. "
-        "원 미만 버림. 크레딧, 재직자 감액, 최고한도는 빠지므로 공단 확정 연금액 대용으로 쓰면 오용이다."
+        "월 지급액은 10원 미만 버리고 제53조 최고한도(평균 기준소득월액)를 적용한다. 크레딧과 재직자 감액은 빠지므로 공단 확정 연금액 대용으로 쓰면 오용이다."
     ),
     version="1.0.0",
     policy=True,
@@ -248,8 +266,9 @@ def payroll_kr_national_pension_benefit(
     first_year = int(regimes[0]["from_year"])
 
     income_capped: bool | None = None
+    recent_average: Decimal | None = None
     if mode == "income_history":
-        months_by_year, b_amount = _history_months_and_b(
+        months_by_year, b_amount, recent_average = _history_months_and_b(
             cast(list[dict[str, Any]], income_history), data["revaluation_rates"],
         )
     else:
@@ -329,8 +348,15 @@ def payroll_kr_national_pension_benefit(
         (D(str(dep_cfg["spouse"])) if dependent_spouse else _ZERO)
         + D(str(dep_cfg["child_or_parent"])) * Decimal(dependent_children_parents)
     )
+    # 제53조: 연금의 월별 지급액은 최종 5년 평균과 가입기간 전체 평균(재평가된 기준소득월액) 중 많은 금액을 넘지 못한다.
+    pension_cap     = max(b_amount, recent_average) if recent_average is not None else b_amount
+    pension_monthly = adjusted_annual / _TWELVE
+    pension_capped  = pension_monthly > pension_cap
+    if pension_capped:
+        adjusted_annual = pension_cap * _TWELVE
     total_annual = adjusted_annual + dependent_annual
-    monthly      = _floor_won(total_annual / _TWELVE)
+    unit         = D(str(data.get("monthly_truncation_unit", 1)))
+    monthly      = _truncate_to_unit(total_annual / _TWELVE, unit)
 
     trace.input("year",                       year)
     trace.input("input_mode",                 mode)
@@ -376,6 +402,8 @@ def payroll_kr_national_pension_benefit(
         "dependent_pension_annual": str(_floor_won(dependent_annual)),
         "total_pension_annual":     str(_floor_won(total_annual)),
         "monthly_pension":          str(monthly),
+        "pension_cap_monthly":      str(_floor_won(pension_cap)),
+        "pension_capped":           pension_capped,
         "policy_version":           pv,
         "trace":                    trace.to_dict(),
     }

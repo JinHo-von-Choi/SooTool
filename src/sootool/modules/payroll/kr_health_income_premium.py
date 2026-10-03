@@ -20,7 +20,7 @@
   근로자 부담 보험료로 갈음한다.
 
 보험료율, 장기요양 비율, 보수월액보험료 상·하한은 payroll/kr_4insurance 정책에서 읽는다.
-보험료는 원 미만을 버린다. 소득 자료 연도(1~10월분 전전년도, 11·12월분 전년도) 선택,
+근로자 보수월액 보험료와 장기요양은 10원 미만을 버리고 소득월액보험료는 원 미만을 버린다. 소득 자료 연도(1~10월분 전전년도, 11·12월분 전년도) 선택,
 소득월액 조정 신청, 공무원·사립학교 교원 분담 비율, 휴직자 특례는 모델링하지 않는다.
 """
 from __future__ import annotations
@@ -37,6 +37,7 @@ from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
+from sootool.modules.payroll.kr_salary import _truncate_premium
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
@@ -108,12 +109,13 @@ def _employee_salary_premium(remuneration_monthly: Decimal, hi_cfg: dict[str, An
     """근로자 부담 보수월액보험료와 장기요양보험료. 월별 보험료 상·하한의 근로자 부담분으로 제한한다."""
     employee_rate = D(str(hi_cfg["employee_rate"]))
     share         = employee_rate / (employee_rate + D(str(hi_cfg["employer_rate"])))
-    health        = _floor_won(remuneration_monthly * employee_rate)
+    unit          = D(str(hi_cfg.get("premium_truncation_unit", 1)))
+    health        = _truncate_premium(remuneration_monthly * employee_rate, unit)
     if hi_cfg.get("premium_min_monthly_total") is not None:
-        health = max(health, _floor_won(D(str(hi_cfg["premium_min_monthly_total"])) * share))
+        health = max(health, _truncate_premium(D(str(hi_cfg["premium_min_monthly_total"])) * share, unit))
     if hi_cfg.get("premium_max_monthly_total") is not None:
-        health = min(health, _floor_won(D(str(hi_cfg["premium_max_monthly_total"])) * share))
-    ltc = _floor_won(health * D(str(hi_cfg["long_term_care_rate_of_health"])))
+        health = min(health, _truncate_premium(D(str(hi_cfg["premium_max_monthly_total"])) * share, unit))
+    ltc = _truncate_premium(health * D(str(hi_cfg["long_term_care_rate_of_health"])), unit)
     return health, ltc
 
 

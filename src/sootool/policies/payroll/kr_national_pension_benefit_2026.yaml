@@ -1,4 +1,4 @@
-sha256: "7d1ab25ba43e4d4fc169ae339d7dc6e763e7e2a511a9f13f4a8afb51cb8f2255"
+sha256: "fe8a0d2feabb8480ccdc28fc6b9d1840f337f3b35c80261fa21252d8b1b2916c"
 effective_date: "2026-01-01"
 effective_to: "2026-12-31"
 status: enacted
@@ -65,6 +65,8 @@ data:
   full_benefit_months: 240
   # 20년 초과 1년마다 기본연금액 가산 비율 (법 제51조제1항 단서)
   extension_rate_per_year: "0.05"
+  # 월 지급액은 10원 미만 절사(국민연금공단 예상연금월액표의 금액 단위)
+  monthly_truncation_unit: 10
   # 10년 이상 20년 미만: 기본연금액의 1천분의 500 + 10년 초과 1년마다 1천분의 50 (법 제63조제1항제2호)
   partial_base_ratio: "0.5"
   partial_increment_per_year: "0.05"
