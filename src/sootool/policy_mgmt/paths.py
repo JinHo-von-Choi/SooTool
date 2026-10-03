@@ -29,7 +29,8 @@ def _xdg_state_home() -> Path:
     return Path.home() / ".local" / "state"
 
 
-def _xdg_runtime_dir() -> Path:
+def get_runtime_dir() -> Path:
+    """런타임 파일(초안, 소켓)의 기본 위치. $XDG_RUNTIME_DIR, 없으면 상태 디렉터리."""
     xdg = os.environ.get("XDG_RUNTIME_DIR", "")
     if xdg:
         return Path(xdg)
@@ -76,7 +77,7 @@ def get_draft_dir() -> Path:
     env = os.environ.get("SOOTOOL_DRAFT_DIR", "")
     if env:
         return Path(env)
-    return _xdg_runtime_dir() / "sootool" / "drafts"
+    return get_runtime_dir() / "sootool" / "drafts"
 
 
 def get_audit_log_path() -> Path:

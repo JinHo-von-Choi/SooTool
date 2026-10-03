@@ -56,3 +56,52 @@ def test_malformed_auth_header_returns_401() -> None:
     client = _make_app()
     resp = client.get("/", headers={"Authorization": "Token secret"})
     assert resp.status_code == 401
+
+
+# --- 인증 범위 ---
+
+def _scope_probe_app() -> tuple[Starlette, list[frozenset[str] | None]]:
+    from sootool.core.request_context import REQUEST_SCOPES
+
+    seen: list[frozenset[str] | None] = []
+
+    async def probe(request: Request) -> PlainTextResponse:  # noqa: ARG001
+        seen.append(REQUEST_SCOPES.get())
+        return PlainTextResponse("ok")
+
+    return Starlette(routes=[Route("/", probe)]), seen
+
+
+def test_matching_token_grants_its_scopes_to_the_downstream_handler() -> None:
+    from sootool.core.request_context import SCOPE_POLICY_WRITE, SCOPE_READ
+
+    app, seen = _scope_probe_app()
+    validators = [
+        BearerTokenValidator("read-token", frozenset({SCOPE_READ})),
+        BearerTokenValidator("admin-token", frozenset({SCOPE_READ, SCOPE_POLICY_WRITE})),
+    ]
+    client = TestClient(AuthMiddleware(app, validators))
+    client.get("/", headers={"Authorization": "Bearer read-token"})
+    client.get("/", headers={"Authorization": "Bearer admin-token"})
+    assert seen == [frozenset({SCOPE_READ}), frozenset({SCOPE_READ, SCOPE_POLICY_WRITE})]
+
+
+def test_scopes_do_not_leak_to_the_next_request() -> None:
+    from sootool.core.request_context import REQUEST_SCOPES
+
+    app, _ = _scope_probe_app()
+    client = TestClient(AuthMiddleware(app, [BearerTokenValidator("t")]))
+    client.get("/", headers={"Authorization": "Bearer t"})
+    assert REQUEST_SCOPES.get() is None
+
+
+def test_without_validators_no_scope_restriction_is_applied() -> None:
+    app, seen = _scope_probe_app()
+    TestClient(AuthMiddleware(app, [])).get("/")
+    assert seen == [None]
+
+
+def test_default_validator_scope_is_read_only() -> None:
+    from sootool.core.request_context import SCOPE_READ
+
+    assert BearerTokenValidator("x").scopes == frozenset({SCOPE_READ})

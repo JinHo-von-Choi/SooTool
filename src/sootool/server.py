@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import functools
 import json
 import os
 from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
+from sootool.boundary import SooToolServer, with_error_contract
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.decimal_ops import add as d_add
@@ -19,6 +19,7 @@ from sootool.core.decimal_ops import sub as d_sub
 from sootool.core.engines import engine_of
 from sootool.core.receipts import sign_stamp
 from sootool.core.registry import REGISTRY, ToolEntry
+from sootool.core.request_context import STATELESS_REQUEST
 from sootool.skill_guide.hints import generate_hints, inject_meta
 from sootool.skill_guide.session_state import STORE, ToolCall
 
@@ -106,11 +107,14 @@ def _enforce_payload_limit(response: dict[str, Any]) -> dict[str, Any]:
 def _inject_hints(
     response: dict[str, Any],
     tool_name: str,
-    session_id: str,
+    session_id: str | None,
     trace_level: str = "summary",
     policy_year: int | None = None,
 ) -> dict[str, Any]:
     """Record the call in session state and inject _meta.hints into response.
+
+    A ``None`` session means a stateless request: no history is read or recorded and only
+    rules that depend on the current call alone can fire.
 
     result and trace are never modified (ADR-011 determinism guard).
     Skipped for sootool.skill_guide itself to avoid recursive noise.
@@ -123,6 +127,9 @@ def _inject_hints(
         truncated=truncated,
         policy_year=policy_year,
     )
+    if session_id is None:
+        return inject_meta(response, generate_hints(STORE, None, call), None)
+
     STORE.record(session_id, call)
 
     hints      = generate_hints(STORE, session_id, call)
@@ -193,13 +200,14 @@ _CORE_TOOLS_REGISTERED = False
 _STDIO_SESSION_ID = "stdio-default"
 
 
-def _get_session_id() -> str:
-    """Return the current session ID.
+def _get_session_id() -> str | None:
+    """Return the current session ID, or None for a stateless request.
 
-    HTTP transport sets SOOTOOL_SESSION_ID via middleware (future M3+).
-    stdio uses a fixed constant for the process lifetime.
+    Network transports are stateless (MCP 2026-07-28): their middleware marks every request
+    and no call history is kept. stdio and in-process calls share one session for the
+    process lifetime.
     """
-    return os.environ.get("SOOTOOL_SESSION_ID", _STDIO_SESSION_ID)
+    return None if STATELESS_REQUEST.get() else _STDIO_SESSION_ID
 
 
 def _register_core_tools() -> None:
@@ -352,14 +360,14 @@ SooTool은 LLM이 직접 계산해서는 안 되는 요청(산수, 세액, 할�
 def _bind_to_registry(entry: ToolEntry) -> Callable[..., Any]:
     """MCP 노출용 호출자를 만든다.
 
-    REGISTRY.invoke 를 거쳐야 integrity 스탬프와 hints 후처리가 적용된다. functools.wraps 로
-    원본 시그니처와 반환 타입을 유지해 FastMCP 의 입력·출력 스키마 생성이 그대로 동작한다.
+    REGISTRY.invoke 를 거쳐야 integrity 스탬프와 hints 후처리가 적용된다. 원본 시그니처와 반환
+    타입을 유지해 입력·출력 스키마 생성이 그대로 동작하며, 입력 숫자 허용과 오류 계약
+    (sootool.boundary)을 함께 적용한다.
     """
-    @functools.wraps(entry.fn)
-    def bound(**kwargs: Any) -> Any:
+    def invoke(**kwargs: Any) -> Any:
         return REGISTRY.invoke(entry.full_name, **kwargs)
 
-    return bound
+    return with_error_contract(entry.fn, invoke)
 
 
 def _annotations_for(entry: ToolEntry) -> ToolAnnotations:
@@ -371,15 +379,15 @@ def _annotations_for(entry: ToolEntry) -> ToolAnnotations:
     """
     if entry.read_only:
         return ToolAnnotations(
-            readOnlyHint    = True,
-            idempotentHint  = entry.idempotent,
-            openWorldHint   = False,
+            read_only_hint   = True,
+            idempotent_hint = entry.idempotent,
+            open_world_hint = False,
         )
     return ToolAnnotations(
-        readOnlyHint    = False,
-        destructiveHint = entry.destructive,
-        idempotentHint  = entry.idempotent,
-        openWorldHint   = False,
+        read_only_hint   = False,
+        destructive_hint= entry.destructive,
+        idempotent_hint = entry.idempotent,
+        open_world_hint = False,
     )
 
 
@@ -398,7 +406,7 @@ PROFILES = ("full", "lean")
 DEFAULT_PROFILE = "full"
 
 
-def _add_registry_tool(server: FastMCP, entry: ToolEntry) -> None:
+def _add_registry_tool(server: MCPServer, entry: ToolEntry) -> None:
     server.add_tool(
         _bind_to_registry(entry),
         name        = entry.full_name,
@@ -407,24 +415,28 @@ def _add_registry_tool(server: FastMCP, entry: ToolEntry) -> None:
     )
 
 
-def build_server(profile: str = DEFAULT_PROFILE) -> FastMCP:
+def build_server(profile: str = DEFAULT_PROFILE, *, expose_writes: bool = True) -> MCPServer:
     """프로파일에 따라 노출 도구를 구성한 서버를 만든다.
 
     full: 등록된 모든 도구를 노출한다.
     lean: 검색·설명·호출 파사드 3종과 skill_guide 만 노출해 컨텍스트 비용을 줄인다.
+
+    expose_writes=False 이면 읽기 전용이 아닌 도구(정책 쓰기)를 노출하지 않는다. 네트워크 전송용
+    서버가 쓰기 도구를 아예 광고하지 않게 하는 구성이다.
     """
     if profile not in PROFILES:
         raise ValueError(f"알 수 없는 프로파일: {profile!r} (허용: {', '.join(PROFILES)})")
 
     if profile == "full":
-        server = FastMCP("sootool", instructions=_SOOTOOL_INSTRUCTIONS)
+        server = SooToolServer("sootool", instructions=_SOOTOOL_INSTRUCTIONS)
         for entry in REGISTRY.list():
-            _add_registry_tool(server, entry)
+            if entry.read_only or expose_writes:
+                _add_registry_tool(server, entry)
         return server
 
     from sootool.facade import register_facade  # noqa: PLC0415
 
-    server = FastMCP("sootool", instructions=_LEAN_INSTRUCTIONS)
+    server = SooToolServer("sootool", instructions=_LEAN_INSTRUCTIONS)
     register_facade(server)
     for entry in REGISTRY.list():
         if entry.full_name == "sootool.skill_guide":

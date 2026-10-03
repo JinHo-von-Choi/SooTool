@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 
 from sootool.core.registry import REGISTRY
+from sootool.core.request_context import SCOPE_POLICY_WRITE, has_scope
 from sootool.policy_mgmt import audit, drafts, loader
 from sootool.policy_mgmt.diff import diff_policies
 from sootool.policy_mgmt.paths import ensure_private_dir, get_override_policy_dir
@@ -31,7 +32,13 @@ _ADMIN_REQUIRED_ERROR = {
 
 
 def _is_admin() -> bool:
-    return bool(os.environ.get("SOOTOOL_ADMIN_MODE", "").strip() in ("1", "true", "yes"))
+    """관리자 모드가 켜져 있고 현재 요청이 policy-write 범위를 가졌는지 반환한다.
+
+    로컬 전송(stdio, unix)과 프로세스 내 호출은 범위 검사를 하지 않는다. 네트워크 전송은
+    관리자 토큰으로 인증한 요청만 policy-write 범위를 갖는다.
+    """
+    mode_on = os.environ.get("SOOTOOL_ADMIN_MODE", "").strip() in ("1", "true", "yes")
+    return mode_on and has_scope(SCOPE_POLICY_WRITE)
 
 
 def _require_admin() -> dict[str, Any] | None:

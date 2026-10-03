@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import os
 
+from sootool.core.request_context import REQUEST_LOCALE
+
 SUPPORTED_LOCALES = {"ko", "en"}
 _DEFAULT_LOCALE = "ko"
 
@@ -10,24 +12,26 @@ _DEFAULT_LOCALE = "ko"
 def detect_locale(
     lang: str | None = None,
     accept_language: str | None = None,
-    session_locale: str | None = None,
+    request_locale: str | None = None,
 ) -> str:
-    """Resolve locale with priority: arg > session > Accept-Language > SOOTOOL_LOCALE > ko.
+    """Resolve locale with priority: arg > request > Accept-Language > SOOTOOL_LOCALE > ko.
 
     Only ko and en are supported; unknown locales fall back to ko.
 
     Args:
-        lang:           Explicit caller-supplied language tag (highest priority).
-        accept_language: Raw Accept-Language HTTP header value.
-        session_locale:  Locale stored in SessionStore for the current session
-                         (populated by LocaleMiddleware from Accept-Language).
+        lang:            Explicit caller-supplied language tag (highest priority).
+        accept_language: Raw Accept-Language header value passed explicitly.
+        request_locale:  Locale of the current request. Defaults to the value the
+                         network transport middleware resolved from the request's
+                         Accept-Language header (request context).
     """
     if lang is not None:
         normalized = _normalize(lang)
         return normalized if normalized in SUPPORTED_LOCALES else _DEFAULT_LOCALE
 
-    if session_locale is not None:
-        normalized = _normalize(session_locale)
+    request_value = request_locale if request_locale is not None else REQUEST_LOCALE.get()
+    if request_value is not None:
+        normalized = _normalize(request_value)
         if normalized in SUPPORTED_LOCALES:
             return normalized
 

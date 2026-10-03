@@ -1,6 +1,7 @@
 """_meta.hints generation rules.
 
-Six rules derived from session call history. Result/trace are never modified;
+Six rules derived from session call history (stateless requests use only the rules
+that depend on the current call). Result/trace are never modified;
 hints are injected only into _meta to preserve determinism (ADR-011).
 """
 from __future__ import annotations
@@ -20,7 +21,7 @@ _CORE_ARITH = {"core.add", "core.sub", "core.mul", "core.div"}
 
 def generate_hints(
     store: InMemoryStore,
-    session_id: str,
+    session_id: str | None,
     current_call: ToolCall,
 ) -> list[dict[str, Any]]:
     """Generate hints based on session call history and current call.
@@ -34,7 +35,7 @@ def generate_hints(
     6. 20+ single calls without core.batch -> round-trip warning
     """
     hints: list[dict[str, Any]] = []
-    history = store.recent(session_id)
+    history = store.recent(session_id) if session_id is not None else []
 
     # Rule 1: tax domain + non-full trace
     if current_call.domain in _TAX_DOMAINS and current_call.trace_level != "full":
@@ -128,15 +129,15 @@ def _count_single_calls(history: list[ToolCall]) -> int:
 def inject_meta(
     response: dict[str, Any],
     hints: list[dict[str, Any]],
-    session_stats: dict[str, Any],
+    session_stats: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    """Inject _meta.hints and _meta.session_stats into response.
+    """Inject _meta.hints (and _meta.session_stats for stateful sessions) into response.
 
     result and trace are never mutated (ADR-011 determinism guard).
     """
     result = dict(response)
-    result["_meta"] = {
-        "hints":         hints,
-        "session_stats": session_stats,
-    }
+    meta: dict[str, Any] = {"hints": hints}
+    if session_stats is not None:
+        meta["session_stats"] = session_stats
+    result["_meta"] = meta
     return result

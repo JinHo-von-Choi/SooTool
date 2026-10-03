@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import asyncio
-
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 
 class StdioTransport:
-    def __init__(self, server: FastMCP) -> None:
+    def __init__(self, server: MCPServer) -> None:
         self._server = server
 
     async def start_async(self) -> None:
-        loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, self._server.run, "stdio")
+        await self._server.run_stdio_async()

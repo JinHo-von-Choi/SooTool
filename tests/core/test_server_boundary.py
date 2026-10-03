@@ -10,8 +10,8 @@ import pytest
 
 def _call(server: Any, name: str, args: dict[str, Any]) -> dict[str, Any]:
     """FastMCP 서버에 도구 호출을 보내고 structured 결과 dict 를 반환한다."""
-    _content, structured = asyncio.run(server.call_tool(name, args))
-    return dict(structured)
+    result = asyncio.run(server.call_tool(name, args))
+    return dict(result.structured_content)
 
 
 @pytest.fixture(scope="module")
@@ -41,10 +41,12 @@ def test_mcp_call_preserves_result_and_trace(server):
     assert out["trace"]["tool"] == "core.sub"
 
 
-def test_mcp_call_routes_limit_error_as_tool_error(server):
-    with pytest.raises(Exception) as info:
-        _call(server, "probability.factorial", {"n": 10**6})
-    assert "한도" in str(info.value)
+def test_mcp_call_returns_limit_error_with_contract(server):
+    result = asyncio.run(server.call_tool("probability.factorial", {"n": 10**6}))
+    assert result.is_error is True
+    error = result.structured_content["error"]
+    assert error["code"] == "input_limit"
+    assert "한도" in error["message"]
 
 
 def test_input_hash_is_identical_across_mcp_and_direct_calls(server):
@@ -77,7 +79,7 @@ def test_registered_tool_schema_matches_original_signature(server):
     tools = {t.name: t for t in asyncio.run(server.list_tools())}
     for entry in REGISTRY.list():
         expected = set(inspect.signature(entry.fn).parameters)
-        actual   = set(tools[entry.full_name].inputSchema.get("properties", {}))
+        actual   = set(tools[entry.full_name].input_schema.get("properties", {}))
         assert actual == expected, entry.full_name
 
 

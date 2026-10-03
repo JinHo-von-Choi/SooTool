@@ -34,6 +34,8 @@ from typing import Any
 
 import yaml
 
+from sootool.core.errors import SooToolError
+
 # Absolute path to the policies data directory (alongside this __init__.py)
 _POLICIES_DIR: Path = Path(__file__).parent
 
@@ -44,8 +46,10 @@ _SHA256_LINE_RE = re.compile(r"^sha256:.*\n", re.MULTILINE)
 # Exceptions
 # ---------------------------------------------------------------------------
 
-class PolicyIntegrityError(Exception):
+class PolicyIntegrityError(SooToolError):
     """Raised when a policy YAML file's actual SHA256 does not match its declaration."""
+
+    code = "policy_integrity"
 
     def __init__(self, path: Path, declared: str, actual: str) -> None:
         self.path      = path
@@ -57,8 +61,16 @@ class PolicyIntegrityError(Exception):
         )
 
 
-class UnsupportedPolicyError(Exception):
+class UnsupportedPolicyError(SooToolError):
     """Raised when no YAML file exists for the requested (domain, key, year)."""
+
+    code = "policy_unavailable"
+
+    def details(self) -> dict[str, Any]:
+        return {
+            "domain": self.domain, "key": self.key,
+            "year": self.year, "supported_years": self.supported_years,
+        }
 
     def __init__(
         self,

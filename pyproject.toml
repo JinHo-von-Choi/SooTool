@@ -2,7 +2,7 @@
 name = "sootool"
 version = "0.1.4"
 # keep in sync with README first paragraph (ADR-019)
-description = "LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Decimal 전용 커널, 18개 계산 도메인 255개 기본 도구 + 10개 admin 정책 도구, 5종 전송(stdio/HTTP/SSE/WebSocket/Unix)."
+description = "LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Decimal 전용 커널, 18개 계산 도메인 255개 기본 도구 + 10개 admin 정책 도구, 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE)."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
@@ -36,7 +36,7 @@ requires-python = ">=3.12"
 dependencies = [
     "cryptography>=42",
     "holidays>=0.95",
-    "mcp[cli]>=1.27,<2",
+    "mcp[cli]>=2.3,<3",
     "mpmath>=1.4.1",
     "numpy>=2.0",
     "numpy-financial>=1.0.0",
@@ -49,7 +49,6 @@ dependencies = [
     "workalendar>=17.0.0",
     "uvicorn[standard]>=0.33",
     "starlette>=0.47",
-    "websockets>=14",
 ]
 
 [project.optional-dependencies]
@@ -120,12 +119,11 @@ ignore_missing_imports = true
 # 기존 스모크 스크립트는 해당 팀에서 정리 예정이므로 unused-ignore 를 비활성화한다.
 [[tool.mypy.overrides]]
 module = [
+    "_smoke_common",
     "mcp_smoke_http",
     "mcp_smoke_sse",
-    "mcp_smoke_stdio",
     "mcp_smoke_test",
     "mcp_smoke_unix",
-    "mcp_smoke_ws",
 ]
 warn_unused_ignores = false
 

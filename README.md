@@ -12,7 +12,7 @@ Precision Calc MCP for LLM tool use.
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하고, 그 틀리는 작업을 한 번에 500건까지 결정적 병렬로 돌려 실무에 투입할 수 있게 만드는 정밀 계산 MCP 서버. Python 3.12 · Decimal 전용 커널 · 18개 계산 도메인 255개 기본 도구 + 10개 admin 정책 도구 · `core.batch` 500 items 병렬 · `core.pipeline` DAG 체인 · 감사 트레이스 · 정책 YAML 외부화 · 5종 전송(stdio/HTTP/SSE/WebSocket/Unix).
+LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하고, 그 틀리는 작업을 한 번에 500건까지 결정적 병렬로 돌려 실무에 투입할 수 있게 만드는 정밀 계산 MCP 서버. Python 3.12 · Decimal 전용 커널 · 18개 계산 도메인 255개 기본 도구 + 10개 admin 정책 도구 · `core.batch` 500 items 병렬 · `core.pipeline` DAG 체인 · 감사 트레이스 · 정책 YAML 외부화 · 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE).
 
 ## 왜 필요한가
 
@@ -106,18 +106,19 @@ uv run python -m sootool
 
 전송별 단일 기동:
 ```
-uv run python -m sootool --transport http      --port 10535
-uv run python -m sootool --transport sse-legacy --port 10536
-uv run python -m sootool --transport websocket --port 10537
-uv run python -m sootool --transport unix      --socket /tmp/sootool.sock
+uv run python -m sootool --transport http       --http-port 10535
+uv run python -m sootool --transport sse-legacy --sse-port 10536   # 폐기 예정
+uv run python -m sootool --transport unix       --socket /tmp/sootool.sock
 ```
 
 다중 전송 동시 기동:
 ```
-uv run python -m sootool --transports stdio,http,websocket
+uv run python -m sootool --transport stdio,http,unix --socket /tmp/sootool.sock
 ```
 
 기본 바인딩은 `127.0.0.1`. 외부 노출은 `--host 0.0.0.0` + Bearer 토큰이 의무다(ADR-014).
+
+정책 쓰기 도구(`sootool.policy_*` 중 4종)는 로컬 전송(stdio, unix)에서만 노출한다. 네트워크 전송에 노출하려면 `--admin --remote-admin --admin-token <토큰>`이 모두 필요하며, 관리자 토큰으로 인증한 요청만 쓰기를 수행한다(`--auth-token` 토큰은 읽기 범위다). 자세한 내용은 ADR-025를 본다.
 
 노출 프로파일(`--profile` 또는 `SOOTOOL_PROFILE`):
 ```
@@ -239,13 +240,12 @@ LLM이 한 건씩 산출하면 재현성·신뢰성이 흔들린다. SooTool은 
 |Transport|용도|Flag|
 |-|-|-|
 |stdio|Claude Code·Desktop 기본|--transport stdio|
-|http|Streamable HTTP, 권장 원격|--transport http|
-|sse-legacy|2024-11 프로토콜 호환|--transport sse-legacy|
-|websocket|저지연 양방향|--transport websocket|
-|unix|로컬 고처리|--transport unix --socket PATH|
-|multi|동시 기동|--transports stdio,http,...|
+|http|Streamable HTTP(무상태), 권장 원격|--transport http|
+|sse-legacy|2024-11 호환. MCP 사양에서 폐기되어 다음 마이너에서 제거|--transport sse-legacy|
+|unix|Unix 소켓 위의 Streamable HTTP, 소켓 권한(0600)으로 접근 통제|--transport unix --socket PATH|
+|multi|동시 기동|--transport stdio,http,...|
 
-모든 HTTP 계열 전송은 Bearer 인증, `Accept-Language` 기반 로케일 감지(ko 기본), 전 도구 `_meta.hints` 자동 주입, CORS 화이트리스트를 공통 미들웨어로 적용한다(ADR-014).
+WebSocket 전송은 MCP 사양에 없고 SDK v2에서 제거되어 함께 제거했다. 네트워크 전송은 모두 무상태(MCP 2026-07-28)라 라운드 로빈 로드 밸런서 뒤에서 동작한다. HTTP 계열 전송은 Bearer 인증, 요청별 `Accept-Language` 로케일 감지(ko 기본), `_meta.hints`(호출 이력이 필요 없는 규칙만), CORS 화이트리스트를 공통 미들웨어로 적용한다(ADR-014, ADR-025).
 
 ## 개발
 
@@ -253,7 +253,7 @@ LLM이 한 건씩 산출하면 재현성·신뢰성이 흔들린다. SooTool은 
 - 린트: `make lint` (ruff)
 - 타입체크: `make typecheck` (mypy)
 - 포맷: `make format`
-- 전송 스모크: `uv run python scripts/mcp_smoke_{stdio,http,sse,ws,unix}.py`
+- 전송 스모크: `uv run python scripts/mcp_smoke_{test,http,sse,unix}.py`
 
 새 도메인 도구 추가는 `src/sootool/modules/<domain>/<tool>.py`에 `@REGISTRY.tool(namespace, name, description, version)` 데코레이터로 구현하고 도메인 `__init__.py`에서 import하면 런타임 자동 등록된다(ADR-004).
 

@@ -1,8 +1,7 @@
-"""Tests for the Unix Domain Socket transport."""
+"""Tests for the Unix Domain Socket transport (Streamable HTTP over UDS)."""
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import socket
 import stat
@@ -19,27 +18,6 @@ from sootool.transports.unix import UnixTransport
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def _send_recv(
-    sock_path: str,
-    payload: dict,  # type: ignore[type-arg]
-    timeout: float = 5.0,
-) -> dict:  # type: ignore[type-arg]
-    """Send a JSON-RPC message over a Unix socket and read the response."""
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-        sock.settimeout(timeout)
-        sock.connect(sock_path)
-        frame = (json.dumps(payload) + "\n").encode()
-        sock.sendall(frame)
-        buf = b""
-        while b"\n" not in buf:
-            chunk = sock.recv(4096)
-            if not chunk:
-                break
-            buf += chunk
-        line = buf.split(b"\n")[0]
-        return json.loads(line)  # type: ignore[no-any-return]
-
 
 def _start_transport(
     sock_path: str,
@@ -148,50 +126,83 @@ def test_stale_socket_force_removes() -> None:
         assert Path(sock_path).exists()
 
 
-def test_json_rpc_roundtrip() -> None:
-    """Send initialize request, receive valid JSON-RPC response."""
+async def _mcp_call(sock_path: str, tool: str, arguments: dict) -> object:  # type: ignore[type-arg]
+    import httpx2
+    from mcp.client import Client
+    from mcp.client.streamable_http import streamable_http_client
+
+    http_client = httpx2.AsyncClient(transport=httpx2.AsyncHTTPTransport(uds=sock_path))
+    async with Client(streamable_http_client("http://localhost/mcp", http_client=http_client)) as client:
+        return await client.call_tool(tool, arguments)
+
+
+def test_mcp_tool_call_roundtrip_over_socket() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         sock_path = os.path.join(tmpdir, "rpc.sock")
         _start_transport(sock_path)
         _wait_for_socket(sock_path)
 
-        resp = _send_recv(
-            sock_path,
-            {
-                "jsonrpc": "2.0",
-                "id": 1,
-                "method": "initialize",
-                "params": {
-                    "protocolVersion": "2024-11-05",
-                    "clientInfo": {"name": "test", "version": "0.1"},
-                    "capabilities": {},
-                },
-            },
-        )
-        assert resp.get("id") == 1
-        assert "result" in resp
+        result = asyncio.run(_mcp_call(sock_path, "core.add", {"operands": ["1.5", "2.5"]}))
+        assert result.structured_content["result"] == "4.0"  # type: ignore[attr-defined]
+        assert "integrity" in result.structured_content["_meta"]  # type: ignore[attr-defined]
 
 
-def test_multiple_connections() -> None:
-    """Multiple independent connections should each get valid responses."""
+def test_multiple_independent_clients() -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
         sock_path = os.path.join(tmpdir, "multi.sock")
         _start_transport(sock_path)
         _wait_for_socket(sock_path)
 
         for i in range(3):
-            resp = _send_recv(
-                sock_path,
-                {
-                    "jsonrpc": "2.0",
-                    "id": i,
-                    "method": "initialize",
-                    "params": {
-                        "protocolVersion": "2024-11-05",
-                        "clientInfo": {"name": "test", "version": "0.1"},
-                        "capabilities": {},
-                    },
-                },
-            )
-            assert resp.get("id") == i
-            assert "result" in resp
+            result = asyncio.run(_mcp_call(sock_path, "core.add", {"operands": [str(i), "1"]}))
+            assert result.structured_content["result"] == str(i + 1)  # type: ignore[attr-defined]
+
+
+def test_requests_over_socket_are_stateless() -> None:
+    """네트워크 계열 요청은 호출 이력을 쓰지 않으므로 session_stats 가 없다."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sock_path = os.path.join(tmpdir, "stateless.sock")
+        _start_transport(sock_path)
+        _wait_for_socket(sock_path)
+
+        result = asyncio.run(_mcp_call(sock_path, "core.add", {"operands": ["1", "2"]}))
+        assert "session_stats" not in result.structured_content["_meta"]  # type: ignore[attr-defined]
+
+
+def test_non_socket_file_at_path_is_refused() -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sock_path = os.path.join(tmpdir, "regular.file")
+        Path(sock_path).write_text("not a socket", encoding="utf-8")
+
+        _load_modules()
+        transport = UnixTransport(server=build_server(), socket_path=sock_path)
+        with pytest.raises(RuntimeError, match="not a Unix socket"):
+            asyncio.run(transport.start_async())
+        assert Path(sock_path).read_text(encoding="utf-8") == "not a socket"
+
+
+def test_socket_is_never_group_or_world_accessible_while_binding() -> None:
+    """바인드 시점부터 요청한 권한으로 생성되어 chmod 이전 틈이 없다."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sock_path = Path(tmpdir) / "bind.sock"
+        _load_modules()
+        transport = UnixTransport(server=build_server(), socket_path=str(sock_path), socket_mode=0o600)
+        previous = os.umask(0o000)
+        try:
+            sock = transport._bind_socket(sock_path)
+        finally:
+            os.umask(previous)
+        try:
+            assert stat.S_IMODE(sock_path.stat().st_mode) == 0o600
+        finally:
+            sock.close()
+
+
+def test_default_socket_path_lives_in_private_runtime_directory(monkeypatch, tmp_path) -> None:
+    from sootool.transports.unix import _effective_socket_path
+
+    monkeypatch.delenv("SOOTOOL_SOCKET_PATH", raising=False)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", str(tmp_path))
+    path = Path(_effective_socket_path(None))
+    assert path == tmp_path / "sootool" / "sootool.sock"
+    assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700

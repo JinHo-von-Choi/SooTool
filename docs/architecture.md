@@ -101,7 +101,7 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 ## ADR-014: 다중 전송 계층 지원
 
 결정:
-- SooTool은 stdio와 Streamable HTTP 두 전송을 1급 지원한다. 추가 전송(HTTP+SSE legacy, WebSocket, Unix socket)은 후속 마일스톤에서 순차 추가한다.
+- SooTool은 stdio와 Streamable HTTP 두 전송을 1급 지원한다. 추가 전송(HTTP+SSE legacy, Unix socket)은 후속 마일스톤에서 순차 추가한다. WebSocket 전송은 ADR-025 에서 제거했다.
 - 전송 계층은 `src/sootool/transports/` 패키지로 격리된다. REGISTRY는 전송 계층을 인식하지 않는다.
 - 기본 네트워크 바인딩은 loopback(`127.0.0.1`). 외부 노출(`--host 0.0.0.0`)은 명시적 opt-in이며, `SOOTOOL_AUTH_TOKEN` 또는 `--auth-token` 미설정 시 기동을 거부한다.
 - Streamable HTTP는 Starlette 미들웨어 체인(RequestID → Logging → Auth → CORS)으로 감싼 ASGI 앱으로 노출한다.
@@ -302,3 +302,25 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 - 구현: `src/sootool/core/audit.py`, `src/sootool/core/receipts.py`, `src/sootool/core/signing.py`, `src/sootool/receipt_tools.py`
 - 테스트: `tests/core/test_receipts.py`
 - 계획: `docs/plans/2026-10-03-enhancement-roadmap.md` 4.1
+
+
+## ADR-025: MCP SDK v2 이행, 무상태 전환, 오류 계약
+
+배경: MCP 2026-07-28 사양은 프로토콜 세션과 initialize 핸드셰이크를 없애 모든 요청을 독립으로 만들었고, Python SDK v2 가 이를 지원하며 v1 은 보안 수정만 받는다. SDK v2 는 WebSocket 서버 전송을 제거했고 HTTP+SSE 는 사양에서 폐기됐다.
+
+결정:
+- `mcp>=2.3,<3` 으로 이행한다. 서버 클래스는 `MCPServer` 이며 도구 어노테이션 필드는 snake_case 다. v1 은 지원하지 않는다.
+- 요청 컨텍스트(`core/request_context.py`): 네트워크 전송의 미들웨어(`RequestContextMiddleware`)가 요청마다 로케일(Accept-Language), 무상태 표식, 인증 범위를 contextvar 로 설정하고 요청이 끝나면 복원한다. 호출 이력(세션)은 stdio 와 프로세스 내 호출에서만 유지한다. 무상태 요청은 이력이 필요한 힌트 규칙(연속 호출 감지 등)을 건너뛰고 `_meta.session_stats` 를 싣지 않는다. `SOOTOOL_SESSION_ID` 환경변수와 세션 저장소의 로케일 상태는 제거했다. Accept-Language 는 이제 `sootool.skill_guide` 의 로케일 해석에 실제로 반영된다.
+- 전송: WebSocket 제거. HTTP+SSE 는 SDK 의 `sse_app` 으로 단순화하고 폐기 경고를 남기며 다음 마이너에서 제거한다. Unix 소켓은 맞춤 프레이밍 대신 UDS 위의 Streamable HTTP 로 서비스한다(소켓 파일은 요청 권한으로 바인드 시점부터 생성, Host 헤더 제한 없음, 접근 통제는 파일 권한). 이는 기존 Unix 소켓 클라이언트에 비호환 변경이다. Streamable HTTP 는 `stateless_http=True` 로 서비스한다.
+- 쓰기 도구 노출 분리: 정책 쓰기 도구(4종)는 로컬 전송(stdio, unix)에만 노출한다. 네트워크 전송에 노출하려면 `--admin --remote-admin --admin-token` 이 모두 필요하다. 인증은 범위를 갖는다: `SOOTOOL_AUTH_TOKEN` 은 `read`, `SOOTOOL_ADMIN_TOKEN` 은 `read` 와 `policy-write`. 관리자 게이트(`_is_admin`)는 관리자 모드 환경변수와 요청의 `policy-write` 범위를 모두 요구하며 로컬 컨텍스트는 범위 검사를 하지 않는다.
+- 오류 계약(`boundary.py`, `core/errors.py`): 모든 도구 오류를 `{"error": {"code", "message", "retryable", "field"?, "details"?}}` 구조의 `isError` 결과로 돌려준다. 오류 클래스마다 고유한 `code` 를 갖는다. SDK 단계에서 거부되는 경우(알 수 없는 도구, 필수 인자 누락, 타입 오류)도 `SooToolServer` 가 같은 형식으로 변환하며 거부된 입력값은 되돌려주지 않는다. 선언되지 않은 인자는 SDK 가 조용히 버리므로 거부한다(오타 난 선택 인자가 무시되어 기본값으로 계산되는 일을 막는다). 예기치 못한 예외는 `internal_error` 로 변환하고 상세는 로그에만 남긴다. `D()` 가 비숫자 입력에 날 `decimal.InvalidOperation` 대신 `InvalidNumberError`, 0 나눗셈에 `DivisionByZeroError` 를 낸다(표준 예외도 함께 상속해 호환).
+- 입력: 문자열 숫자 파라미터는 JSON 숫자도 받는다. 부동소수는 클라이언트가 보낸 배정밀도 값의 최단 왕복 표기로 변환한다. 입력 스키마는 string 으로 광고한다.
+
+결과: 네트워크 전송이 라운드 로빈 로드 밸런서 뒤에서 동작하고, 요청 사이에 상태가 새지 않으며, 클라이언트가 오류를 코드로 분기할 수 있다.
+
+상태: 제안됨(Proposed). 2026-10-03.
+
+관련 아티팩트:
+- 구현: `src/sootool/boundary.py`, `src/sootool/core/request_context.py`, `src/sootool/core/errors.py`, `src/sootool/transports/`, `src/sootool/middleware/`
+- 테스트: `tests/core/test_boundary.py`, `tests/core/test_request_context.py`, `tests/transports/test_http_e2e.py`, `tests/middleware/`
+- 계획: `docs/plans/2026-10-03-enhancement-roadmap.md` A4, A5, A6, B1, B4

@@ -85,13 +85,14 @@ def test_pipeline_refuses_write_tool_steps(_admin_mode):
 
 def test_lean_call_cannot_reach_write_tools_through_batch(_admin_mode):
     lean = server.build_server(profile="lean")
-    _c, out = asyncio.run(lean.call_tool(
+    result = asyncio.run(lean.call_tool(
         "sootool.call",
         {"name": "core.batch", "arguments": {"items": [
             {"id": "w", "tool": "sootool.policy_rollback",
              "args": {"domain": "tax", "name": "kr_income", "year": 2026}},
         ]}},
     ))
+    out = result.structured_content
     assert out["count_error"] == 1
     assert out["count_ok"] == 0
     assert _nothing_was_written(_admin_mode)

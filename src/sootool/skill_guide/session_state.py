@@ -1,7 +1,8 @@
 """Session state management for _meta.hints generation.
 
 Implements SessionStore protocol + InMemoryStore.
-Session scope: stdio process lifetime, HTTP mcp-session-id, WebSocket connection.
+Session scope: the stdio process lifetime. Network transports are stateless
+(MCP 2026-07-28) and do not use this store.
 """
 from __future__ import annotations
 
@@ -51,12 +52,11 @@ class SessionStore(Protocol):
 
 
 class _SessionData:
-    __slots__ = ("history", "last_active", "locale")
+    __slots__ = ("history", "last_active")
 
     def __init__(self) -> None:
         self.history: deque[ToolCall] = deque(maxlen=_MAX_HISTORY)
         self.last_active: float       = time.monotonic()
-        self.locale: str | None       = None
 
 
 class InMemoryStore:
@@ -102,25 +102,6 @@ class InMemoryStore:
         }
 
     # ------------------------------------------------------------------
-    # Locale support
-    # ------------------------------------------------------------------
-
-    def set_locale(self, session_id: str, locale: str) -> None:
-        """Persist the detected locale for this session."""
-        with self._lock:
-            self._gc_unsafe()
-            if session_id not in self._sessions:
-                self._sessions[session_id] = _SessionData()
-            self._sessions[session_id].locale      = locale
-            self._sessions[session_id].last_active = time.monotonic()
-
-    def get_locale(self, session_id: str) -> str | None:
-        """Return the locale stored for this session, or None if not set."""
-        with self._lock:
-            sd = self._sessions.get(session_id)
-            return sd.locale if sd is not None else None
-
-    # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
 
@@ -138,6 +119,5 @@ class InMemoryStore:
             return len(self._sessions)
 
 
-# Module-level singleton — shared within a single process.
-# HTTP/WebSocket sessions must pass distinct session_id values.
+# Module-level singleton. Holds the call history of the local (stdio) session only.
 STORE: InMemoryStore = InMemoryStore()

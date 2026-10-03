@@ -12,9 +12,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
+from sootool.boundary import with_error_contract
 from sootool.core.catalog import (
     bind_call_arguments,
     describe_tool,
@@ -24,7 +25,7 @@ from sootool.core.catalog import (
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 
-_READ_ONLY = ToolAnnotations(readOnlyHint=True, idempotentHint=True, openWorldHint=False)
+_READ_ONLY = ToolAnnotations(read_only_hint=True, idempotent_hint=True, open_world_hint=False)
 
 
 def search(query: str, limit: int = 10, namespace: str | None = None) -> dict[str, Any]:
@@ -46,9 +47,9 @@ def call(name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
     return result
 
 
-def register_facade(server: FastMCP) -> None:
+def register_facade(server: MCPServer) -> None:
     server.add_tool(
-        search,
+        with_error_contract(search),
         name        = "sootool.search",
         description = (
             "계산 도구 카탈로그를 질의어로 검색한다. 이름과 설명에서 일치하는 도구를 점수 순으로 "
@@ -57,7 +58,7 @@ def register_facade(server: FastMCP) -> None:
         annotations = _READ_ONLY,
     )
     server.add_tool(
-        describe,
+        with_error_contract(describe),
         name        = "sootool.describe",
         description = (
             "도구 하나의 전체 설명, 파라미터(이름, 타입, 필수 여부, 기본값), 반환 형식을 반환한다. "
@@ -66,7 +67,7 @@ def register_facade(server: FastMCP) -> None:
         annotations = _READ_ONLY,
     )
     server.add_tool(
-        call,
+        with_error_contract(call),
         name        = "sootool.call",
         description = (
             "name 으로 지정한 읽기 전용 계산 도구를 arguments(객체)로 실행한다. 결과, trace, "

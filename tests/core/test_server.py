@@ -18,12 +18,12 @@ def test_server_invokes_core_add():
     assert result["trace"]["tool"] == "core.add"
 
 
-def test_build_server_returns_fastmcp():
-    from mcp.server.fastmcp import FastMCP
+def test_build_server_returns_mcp_server():
+    from mcp.server.mcpserver import MCPServer
 
     from sootool.server import build_server
     server = build_server()
-    assert isinstance(server, FastMCP)
+    assert isinstance(server, MCPServer)
 
 
 def test_registry_has_core_arithmetic():

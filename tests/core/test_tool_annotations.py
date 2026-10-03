@@ -26,11 +26,11 @@ def test_every_tool_declares_annotations(listed):
 
 
 def test_no_tool_reaches_the_open_world(listed):
-    assert all(t.annotations.openWorldHint is False for t in listed.values())
+    assert all(t.annotations.open_world_hint is False for t in listed.values())
 
 
 def test_only_policy_write_tools_are_not_read_only(listed):
-    writers = {n for n, t in listed.items() if t.annotations.readOnlyHint is False}
+    writers = {n for n, t in listed.items() if t.annotations.read_only_hint is False}
     assert writers == _WRITE_TOOLS
 
 
@@ -38,14 +38,14 @@ def test_calculation_tools_are_read_only_and_idempotent(listed):
     for name, tool in listed.items():
         if name in _WRITE_TOOLS:
             continue
-        assert tool.annotations.readOnlyHint is True, name
-        assert tool.annotations.idempotentHint is True, name
+        assert tool.annotations.read_only_hint is True, name
+        assert tool.annotations.idempotent_hint is True, name
 
 
 def test_overwriting_write_tools_are_marked_destructive(listed):
     for name in ("sootool.policy_activate", "sootool.policy_rollback", "sootool.policy_import"):
-        assert listed[name].annotations.destructiveHint is True, name
-    assert listed["sootool.policy_propose"].annotations.destructiveHint is False
+        assert listed[name].annotations.destructive_hint is True, name
+    assert listed["sootool.policy_propose"].annotations.destructive_hint is False
 
 
 def test_registry_invariant_destructive_implies_not_read_only():

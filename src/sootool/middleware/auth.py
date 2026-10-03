@@ -8,16 +8,23 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
+from sootool.core.request_context import REQUEST_SCOPES, SCOPE_READ
+
 _SKIP_PATHS = frozenset({"/healthz"})
 
 
 class TokenValidator(Protocol):
+    scopes: frozenset[str]
+
     def validate(self, token: str) -> bool: ...
 
 
 class BearerTokenValidator:
-    def __init__(self, expected: str) -> None:
+    """상수 시간 비교로 Bearer 토큰을 검증하고, 일치하면 ``scopes`` 범위를 부여한다."""
+
+    def __init__(self, expected: str, scopes: frozenset[str] = frozenset({SCOPE_READ})) -> None:
         self._expected = expected
+        self.scopes    = scopes
 
     def validate(self, token: str) -> bool:
         return hmac.compare_digest(token.encode("utf-8"), self._expected.encode("utf-8"))
@@ -26,8 +33,12 @@ class BearerTokenValidator:
 class AuthMiddleware(BaseHTTPMiddleware):
     """Bearer token authentication middleware.
 
-    If no validators are configured the middleware is a pass-through.
-    Skip paths (e.g. /healthz) always bypass auth.
+    If no validators are configured the middleware is a pass-through and no scope
+    restriction is applied. Skip paths (e.g. /healthz) always bypass auth.
+
+    A matching validator grants its scopes for the duration of the request. Validators are
+    checked in order and every validator is evaluated so the check time does not depend on
+    which one matches.
     """
 
     def __init__(self, app: ASGIApp, validators: list[TokenValidator]) -> None:
@@ -50,7 +61,15 @@ class AuthMiddleware(BaseHTTPMiddleware):
             )
 
         token = auth_header[7:]
-        if not any(v.validate(token) for v in self._validators):
+        granted: frozenset[str] | None = None
+        for validator in self._validators:
+            if validator.validate(token) and granted is None:
+                granted = validator.scopes
+        if granted is None:
             return JSONResponse({"error": "invalid bearer token"}, status_code=401)
 
-        return await _call_next(request)
+        scope_token = REQUEST_SCOPES.set(granted)
+        try:
+            return await _call_next(request)
+        finally:
+            REQUEST_SCOPES.reset(scope_token)

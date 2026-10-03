@@ -11,6 +11,11 @@ REGISTRY 수치: 18 domains, 255 base tools, 10 admin policy-management tools (0
 
 ### Added
 
+- 요청 단위 컨텍스트(`sootool.core.request_context`)와 `RequestContextMiddleware`: 요청마다 Accept-Language 로케일, 무상태 표식, 인증 범위를 설정한다. Accept-Language 가 `sootool.skill_guide`의 로케일에 실제로 반영된다.
+- 인증 범위: `SOOTOOL_AUTH_TOKEN`은 `read`, `SOOTOOL_ADMIN_TOKEN`(또는 `--admin-token`)은 `read`와 `policy-write` 범위를 부여한다. 정책 쓰기는 관리자 모드와 `policy-write` 범위를 모두 요구한다. `--admin` 플래그를 추가했다.
+- 오류 계약(`sootool.boundary`): 오류 클래스별 고유 코드와 구조화된 오류 결과. SDK 단계의 거부(알 수 없는 도구, 인자 누락, 타입 오류)도 같은 형식이다.
+- 입력 숫자 허용: 문자열 숫자 파라미터가 JSON 숫자도 받는다(입력 스키마는 string 유지).
+- 네트워크 전송 스모크 스크립트(`scripts/mcp_smoke_{http,sse,unix}.py`)를 v2 클라이언트로 다시 작성하고 CI 에 추가했다.
 - 계산 영수증 재실행 검증: `_meta.integrity`에 `tool`과 `result_hash`(중첩 `_meta`를 제외한 응답 본문의 정규화 sha256)를 추가했다. 새 도구 `sootool.verify_receipt`가 `tool`, `arguments`, `receipt`로 같은 계산을 다시 실행해 도구 이름, 입력 해시, 결과 해시, 도구 버전, 정책 해시를 대조한다. `core.batch`, `core.pipeline`, `core.pipeline_resume`은 결과에 실행별 값이 있어 검증 대상에서 제외한다.
 - 영수증 선택 서명: 환경변수 `SOOTOOL_RECEIPT_KEY_FILE`에 base64 ed25519 개인 키 파일 경로를 지정하면 스탬프에 `key_id`와 `signature`가 추가된다. 키는 파일 경로로만 참조한다. 키 파일을 읽을 수 없으면 계산 결과는 그대로 반환하고 `signature_error` 코드를 남긴다. `verify_receipt`는 `public_key_b64`가 있으면 서명을 검증하고 `require_signature`로 서명 필수를 강제할 수 있다.
 - `sootool.core.signing`: 정책 번들과 영수증이 공유하는 ed25519 기반 함수.
@@ -25,6 +30,17 @@ REGISTRY 수치: 18 domains, 255 base tools, 10 admin policy-management tools (0
 - `sootool.core.lazy`: 무거운 의존 모듈의 지연 로딩 프록시.
 - 노출 프로파일 `--profile {full,lean}`(환경변수 `SOOTOOL_PROFILE`). `lean`은 `sootool.search`, `sootool.describe`, `sootool.call`, `sootool.skill_guide` 4종만 노출한다(`tools/list` 약 2.4KB, `full`은 약 173KB). 기본값은 `full`이며 동작이 바뀌지 않는다.
 - `sootool.core.catalog`: 도구 검색(결정적 점수 순위), 설명, 인자 검증.
+
+### Breaking
+
+- MCP SDK v2(`mcp>=2.3,<3`)와 MCP 2026-07-28 사양으로 이행했다. SDK v1 은 지원하지 않는다. 자세한 내용은 ADR-025.
+- WebSocket 전송을 제거했다(`--transport websocket`, `--enable-websocket`, `--ws-port`, `SOOTOOL_ENABLE_WEBSOCKET`). `--transport websocket` 은 이전 방법을 안내하는 오류로 종료한다.
+- Unix 소켓 전송은 줄 단위 JSON-RPC 대신 UDS 위의 Streamable HTTP(`/mcp`)로 서비스한다. 기존 줄 단위 클라이언트는 호환되지 않는다. 소켓은 요청한 권한(기본 0600)으로 바인드 시점부터 생성하며 기본 경로는 `$XDG_RUNTIME_DIR/sootool/sootool.sock`이다.
+- HTTP+SSE 전송은 폐기 경고를 남기며 다음 마이너 릴리스에서 제거한다.
+- 네트워크 전송(HTTP, SSE, Unix)은 무상태다. 호출 이력이 필요한 힌트 규칙은 stdio 와 프로세스 내 호출에서만 동작하며 네트워크 응답에는 `_meta.session_stats`가 없다. `SOOTOOL_SESSION_ID` 환경변수를 제거했다.
+- 오류 응답 형식이 바뀌었다. 모든 도구 오류는 `isError` 결과이며 `structuredContent.error`에 `code`, `message`, `retryable`(과 `field`, `details`)을 담는다. 선언되지 않은 인자는 더 이상 무시되지 않고 `invalid_arguments`로 거부된다.
+- `D()`와 `core.div`가 비숫자 입력과 0 나눗셈에 `InvalidNumberError`, `DivisionByZeroError`를 낸다(`decimal.InvalidOperation`, `ZeroDivisionError`도 함께 상속).
+- 정책 쓰기 도구는 로컬 전송(stdio, unix)에만 노출한다. 네트워크 전송에 노출하려면 `--admin --remote-admin --admin-token`이 필요하다.
 
 ### Changed
 

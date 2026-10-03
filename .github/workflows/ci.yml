@@ -73,6 +73,12 @@ jobs:
       - name: MCP smoke (stdio)
         run: uv run python scripts/mcp_smoke_test.py
 
+      - name: MCP smoke (Streamable HTTP, SSE, Unix socket)
+        run: |
+          uv run python scripts/mcp_smoke_http.py
+          uv run python scripts/mcp_smoke_sse.py
+          uv run python scripts/mcp_smoke_unix.py
+
       - name: Build distributions
         run: uv build
 

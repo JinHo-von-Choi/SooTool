@@ -1,7 +1,8 @@
-"""Unix Domain Socket transport for SooTool MCP server.
+"""Unix 도메인 소켓 전송: UDS 위의 Streamable HTTP.
 
-Reuses the same JSON-RPC newline-framed protocol as stdio.
-Each line is a complete JSON-RPC message; responses are newline-terminated.
+TCP 대신 Unix 소켓에서 같은 Streamable HTTP 앱(무상태)을 서비스한다. 접근 통제는 소켓 파일
+권한(기본 0600)이 맡으므로 Bearer 인증은 두지 않는다. 클라이언트는 UDS 를 지원하는 HTTP
+클라이언트(예: httpx 의 ``uds`` 전송)로 ``/mcp`` 에 접속한다.
 
 CLI:
     --transport unix --socket /path/to/sootool.sock
@@ -9,113 +10,113 @@ CLI:
     --force-socket       (remove stale socket file on startup)
 
 Environment:
-    SOOTOOL_SOCKET_PATH   — default socket path
+    SOOTOOL_SOCKET_PATH   default socket path
 """
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import os
+import socket
 import stat
 from pathlib import Path
 
-import anyio
-from mcp.server.fastmcp import FastMCP
-from mcp.shared.session import SessionMessage  # type: ignore[attr-defined]
-from mcp.types import JSONRPCMessage
+import uvicorn
+from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
+
+from sootool.policy_mgmt.paths import ensure_private_dir, get_runtime_dir
+from sootool.transports.http import build_http_app
 
 logger = logging.getLogger("sootool.unix")
 
-_DEFAULT_SOCKET_PATH = "/tmp/sootool.sock"  # noqa: S108
-_DEFAULT_MODE        = 0o600
+_DEFAULT_MODE = 0o600
+_DEFAULT_NAME = "sootool.sock"
 
 
 def _effective_socket_path(cli_path: str | None) -> str:
-    return cli_path or os.environ.get("SOOTOOL_SOCKET_PATH", _DEFAULT_SOCKET_PATH)
+    explicit = cli_path or os.environ.get("SOOTOOL_SOCKET_PATH")
+    if explicit:
+        return explicit
+    runtime = get_runtime_dir() / "sootool"
+    ensure_private_dir(runtime)
+    return str(runtime / _DEFAULT_NAME)
 
 
 class UnixTransport:
-    """MCP server transport over a Unix domain socket.
-
-    Wire protocol mirrors stdio: each message is a JSON object terminated
-    by a newline (``\\n``).  The server reads one JSON-RPC request per line
-    and writes one JSON-RPC response per line back to the same connection.
-    """
+    """MCP 서버를 Unix 도메인 소켓에서 Streamable HTTP 로 서비스한다."""
 
     def __init__(
         self,
-        server: FastMCP,
+        server:      MCPServer,
         socket_path: str | None,
-        socket_mode: int = _DEFAULT_MODE,
-        force: bool = False,
+        socket_mode: int  = _DEFAULT_MODE,
+        force:       bool = False,
+        log_level:   str  = "info",
     ) -> None:
         self._server      = server
         self._socket_path = _effective_socket_path(socket_path)
         self._socket_mode = socket_mode
         self._force       = force
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+        self._log_level   = log_level
 
     async def start_async(self) -> None:
         path = Path(self._socket_path)
-
         self._check_or_remove_stale(path)
 
-        logger.info(
-            "Unix socket transport starting on %s (mode=%o)",
-            path,
-            self._socket_mode,
+        logger.info("Unix socket transport starting on %s (mode=%o)", path, self._socket_mode)
+        sock = self._bind_socket(path)
+
+        # 브라우저가 접근할 수 없는 로컬 소켓이므로 Host 헤더 제한(DNS 리바인딩 보호)은 의미가 없다.
+        # 접근 통제는 소켓 파일 권한이 맡는다.
+        app = build_http_app(
+            self._server, None, [], require_auth=False,
+            transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
         )
-
-        server = await asyncio.start_unix_server(
-            self._handle_connection,
-            path=str(path),
-        )
-
-        # Apply requested filesystem permissions.
+        config = uvicorn.Config(app, log_level=self._log_level, loop="asyncio")
         try:
-            os.chmod(str(path), self._socket_mode)
-        except OSError as exc:
-            logger.warning("Could not set socket permissions: %s", exc)
-
-        try:
-            async with server:
-                await server.serve_forever()
+            await uvicorn.Server(config).serve(sockets=[sock])
         finally:
+            sock.close()
             try:
                 path.unlink(missing_ok=True)
             except OSError:
-                pass
+                logger.warning("Could not remove socket file %s", path)
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
+    def _bind_socket(self, path: Path) -> socket.socket:
+        """요청한 권한으로 소켓 파일을 만든다.
+
+        바인드 순간부터 권한이 제한되도록 umask 를 잠시 좁힌다. 소켓 파일은 바인드 시점에 만들어지므로
+        바인드 후 chmod 만 쓰면 그 사이에 다른 사용자가 접속할 수 있는 틈이 생긴다.
+        """
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        previous_umask = os.umask(0o777 & ~self._socket_mode)
+        try:
+            sock.bind(str(path))
+        except OSError:
+            sock.close()
+            raise
+        finally:
+            os.umask(previous_umask)
+        os.chmod(str(path), self._socket_mode)
+        return sock
 
     def _check_or_remove_stale(self, path: Path) -> None:
-        """Refuse to start if the socket file exists and --force-socket not set."""
+        """소켓 파일이 이미 있으면 --force-socket 이 아닌 한 기동을 거부한다."""
         if not path.exists():
             return
 
-        # Confirm it really is a socket (could be a regular file left by crash)
         try:
             mode = path.stat().st_mode
         except OSError:
-            return  # can't stat — proceed and let bind fail
+            return  # stat 불가: 바인드 단계에서 오류가 드러난다
 
         if stat.S_ISSOCK(mode):
             if self._force:
-                logger.warning(
-                    "Removing stale socket file at %s (--force-socket)", path
-                )
+                logger.warning("Removing stale socket file at %s (--force-socket)", path)
                 try:
                     path.unlink()
                 except OSError as exc:
-                    raise RuntimeError(
-                        f"Could not remove stale socket at {path}: {exc}"
-                    ) from exc
+                    raise RuntimeError(f"Could not remove stale socket at {path}: {exc}") from exc
             else:
                 raise RuntimeError(
                     f"Socket file already exists at {path}. "
@@ -123,84 +124,7 @@ class UnixTransport:
                     "restart with --force-socket."
                 )
         else:
-            # Not a socket — something unexpected is there; refuse to overwrite.
             raise RuntimeError(
                 f"Path {path} exists and is not a Unix socket. "
                 "Remove it manually before starting SooTool."
             )
-
-    async def _handle_connection(
-        self,
-        reader: asyncio.StreamReader,
-        writer: asyncio.StreamWriter,
-    ) -> None:
-        peer = writer.get_extra_info("peername", "<unknown>")
-        logger.info("Unix socket: new connection from %s", peer)
-
-        mcp_server = self._server._mcp_server
-
-        # Create in-memory streams to bridge asyncio streams ↔ MCP server.
-        client_to_server_w, client_to_server_r = anyio.create_memory_object_stream(
-            max_buffer_size=64,
-        )
-        server_to_client_w, server_to_client_r = anyio.create_memory_object_stream(
-            max_buffer_size=64,
-        )
-
-        async def recv_loop() -> None:
-            try:
-                while True:
-                    line = await reader.readline()
-                    if not line:
-                        break
-                    line = line.rstrip(b"\n")
-                    if not line:
-                        continue
-                    try:
-                        payload = json.loads(line)
-                        rpc_msg = JSONRPCMessage.model_validate(payload)
-                        await client_to_server_w.send(SessionMessage(rpc_msg))
-                    except Exception as exc:  # noqa: BLE001
-                        logger.warning("Unix socket: invalid JSON-RPC frame: %s", exc)
-            finally:
-                await client_to_server_w.aclose()
-
-        async def send_loop() -> None:
-            try:
-                async for session_msg in server_to_client_r:
-                    try:
-                        frame = session_msg.message.model_dump_json(
-                            by_alias=True, exclude_none=True
-                        )
-                        writer.write((frame + "\n").encode())
-                        await writer.drain()
-                    except Exception as exc:  # noqa: BLE001
-                        logger.warning("Unix socket: send error: %s", exc)
-                        break
-            finally:
-                try:
-                    writer.close()
-                    await writer.wait_closed()
-                except Exception:  # noqa: BLE001, S110
-                    logger.debug("Unix socket: writer close error")
-
-        async def mcp_server_task() -> None:
-            await mcp_server.run(
-                client_to_server_r,
-                server_to_client_w,
-                mcp_server.create_initialization_options(),
-            )
-
-        try:
-            async with anyio.create_task_group() as tg:
-                tg.start_soon(recv_loop)
-                tg.start_soon(send_loop)
-                tg.start_soon(mcp_server_task)
-        except Exception as exc:  # noqa: BLE001
-            logger.debug("Unix socket session ended: %s", exc)
-        finally:
-            try:
-                writer.close()
-            except Exception:  # noqa: BLE001, S110
-                logger.debug("Unix socket: final writer close error")
-            logger.info("Unix socket: connection closed (%s)", peer)

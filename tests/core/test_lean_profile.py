@@ -21,8 +21,8 @@ def lean() -> Any:
 
 
 def _call(server: Any, name: str, args: dict[str, Any]) -> dict[str, Any]:
-    _content, structured = asyncio.run(server.call_tool(name, args))
-    return dict(structured)
+    result = asyncio.run(server.call_tool(name, args))
+    return dict(result.structured_content)
 
 
 def test_lean_profile_exposes_only_facade_and_skill_guide(lean):
@@ -40,7 +40,7 @@ def test_lean_tool_list_stays_within_payload_budget(lean):
 
 def test_lean_tools_are_read_only_annotated(lean):
     for tool in asyncio.run(lean.list_tools()):
-        assert tool.annotations.readOnlyHint is True, tool.name
+        assert tool.annotations.read_only_hint is True, tool.name
 
 
 def test_full_profile_is_unchanged_default():
@@ -75,9 +75,12 @@ def test_call_result_matches_direct_invocation(lean):
 
 
 def test_call_rejects_non_read_only_tool(lean):
-    with pytest.raises(Exception) as info:
-        _call(lean, "sootool.call", {"name": "sootool.policy_activate", "arguments": {"draft_id": "x"}})
-    assert "읽기 전용" in str(info.value)
+    result = asyncio.run(lean.call_tool(
+        "sootool.call", {"name": "sootool.policy_activate", "arguments": {"draft_id": "x"}},
+    ))
+    assert result.is_error is True
+    assert result.structured_content["error"]["code"] == "invalid_input"
+    assert "읽기 전용" in result.structured_content["error"]["message"]
 
 
 def test_call_rejects_bad_arguments_with_typed_error():

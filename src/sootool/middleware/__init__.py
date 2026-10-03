@@ -1,5 +1,5 @@
 from __future__ import annotations
 
-from sootool.middleware.locale import LocaleMiddleware
+from sootool.middleware.request_context import RequestContextMiddleware
 
-__all__ = ["LocaleMiddleware"]
+__all__ = ["RequestContextMiddleware"]

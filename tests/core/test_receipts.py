@@ -176,11 +176,11 @@ def test_verification_works_through_the_mcp_boundary():
 
     srv     = server.build_server()
     receipt = json.loads(json.dumps(_receipt()))
-    _c, out = asyncio.run(srv.call_tool(
+    result = asyncio.run(srv.call_tool(
         "sootool.verify_receipt",
         {"tool": "finance.loan_schedule", "arguments": _LOAN, "receipt": receipt},
     ))
-    assert out["valid"] is True
+    assert result.structured_content["valid"] is True
 
 
 # --- 서명 ---
