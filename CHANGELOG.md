@@ -43,6 +43,7 @@ REGISTRY 수치: 18 domains, 271 base tools, 10 admin policy-management tools (0
 - 응답 `_meta.input_coerced`: JSON 부동소수로 받은 문자열 숫자 인자가 배정밀도 표기로 바뀐 경우 인자 이름과 변환값을 알린다.
 - 정책 시행일별 버전 파일: 4대보험(2026-07-01, 2026-11-01), 간이세액표(2026-03-01 자녀 세액공제), 최저임금(2027), 양도소득세와 종합부동산세 등 2027 개정안(proposed).
 - 라이브러리 인터페이스 `sootool.sdk`(ADR-028): MCP 서버 없이 같은 도구를 파이썬 함수로 호출한다. 결과, 영수증, 정책 `as_of`, 오류 계약이 MCP 와 같고 도구별 결과 타입 선언(`sdk/_typed.py`)으로 타입 검사가 된다. 실행 기반을 `sootool.runtime`(mcp 비의존)으로 분리해 도메인 하나를 쓰는 데 약 0.5초가 든다. 코드 실행 환경 레시피는 `docs/sdk.md`.
+- 도구 메타데이터 조회 지점 `ToolSpec`(`sootool.core.toolspec`): 엔진, 정확도 등급(exact, high_precision, approximate, depends_on_children, not_numeric), 별칭, 결과 타입, 파라미터를 한 구조로 모은다. `sootool.describe` 가 `exactness` 를 함께 반환한다. 도구 전체 목록 `docs/tool_catalog.md` 는 레지스트리에서 생성하며 README 표의 도구 수와 함께 시험으로 검사한다.
 - 도구 설명 전체를 목적, 입력 단위, 반올림 규칙, 대표 오용 순으로 보강하고 검색 별칭을 확대했다.
 
 ### Breaking

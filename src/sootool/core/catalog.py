@@ -12,10 +12,10 @@ import inspect
 import re
 from typing import Any
 
-from sootool.core.engines import engine_of
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import ToolEntry, ToolRegistry
 from sootool.core.tool_aliases import ALIASES
+from sootool.core.toolspec import tool_spec
 
 _TOKEN_RE        = re.compile(r"[0-9A-Za-z가-힣]+")
 _SUMMARY_CHARS   = 120
@@ -117,25 +117,22 @@ def _json_safe_default(value: Any) -> Any:
 
 def describe_tool(entry: ToolEntry) -> dict[str, Any]:
     """도구의 전체 설명, 동작 특성, 파라미터 목록, 독스트링을 반환한다."""
+    spec = tool_spec(entry)
     parameters = []
-    for param in entry.exposed_signature().parameters.values():
-        required = param.default is inspect.Parameter.empty
-        item: dict[str, Any] = {
-            "name":     param.name,
-            "type":     "" if param.annotation is inspect.Parameter.empty else str(param.annotation),
-            "required": required,
-        }
-        if not required:
+    for param in spec.parameters:
+        item: dict[str, Any] = {"name": param.name, "type": param.type, "required": param.required}
+        if not param.required:
             item["default"] = _json_safe_default(param.default)
         parameters.append(item)
     return {
-        "name":        entry.full_name,
-        "description": entry.description,
-        "version":     entry.version,
-        "read_only":   entry.read_only,
-        "destructive": entry.destructive,
-        "idempotent":  entry.idempotent,
-        "engine":      engine_of(entry),
+        "name":        spec.full_name,
+        "description": spec.description,
+        "version":     spec.version,
+        "read_only":   spec.read_only,
+        "destructive": spec.destructive,
+        "idempotent":  spec.idempotent,
+        "engine":      spec.engine,
+        "exactness":   spec.exactness,
         "parameters":  parameters,
         "doc":         inspect.getdoc(entry.fn) or "",
     }

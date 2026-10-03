@@ -167,10 +167,10 @@ claude mcp add sootool -- uv run python -m sootool
 |core|11|add, sub, mul, div, calc, batch, pipeline, pipeline_resume, solve_for(역산), compare(시나리오 비교), explain(설명)|
 |accounting|11|vat_extract, vat_add, balance, depreciation 3종, dupont 2종, ratios, income_statement, cashflow_operating|
 |finance|15|pv, fv, npv, irr, loan_schedule, bond_ytm, bond_duration, black_scholes, var 2종, sharpe, sortino 외|
-|tax|11|progressive, kr_income, kr_withholding_simple, capital_gains_kr, kr_gift, kr_inheritance, kr_corporate, kr_simplified_vat, kr_local_income_tax, kr_education_tax_add, kr_rural_special_tax|
-|tax_us|3|federal_income, capital_gains, state_tax|
-|payroll|10|kr_salary, kr_gross_from_net(세후에서 세전 역산), hourly_to_monthly_net, kr_severance_pay, kr_year_end_tax_settlement, kr_bonus_tax, 공제 4종|
-|realestate|9|kr_ltv, kr_dti, kr_dsr, kr_acquisition_tax, kr_transfer_tax, kr_property_tax, kr_comprehensive, kr_local_property, rental_yield|
+|tax|16|progressive, kr_income, kr_withholding_simple(공식 간이세액표), capital_gains_kr, kr_gift, kr_inheritance, kr_corporate, kr_simplified_vat, kr_eitc(근로장려금), kr_securities_transaction, kr_pension_income, kr_vehicle_tax, kr_registration_license_tax, 지방세 부가 3종|
+|tax_us|4|federal_income, capital_gains, state_tax, fica(급여세와 자영업자 세금)|
+|payroll|15|kr_salary, kr_gross_from_net(세후에서 세전 역산), hourly_to_monthly_net, kr_severance_pay, kr_year_end_tax_settlement, kr_bonus_tax, 공제 4종, kr_overtime_pay, kr_weekly_holiday_pay, kr_minimum_wage_check, kr_national_pension_benefit, kr_health_income_premium|
+|realestate|10|kr_ltv, kr_dti, kr_dsr, kr_acquisition_tax, kr_transfer_tax, kr_property_tax, kr_comprehensive, kr_local_property, rental_yield, kr_subscription_score(청약 가점)|
 |stats|14|descriptive, ttest 3종, chi_square_independence, ci_mean, regression_linear, anova, bootstrap_ci 외|
 |probability|30|normal/binomial/poisson, gamma, beta, exponential, lognormal, chi_square, F, bayes, factorial, nCr, nPr, expected_value|
 |datetime|14|add/count_business_days, day_count, age, diff, tz_convert, solar↔lunar, solar_terms, lunar_holiday, fiscal_year, fiscal_quarter, tax_period_kr, payroll_period|
@@ -185,7 +185,7 @@ claude mcp add sootool -- uv run python -m sootool
 |symbolic|2|solve, diff (선택 extra `sootool[symbolic]`)|
 |sootool|2+10|skill_guide, verify_receipt (항시) + policy_mgmt 10종(쓰기 4종은 로컬 전송과 관리자 모드)|
 
-전체 도구 사양은 `docs/user_guide.md` 및 `sootool.skill_guide` MCP 호출로 조회한다.
+전체 도구 목록은 `docs/tool_catalog.md`(레지스트리에서 생성), 사용법은 `docs/user_guide.md` 와 `sootool.skill_guide` MCP 호출, 라이브러리로 쓰는 방법은 `docs/sdk.md` 를 본다.
 
 ## 실전 예시
 
