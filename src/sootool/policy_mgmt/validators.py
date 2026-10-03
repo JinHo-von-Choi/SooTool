@@ -282,34 +282,53 @@ def _stage4_cross_validation(
             pass
 
     # Bracket cross-validation for tax domains
-    brackets = _extract_brackets_from_data(data)
-    if brackets:
-        _validate_brackets_cross(brackets, findings)
+    for label, table in _extract_bracket_tables(data).items():
+        _validate_brackets_cross(table, findings, label)
 
     # Rate range check for scalar rates
     _validate_scalar_rates(data, findings)
 
 
-def _extract_brackets_from_data(data: dict[str, Any]) -> list[dict[str, Any]] | None:
-    if "brackets" in data:
-        return list(data["brackets"])
-    if "income_tax_brackets" in data:
-        return list(data["income_tax_brackets"])
-    if "house" in data and isinstance(data["house"], dict) and "brackets" in data["house"]:
-        return list(data["house"]["brackets"])
-    return None
+_BRACKET_SOURCES = ("brackets", "income_tax_brackets", "ltcg_brackets")
+
+
+def _extract_bracket_tables(data: dict[str, Any]) -> dict[str, list[Any]]:
+    """data 안의 구간표를 이름별로 모은다. 신고 유형별 표(dict of list)는 ``이름.신고유형`` 으로 펼친다."""
+    sources: list[tuple[str, Any]] = [(key, data.get(key)) for key in _BRACKET_SOURCES]
+    house = data.get("house")
+    if isinstance(house, dict):
+        sources.append(("house.brackets", house.get("brackets")))
+
+    tables: dict[str, list[Any]] = {}
+    for label, raw in sources:
+        if isinstance(raw, list):
+            tables[label] = list(raw)
+        elif isinstance(raw, dict):
+            for key, table in raw.items():
+                if isinstance(table, list):
+                    tables[f"{label}.{key}"] = list(table)
+    return tables
 
 
 def _validate_brackets_cross(
-    brackets: list[dict[str, Any]],
+    brackets: list[Any],
     findings: list[dict[str, Any]],
+    label:    str = "brackets",
 ) -> None:
+    if not all(isinstance(b, dict) for b in brackets):
+        findings.append({
+            "level":   "error",
+            "path":    label,
+            "message": "Every bracket entry must be a mapping with 'upper' and 'rate'",
+            "stage":   4,
+        })
+        return
     for i, b in enumerate(brackets[:-1]):
         upper = b.get("upper")
         if upper is None:
             findings.append({
                 "level":   "error",
-                "path":    f"brackets[{i}].upper",
+                "path":    f"{label}[{i}].upper",
                 "message": "Only the last bracket may have upper=None",
                 "stage":   4,
             })
@@ -317,7 +336,7 @@ def _validate_brackets_cross(
     if brackets and brackets[-1].get("upper") is not None:
         findings.append({
             "level":   "error",
-            "path":    f"brackets[{len(brackets)-1}].upper",
+            "path":    f"{label}[{len(brackets)-1}].upper",
             "message": "Last bracket must have upper=None",
             "stage":   4,
         })
@@ -330,7 +349,7 @@ def _validate_brackets_cross(
                 if Decimal(str(u1)) >= Decimal(str(u2)):
                     findings.append({
                         "level":   "error",
-                        "path":    f"brackets[{i+1}].upper",
+                        "path":    f"{label}[{i+1}].upper",
                         "message": (
                             f"bracket upper values must be strictly increasing: "
                             f"index {i} ({u1}) >= index {i+1} ({u2})"
@@ -348,7 +367,7 @@ def _validate_brackets_cross(
                 if not (Decimal("0") <= r <= Decimal("1")):
                     findings.append({
                         "level":   "error",
-                        "path":    f"brackets[{i}].rate",
+                        "path":    f"{label}[{i}].rate",
                         "message": f"rate must be 0 <= rate <= 1, got {r}",
                         "stage":   4,
                     })
@@ -394,13 +413,25 @@ def _stage5_sensitivity(
     threshold: float,
     findings: list[dict[str, Any]],
 ) -> None:
-    new_data = doc.get("data", {})
-    new_brackets = _extract_brackets_from_data(new_data)
-    old_brackets = _extract_brackets_from_data(prev_data)
+    new_tables = _extract_bracket_tables(doc.get("data", {}))
+    old_tables = _extract_bracket_tables(prev_data)
 
-    if new_brackets is None or old_brackets is None:
-        return
+    for label, new_brackets in new_tables.items():
+        old_brackets = old_tables.get(label)
+        if old_brackets is None:
+            continue
+        if not all(isinstance(b, dict) for b in (*old_brackets, *new_brackets)):
+            continue
+        _compare_bracket_rates(label, old_brackets, new_brackets, threshold, findings)
 
+
+def _compare_bracket_rates(
+    label:        str,
+    old_brackets: list[dict[str, Any]],
+    new_brackets: list[dict[str, Any]],
+    threshold:    float,
+    findings:     list[dict[str, Any]],
+) -> None:
     old_map = {str(b.get("upper")): Decimal(str(b.get("rate", 0))) for b in old_brackets}
     new_map = {str(b.get("upper")): Decimal(str(b.get("rate", 0))) for b in new_brackets}
 
@@ -411,7 +442,7 @@ def _stage5_sensitivity(
             if delta > Decimal(str(threshold)):
                 findings.append({
                     "level":   "warning",
-                    "path":    f"data.brackets[upper={upper_key}].rate",
+                    "path":    f"data.{label}[upper={upper_key}].rate",
                     "message": (
                         f"Rate change of {delta} exceeds sensitivity threshold {threshold}. "
                         f"Old: {old_rate}, New: {new_rate}. Possible typo."
