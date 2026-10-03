@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import functools
 import json
 import os
+from collections.abc import Callable
 from decimal import Decimal
 from typing import Any
 
@@ -13,7 +15,7 @@ from sootool.core.decimal_ops import add as d_add
 from sootool.core.decimal_ops import div as d_div
 from sootool.core.decimal_ops import mul as d_mul
 from sootool.core.decimal_ops import sub as d_sub
-from sootool.core.registry import REGISTRY
+from sootool.core.registry import REGISTRY, ToolEntry
 from sootool.skill_guide.hints import generate_hints, inject_meta
 from sootool.skill_guide.session_state import STORE, ToolCall
 
@@ -338,10 +340,23 @@ SooTool은 LLM이 직접 계산해서는 안 되는 요청(산수, 세액, 할�
 """
 
 
+def _bind_to_registry(entry: ToolEntry) -> Callable[..., Any]:
+    """MCP 노출용 호출자를 만든다.
+
+    REGISTRY.invoke 를 거쳐야 integrity 스탬프와 hints 후처리가 적용된다. functools.wraps 로
+    원본 시그니처와 반환 타입을 유지해 FastMCP 의 입력·출력 스키마 생성이 그대로 동작한다.
+    """
+    @functools.wraps(entry.fn)
+    def bound(**kwargs: Any) -> Any:
+        return REGISTRY.invoke(entry.full_name, **kwargs)
+
+    return bound
+
+
 def build_server() -> FastMCP:
     server = FastMCP("sootool", instructions=_SOOTOOL_INSTRUCTIONS)
     for entry in REGISTRY.list():
-        server.add_tool(entry.fn, name=entry.full_name, description=entry.description)
+        server.add_tool(_bind_to_registry(entry), name=entry.full_name, description=entry.description)
     return server
 
 

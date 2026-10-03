@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import functools
+import inspect
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -8,6 +10,26 @@ from typing import Any
 log = logging.getLogger("sootool.core.registry")
 
 PostProcessor = Callable[[dict[str, Any], str], dict[str, Any]]
+
+
+@functools.cache
+def _signature(fn: Callable[..., Any]) -> inspect.Signature:
+    return inspect.signature(fn)
+
+
+def _with_defaults(fn: Callable[..., Any], kwargs: dict[str, Any]) -> dict[str, Any]:
+    """기본값을 채운 호출 인자 사본을 반환한다.
+
+    기본값을 생략한 호출과 명시한 호출, 직접 호출과 MCP 호출이 같은 integrity 입력 해시를
+    갖도록 정규화한다. 바인딩이 불가능한 인자는 그대로 두며, 실제 호출 단계에서 TypeError 로
+    드러난다.
+    """
+    try:
+        bound = _signature(fn).bind(**kwargs)
+    except TypeError:
+        return dict(kwargs)
+    bound.apply_defaults()
+    return dict(bound.arguments)
 
 
 @dataclass
@@ -78,7 +100,7 @@ class ToolRegistry:
         from sootool.core.audit import _INTEGRITY_CTX, set_current_inputs
         prev_inputs = _INTEGRITY_CTX.inputs
         prev_policy = _INTEGRITY_CTX.policy_meta
-        set_current_inputs(kwargs)
+        set_current_inputs(_with_defaults(self._tools[full_name].fn, kwargs))
         # Each nested call starts with a fresh policy slot; the previous
         # frame's policy is restored in the finally block below.
         _INTEGRITY_CTX.policy_meta = None
