@@ -2,11 +2,10 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
 from sootool.core.errors import DomainConstraintError
 from sootool.core.registry import REGISTRY
 from sootool.modules.probability.distributions._common import (
+    DistributionResult,
     _dist_result,
     _parse_float,
     _parse_quantile,
@@ -18,10 +17,10 @@ from sootool.modules.probability.distributions._common import (
 @REGISTRY.tool(
     namespace="probability",
     name="lognormal_pdf",
-    description="로그정규분포 PDF: f(x; μ, σ). x>0, 원 분포 평균 μ, 표준편차 σ.",
+    description="로그정규분포의 확률밀도를 구한다. x 는 양수, mu 와 sigma 는 ln X 의 평균과 표준편차(sigma 는 양수, 기본 0 과 1)이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. mu 와 sigma 는 X 자체의 평균과 표준편차가 아니다.",
     version="1.0.0",
 )
-def lognormal_pdf(x: str, mu: str = "0", sigma: str = "1") -> dict[str, Any]:
+def lognormal_pdf(x: str, mu: str = "0", sigma: str = "1") -> DistributionResult:
     x_f     = _parse_float(x,     "x")
     mu_f    = _parse_float(mu,    "mu")
     sigma_f = _parse_float(sigma, "sigma")
@@ -42,10 +41,10 @@ def lognormal_pdf(x: str, mu: str = "0", sigma: str = "1") -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="lognormal_cdf",
-    description="로그정규분포 CDF = Φ((ln x - μ)/σ). x 는 양수, mu 와 sigma 는 ln x 의 평균과 표준편차(기본 0, 1).",
+    description="로그정규분포의 누적확률 P(X ≤ x) = Φ((ln x - μ)/σ)를 구한다. x 는 양수, mu 와 sigma 는 ln X 의 평균과 표준편차(sigma 는 양수, 기본 0 과 1)이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. mu 와 sigma 에 X 자체의 통계량을 넣으면 틀린다.",
     version="1.0.0",
 )
-def lognormal_cdf(x: str, mu: str = "0", sigma: str = "1") -> dict[str, Any]:
+def lognormal_cdf(x: str, mu: str = "0", sigma: str = "1") -> DistributionResult:
     x_f     = _parse_float(x,     "x")
     mu_f    = _parse_float(mu,    "mu")
     sigma_f = _parse_float(sigma, "sigma")
@@ -66,10 +65,10 @@ def lognormal_cdf(x: str, mu: str = "0", sigma: str = "1") -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="lognormal_ppf",
-    description="로그정규분포 역CDF. exp(μ + σ Φ⁻¹(q)).",
+    description="로그정규분포의 분위수 exp(μ + σΦ⁻¹(q))를 구한다. q 는 0 초과 1 미만, mu 와 sigma 는 ln X 의 평균과 표준편차(sigma 는 양수, 기본 0 과 1)이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. mu 와 sigma 에 X 자체의 통계량을 넣으면 틀린다.",
     version="1.0.0",
 )
-def lognormal_ppf(q: str, mu: str = "0", sigma: str = "1") -> dict[str, Any]:
+def lognormal_ppf(q: str, mu: str = "0", sigma: str = "1") -> DistributionResult:
     q_f     = _parse_quantile(q,  "q")
     mu_f    = _parse_float(mu,    "mu")
     sigma_f = _parse_float(sigma, "sigma")

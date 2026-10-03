@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -12,6 +11,7 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.engineering.electrical_ac._common import (
     _MP_DPS,
     _ONE,
@@ -25,16 +25,37 @@ _DB_MODES = frozenset(
 )
 
 
+class DbConvertResult(TracedResult):
+    """변환 결과. result 는 Decimal 문자열."""
+
+    result: str
+
+
+class ResistorColorCodeResult(TracedResult):
+    """컬러코드 해독 결과. resistance_ohm 은 Ω, tolerance_pct 는 %이며 Decimal 문자열."""
+
+    resistance_ohm: str
+    tolerance_pct:  str
+
+
+class OpampGainResult(TracedResult):
+    """전압 이득(배율). Decimal 문자열이며 반전 구성은 음수."""
+
+    gain: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="db_convert",
     description=(
-        "dB·Np·dBm 상호 변환. modes: v_to_db (20log10 비), p_to_db (10log10), "
-        "db_to_v, db_to_p, np_to_db, db_to_np, w_to_dbm, dbm_to_w."
+        "dB, Np, dBm과 선형 값을 서로 변환한다. mode: v_to_db(20·log10(value/reference)), "
+        "p_to_db(10·log10(value/reference)), db_to_v, db_to_p, np_to_db, db_to_np, w_to_dbm(1 mW 기준), "
+        "dbm_to_w. value 는 Decimal 문자열, reference(기본 1)는 v_to_db와 p_to_db에서만 쓴다. "
+        "로그 입력은 0 초과여야 하며 유효숫자 30자리. 오용 주의: 전압비에 p_to_db를 쓰면 값이 절반이 된다."
     ),
     version="1.0.0",
 )
-def db_convert(mode: str, value: str, reference: str = "1") -> dict[str, Any]:
+def db_convert(mode: str, value: str, reference: str = "1") -> DbConvertResult:
     """Convert between linear quantities and decibel/neper scales.
 
     Args:
@@ -154,13 +175,14 @@ _COLOR_TOLERANCE: dict[str, Decimal] = {
     namespace="engineering",
     name="resistor_color_code",
     description=(
-        "저항기 4밴드 또는 5밴드 컬러코드 해독. "
-        "4밴드: [digit1, digit2, multiplier, tolerance], "
-        "5밴드: [digit1, digit2, digit3, multiplier, tolerance]."
+        "저항기 4밴드 또는 5밴드 컬러코드를 해독해 저항값(Ω)과 허용오차(%)를 구한다. "
+        "4밴드는 [자릿수1, 자릿수2, 승수, 허용오차], 5밴드는 [자릿수1, 자릿수2, 자릿수3, 승수, 허용오차] 순서의 "
+        "영문 색상명(black, brown, red, orange, yellow, green, blue, violet, gray, white, gold, silver)이며 "
+        "대소문자와 앞뒤 공백은 무시한다. 오용 주의: 6밴드(온도계수)는 지원하지 않으며 읽는 방향이 반대면 값이 틀린다."
     ),
     version="1.0.0",
 )
-def resistor_color_code(bands: list[str]) -> dict[str, Any]:
+def resistor_color_code(bands: list[str]) -> ResistorColorCodeResult:
     """Decode a 4-band or 5-band resistor color code."""
     trace = CalcTrace(
         tool="engineering.resistor_color_code",
@@ -214,8 +236,9 @@ def resistor_color_code(bands: list[str]) -> dict[str, Any]:
     namespace="engineering",
     name="opamp_gain",
     description=(
-        "Op-amp 기본 이득. configuration='inverting' (-Rf/Rin) "
-        "또는 'non_inverting' (1 + Rf/Rin)."
+        "이상적 연산증폭기의 폐루프 전압 이득을 구한다. configuration='inverting'이면 -Rf/Rin, "
+        "'non_inverting'이면 1+Rf/Rin. feedback_resistance와 input_resistance는 0 초과 Decimal 문자열(Ω)이고 "
+        "gain 은 배율이다(dB 아님, db_convert로 변환). 오용 주의: 유한 개방 이득, 대역폭, 포화 전압은 반영하지 않는다."
     ),
     version="1.0.0",
 )
@@ -223,7 +246,7 @@ def opamp_gain(
     feedback_resistance: str,
     input_resistance:    str,
     configuration:       str = "inverting",
-) -> dict[str, Any]:
+) -> OpampGainResult:
     """Compute ideal op-amp closed-loop voltage gain."""
     trace = CalcTrace(tool="engineering.opamp_gain", formula="")
     if configuration not in ("inverting", "non_inverting"):

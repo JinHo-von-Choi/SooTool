@@ -22,6 +22,22 @@ from sootool.core.cast import decimal_to_float64, float64_to_decimal_str
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class Cha2ds2VascResult(TracedResult):
+    score:      int
+    risk_level: str
+
+
+class HasBledResult(TracedResult):
+    score:      int
+    risk_level: str
+
+
+class FraminghamCvd10yResult(TracedResult):
+    risk:     str
+    risk_pct: str
 
 
 def _require_int(value: int, name: str, lo: int | None = None, hi: int | None = None) -> int:
@@ -44,9 +60,10 @@ def _require_bool(value: Any, name: str) -> bool:
     namespace="medical",
     name="cha2ds2_vasc",
     description=(
-        "CHA2DS2-VASc 점수: 심방세동 환자의 뇌졸중 위험도. "
-        "C=울혈성심부전, H=고혈압, A2=75세이상(2점), D=당뇨, S2=뇌졸중/TIA(2점), "
-        "V=혈관질환, A=65-74세, Sc=여성. 총 0-9점."
+        "심방세동 환자의 뇌졸중 위험 점수 CHA2DS2-VASc를 계산한다. "
+        "C=울혈성심부전, H=고혈압, A2=75세 이상(2점), D=당뇨, S2=뇌졸중/TIA(2점), "
+        "V=혈관질환, A=65~74세(1점), Sc=여성. 총 0~9점이며 risk_level은 0점 low, 1점 moderate, 2점 이상 high. "
+        "age는 0~130 정수, 나머지는 bool이어야 하고 문자열 'true'는 거부한다. 판단 보조용이며 임상 결정을 대신하지 않는다."
     ),
     version="1.0.0",
 )
@@ -58,7 +75,7 @@ def cha2ds2_vasc(
     diabetes:             bool = False,
     stroke_or_tia:        bool = False,
     vascular_disease:     bool = False,
-) -> dict[str, Any]:
+) -> Cha2ds2VascResult:
     """Compute CHA2DS2-VASc score."""
     trace = CalcTrace(
         tool="medical.cha2ds2_vasc",
@@ -97,9 +114,10 @@ def cha2ds2_vasc(
     namespace="medical",
     name="has_bled",
     description=(
-        "HAS-BLED 점수: 항응고 치료 환자의 주요 출혈 위험도. "
-        "H=고혈압, A=간/신장기능장애(각1), S=뇌졸중, B=출혈력, L=불안정 INR, "
-        "E=노인(>65), D=약물/음주(각1). 총 0-9점."
+        "항응고 치료 환자의 주요 출혈 위험 점수 HAS-BLED를 계산한다. "
+        "H=고혈압, A=신장 또는 간 기능 이상(각 1점), S=뇌졸중, B=출혈력, L=불안정 INR, "
+        "E=고령(65세 초과), D=약물 또는 음주(각 1점). 총 0~9점이며 risk_level은 2점 이하 low, 3점 이상 high. "
+        "아홉 항목을 모두 bool로 넣어야 하며 기본값이 없다. 판단 보조용이다."
     ),
     version="1.0.0",
 )
@@ -113,7 +131,7 @@ def has_bled(
     elderly:             bool,
     drugs:               bool,
     alcohol:             bool,
-) -> dict[str, Any]:
+) -> HasBledResult:
     """Compute HAS-BLED score."""
     trace = CalcTrace(
         tool="medical.has_bled",
@@ -182,9 +200,10 @@ _FRAMINGHAM_COEF = {
     namespace="medical",
     name="framingham_cvd_10y",
     description=(
-        "Framingham 일반 10년 심혈관질환 위험도 (D'Agostino 2008). "
-        "sex=male|female, age(30-74), total_chol/hdl(mg/dL), sbp(mmHg), "
-        "treated_htn, smoker, diabetes. 반환: 10년 발생 확률 (0-1)."
+        "Framingham 일반 10년 심혈관질환 발생 확률을 계산한다(D'Agostino 2008 일반 CVD 모델). "
+        "sex=male|female, age 30~74 정수, total_chol과 hdl은 mg/dL, sbp는 mmHg(모두 Decimal 문자열), "
+        "treated_htn, smoker, diabetes는 bool. risk는 0~1 확률(유효숫자 10자리), risk_pct는 백분율이다. "
+        "범위를 벗어난 나이에는 쓸 수 없다. float64 로그 회귀식이라 Decimal 정확 연산이 아니다."
     ),
     version="1.0.0",
 )
@@ -197,7 +216,7 @@ def framingham_cvd_10y(
     treated_htn:     bool,
     smoker:          bool,
     diabetes:        bool,
-) -> dict[str, Any]:
+) -> FraminghamCvd10yResult:
     """Compute 10-year general CVD risk (probability)."""
     trace = CalcTrace(
         tool="medical.framingham_cvd_10y",

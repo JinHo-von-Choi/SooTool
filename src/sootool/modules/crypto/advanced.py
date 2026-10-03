@@ -8,14 +8,38 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import TypedDict
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.crypto._ints import parse_int
 
 _parse_int = parse_int
+
+
+class EgcdResult(TracedResult):
+    gcd: str
+    x:   str
+    y:   str
+
+
+class CrtResult(TracedResult):
+    x:       str
+    modulus: str
+
+
+class EulerTotientResult(TracedResult):
+    phi:           str
+    factorization: dict[str, int]
+
+
+_LambdaField = TypedDict("_LambdaField", {"lambda": str})
+
+
+class CarmichaelLambdaResult(TracedResult, _LambdaField):
+    factorization: dict[str, int]
 
 
 def _egcd(a: int, b: int) -> tuple[int, int, int]:
@@ -39,12 +63,13 @@ def _egcd(a: int, b: int) -> tuple[int, int, int]:
     namespace="crypto",
     name="egcd",
     description=(
-        "확장 유클리드 알고리즘: gcd(a, b) = a*x + b*y. "
-        "반환 {gcd, x, y} — Bezout 계수 (x, y)."
+        "확장 유클리드 알고리즘으로 gcd(a, b) = a*x + b*y 를 만족하는 gcd 와 Bezout 계수 x, y 를 구한다. "
+        "a, b 는 정수 문자열(자릿수 한도 2048)이고 gcd 는 0 이상이다. 계수 쌍은 유일하지 않으며 "
+        "이 알고리즘이 내는 한 쌍이다. 모듈러 역원이 목적이면 modinv 가 직접적이다."
     ),
     version="1.0.0",
 )
-def egcd(a: str, b: str) -> dict[str, Any]:
+def egcd(a: str, b: str) -> EgcdResult:
     trace = CalcTrace(tool="crypto.egcd", formula="a*x + b*y = gcd(a, b)")
     ai = _parse_int(a, "a")
     bi = _parse_int(b, "b")
@@ -67,12 +92,13 @@ def egcd(a: str, b: str) -> dict[str, Any]:
     namespace="crypto",
     name="crt",
     description=(
-        "중국인의 나머지 정리 (CRT): 연립합동식 x ≡ r_i (mod m_i) 해. "
-        "moduli는 쌍별 서로소여야 함 (gcd=1). 반환 {x, modulus}."
+        "중국인의 나머지 정리로 연립합동식 x ≡ r_i (mod m_i) 의 해 x 를 구한다. "
+        "residues, moduli 는 길이가 같은 정수 문자열 리스트이고 moduli 는 모두 양수이며 쌍별 서로소여야 한다. "
+        "x 는 0 이상 modulus(법의 곱) 미만이다. 서로소가 아닌 법은 해가 있어도 거부한다."
     ),
     version="1.0.0",
 )
-def crt(residues: list[str], moduli: list[str]) -> dict[str, Any]:
+def crt(residues: list[str], moduli: list[str]) -> CrtResult:
     trace = CalcTrace(
         tool="crypto.crt",
         formula="x ≡ r_i (mod m_i), m_i 쌍별 서로소 가정",
@@ -149,12 +175,13 @@ _TRIAL_DIV_LIMIT = 10**14  # 방어적 상한: 너무 큰 수는 거부
     namespace="crypto",
     name="euler_totient",
     description=(
-        "오일러 토션트 φ(n) = n * Π(1 - 1/p). n ≤ 10^14 (trial-division 한도). "
-        "반환 {phi, factorization}."
+        "오일러 토션트 φ(n) = n * Π(1 - 1/p) 를 구한다. n 은 1 이상 10^14 이하의 정수 문자열이며 "
+        "시행 나눗셈으로 소인수분해하므로 한도를 넘으면 오류다. phi 는 정수 문자열, factorization 은 "
+        "소수 문자열을 지수에 대응시킨 맵이다. RSA 크기의 수에는 쓸 수 없다."
     ),
     version="1.0.0",
 )
-def euler_totient(n: str) -> dict[str, Any]:
+def euler_totient(n: str) -> EulerTotientResult:
     trace = CalcTrace(
         tool="crypto.euler_totient",
         formula="φ(n) = n * Π_{p|n} (1 - 1/p)",
@@ -213,11 +240,13 @@ def _carmichael_from_factors(factors: dict[int, int]) -> int:
     namespace="crypto",
     name="carmichael_lambda",
     description=(
-        "카마이클 함수 λ(n) = lcm(λ(p^k) for prime powers). n ≤ 10^14."
+        "카마이클 함수 λ(n) = lcm(λ(p^k)) 를 구한다. n 은 1 이상 10^14 이하의 정수 문자열이며 "
+        "시행 나눗셈으로 소인수분해하므로 한도를 넘으면 오류다. 결과 키는 lambda(정수 문자열)와 "
+        "factorization 이다. λ(n) 은 φ(n) 의 약수이므로 둘을 혼동해 쓰지 않는다."
     ),
     version="1.0.0",
 )
-def carmichael_lambda(n: str) -> dict[str, Any]:
+def carmichael_lambda(n: str) -> CarmichaelLambdaResult:
     trace = CalcTrace(
         tool="crypto.carmichael_lambda",
         formula="λ(n) = lcm_{p^k || n} λ(p^k)",

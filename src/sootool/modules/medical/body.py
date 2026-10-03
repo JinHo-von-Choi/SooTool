@@ -13,7 +13,6 @@ Sources:
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -21,6 +20,7 @@ from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 
@@ -35,6 +35,15 @@ _BMI_CATEGORIES: list[tuple[Decimal, str]] = [
 ]
 
 
+class MedicalBmiResult(TracedResult):
+    bmi:      str
+    category: str
+
+
+class MedicalBsaResult(TracedResult):
+    bsa_m2: str
+
+
 def _bmi_category(bmi: Decimal) -> str:
     for threshold, label in _BMI_CATEGORIES:
         if bmi >= threshold:
@@ -46,17 +55,18 @@ def _bmi_category(bmi: Decimal) -> str:
     namespace="medical",
     name="bmi",
     description=(
-        "WHO BMI 계산 및 분류. "
-        "BMI = weight_kg / height_m^2. "
-        "카테고리: underweight(<18.5), normal(18.5-25), overweight(25-30), "
-        "obese_1(30-35), obese_2(35-40), obese_3(>=40)."
+        "체질량지수(BMI)를 계산하고 WHO 기준으로 분류한다. "
+        "BMI = weight_kg / height_m^2, 입력은 미터와 킬로그램의 Decimal 문자열, "
+        "결과는 소수 2자리 HALF_EVEN 반올림. 분류는 underweight(<18.5), normal(<25), "
+        "overweight(<30), obese_1(<35), obese_2(<40), obese_3(40 이상)이며 반올림한 값으로 판정한다. "
+        "신장을 cm 단위로 넣으면 결과가 100배 이상 어긋난다."
     ),
     version="1.0.0",
 )
 def medical_bmi(
     height_m:  str,
     weight_kg: str,
-) -> dict[str, Any]:
+) -> MedicalBmiResult:
     """Calculate BMI and WHO classification.
 
     Args:
@@ -101,10 +111,10 @@ def medical_bmi(
     namespace="medical",
     name="bsa",
     description=(
-        "체표면적(BSA) 계산. "
-        "method=dubois: 0.007184 * h^0.725 * w^0.425 (Du Bois 1916). "
-        "method=mosteller: sqrt(h*w/3600) (Mosteller 1987). "
-        "결과 단위: m²."
+        "체표면적(BSA)을 m² 단위로 계산한다. 입력은 신장 cm, 체중 kg의 Decimal 문자열, "
+        "결과는 소수 4자리 HALF_EVEN 반올림. method=dubois(기본)는 0.007184 * h^0.725 * w^0.425, "
+        "method=mosteller는 sqrt(h*w/3600). 항암제 용량 산정 등에 쓰며, "
+        "신장을 m 단위로 넣으면 결과가 크게 어긋난다. 비정수 지수는 float64로 계산한다."
     ),
     version="1.0.0",
 )
@@ -112,7 +122,7 @@ def medical_bsa(
     height_cm: str,
     weight_kg: str,
     method:    str = "dubois",
-) -> dict[str, Any]:
+) -> MedicalBsaResult:
     """Calculate Body Surface Area.
 
     Args:

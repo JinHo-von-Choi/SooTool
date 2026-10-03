@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 # SI prefix exponents (base-10 powers).
 # Keys are lowercase prefix names; values are the integer exponent.
@@ -48,17 +49,26 @@ def _resolve_prefix(prefix: str) -> int:
     return SI_PREFIXES[key]
 
 
+class SiPrefixConvertResult(TracedResult):
+    value: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="si_prefix_convert",
-    description="Convert a value between SI prefixes (e.g. mega → milli). Uses Decimal × 10^(from_exp - to_exp).",
+    description=(
+        "수치를 SI 접두사 사이에서 환산한다. 결과 = value × 10^(from 지수 − to 지수)를 Decimal 로 "
+        "정확히 계산한다. 접두사는 이름으로 넣고(yocto 부터 yotta 까지, 대소문자 무시, 빈 문자열이나 "
+        "base 는 접두사 없음) 기호(k, M, µ)는 받지 않는다. 이진 접두사(KiB 등)와 단위 자체는 다루지 "
+        "않으며 데이터 크기는 units_data_size_convert 를 쓴다."
+    ),
     version="1.0.0",
 )
 def si_prefix_convert(
     value:       str,
     from_prefix: str,
     to_prefix:   str,
-) -> dict[str, Any]:
+) -> SiPrefixConvertResult:
     """Convert a numeric value between SI prefix scales.
 
     Formula: result = value × 10^(from_exponent − to_exponent)
@@ -100,7 +110,7 @@ def si_prefix_convert(
     trace.step("result",       str(result))
     trace.output(str(result))
 
-    return {
+    return cast(SiPrefixConvertResult, {
         "value": str(result),
         "trace": trace.to_dict(),
-    }
+    })

@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, TypedDict
 
 import numpy as np
 
@@ -22,6 +22,7 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _SIG = 12
 
@@ -35,16 +36,28 @@ def _parse_coefs(coefs: list[str]) -> list[Any]:
         raise InvalidInputError("coefficients 요소는 Decimal 문자열이어야 합니다.") from exc
 
 
+class PolynomialRoot(TypedDict):
+    real: str
+    imag: str
+
+
+class PolynomialRootsResult(TracedResult):
+    roots:  list[PolynomialRoot]
+    degree: int
+
+
 @REGISTRY.tool(
     namespace="math",
     name="polynomial_roots",
     description=(
-        "다항식의 수치 근을 반환한다. coefficients는 높은 차수 → 낮은 차수 순 Decimal 문자열 리스트. "
-        "numpy.roots 사용. 각 근은 {real, imag} Decimal 문자열 쌍."
+        "다항식의 모든 근(복소근 포함)을 numpy.roots 로 구한다. "
+        "coefficients 는 높은 차수부터 내림차순 Decimal 문자열 리스트(예 [1, 0, -4] 는 x² - 4)이며 1차 이상 256차 이하, 최고차 계수는 0 이 아니어야 한다. "
+        "각 근은 {real, imag} 12자리 문자열이고 정렬되어 있지 않다. "
+        "오름차순으로 넣으면 다른 다항식이 되며 중근이 많으면 정밀도가 떨어진다."
     ),
     version="1.0.0",
 )
-def polynomial_roots(coefficients: list[str]) -> dict[str, Any]:
+def polynomial_roots(coefficients: list[str]) -> PolynomialRootsResult:
     trace = CalcTrace(
         tool="math.polynomial_roots",
         formula="P(x) = Σ a_i x^(n-i) = 0, numpy.roots 기반 고유값 분해",
@@ -60,7 +73,7 @@ def polynomial_roots(coefficients: list[str]) -> dict[str, Any]:
     trace.input("coefficients", coefficients)
 
     roots = np.roots(coefs_f)
-    roots_list: list[dict[str, str]] = []
+    roots_list: list[PolynomialRoot] = []
     for r in roots:
         re = float(r.real)
         im = float(r.imag)
@@ -79,16 +92,23 @@ def polynomial_roots(coefficients: list[str]) -> dict[str, Any]:
     }
 
 
+class PolynomialHornerResult(TracedResult):
+    result: str
+    degree: int
+
+
 @REGISTRY.tool(
     namespace="math",
     name="polynomial_horner",
     description=(
-        "호너 방법으로 다항식 P(x) 값을 Decimal 정밀로 평가. "
-        "coefficients는 높은 차수 → 낮은 차수 순."
+        "호너 방법으로 다항식 P(x) 를 Decimal 로 평가한다. "
+        "coefficients 는 높은 차수부터 내림차순(예 [1, 0, -4] 는 x² - 4), x 는 Decimal 문자열이다. "
+        "float 를 거치지 않으며 degree 도 함께 반환한다. "
+        "계수를 오름차순으로 넣으면 다른 다항식이 평가된다."
     ),
     version="1.0.0",
 )
-def polynomial_horner(coefficients: list[str], x: str) -> dict[str, Any]:
+def polynomial_horner(coefficients: list[str], x: str) -> PolynomialHornerResult:
     trace = CalcTrace(
         tool="math.polynomial_horner",
         formula="P(x) = (...((a_0 x + a_1) x + a_2) x + ... + a_n)",

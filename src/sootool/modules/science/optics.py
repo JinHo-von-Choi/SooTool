@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import threading
 from decimal import Decimal
-from typing import Any
+from typing import Any, NotRequired
 
 import mpmath
 
@@ -20,9 +20,34 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _MPDPS = 40
 _MP_LOCK = threading.Lock()
+
+
+class SnellLawResult(TracedResult):
+    theta2: str
+    unit:   str
+
+
+class ThinLensResult(TracedResult):
+    magnification: str
+    focal_length:  NotRequired[str]
+    object_dist:   NotRequired[str]
+    image_dist:    NotRequired[str]
+
+
+class BraggResult(TracedResult):
+    wavelength: NotRequired[str]
+    spacing:    NotRequired[str]
+    angle:      NotRequired[str]
+    unit:       NotRequired[str]
+
+
+class IntensityResult(TracedResult):
+    intensity: str
+    unit:      str
 
 
 def _parse_decimal(value: str, name: str) -> Decimal:
@@ -51,8 +76,10 @@ def _from_radians(r: Any, unit: str) -> Decimal:
     namespace="science",
     name="snell_law",
     description=(
-        "스넬의 법칙: n1 sin θ1 = n2 sin θ2. theta2 = asin(n1/n2 * sin θ1). "
-        "전반사 발생 시 DomainConstraintError. unit='deg'|'rad' (기본 deg)."
+        "스넬의 법칙으로 굴절각을 계산한다. n1 sin(theta1) = n2 sin(theta2), theta2 = asin(n1/n2 * sin(theta1)). "
+        "n1, n2는 양수 굴절률, theta1은 입사각이며 모두 Decimal 문자열이다. unit='deg'(기본) 또는 'rad'이고 결과도 같은 단위다. "
+        "mpmath 40자리 계산 후 유효숫자 20자리로 돌려준다. 전반사가 일어나는 입사각이면 오류이며 "
+        "각도는 법선 기준이다(표면 기준 각을 넣으면 안 된다)."
     ),
     version="1.0.0",
 )
@@ -61,7 +88,7 @@ def snell_law(
     n2:       str,
     theta1:   str,
     unit:     str = "deg",
-) -> dict[str, Any]:
+) -> SnellLawResult:
     trace = CalcTrace(
         tool="science.snell_law",
         formula="n1 sin θ1 = n2 sin θ2",
@@ -101,8 +128,9 @@ def snell_law(
     namespace="science",
     name="thin_lens",
     description=(
-        "얇은 렌즈 방정식: 1/f = 1/p + 1/q. q 또는 f 중 하나를 None 으로 두면 나머지 두 값으로 역산. "
-        "모든 길이 단위 동일 (예: m, cm). 배율 m = -q / p."
+        "얇은 렌즈 방정식 1/f = 1/p + 1/q에서 빠진 값 하나(초점거리, 물체거리, 상거리)를 구하고 배율 m = -q/p도 돌려준다. "
+        "세 인자 중 정확히 2개를 Decimal 문자열로 주며 길이 단위는 통일한다. 반올림하지 않으며 0 거리나 "
+        "평행광선(무한대) 조합은 오류다. 실상은 양, 허상은 음의 거리 부호 규약을 따르므로 부호를 맞춰 넣어야 한다."
     ),
     version="1.0.0",
 )
@@ -110,7 +138,7 @@ def thin_lens(
     focal_length: str | None = None,
     object_dist:  str | None = None,
     image_dist:   str | None = None,
-) -> dict[str, Any]:
+) -> ThinLensResult:
     trace = CalcTrace(
         tool="science.thin_lens",
         formula="1/f = 1/p + 1/q, m = -q/p",
@@ -168,7 +196,7 @@ def thin_lens(
     trace.output({result_name: result, "magnification": str(m_mag)})
 
     return {
-        result_name:    result,
+        result_name:    result,  # type: ignore[misc]
         "magnification": str(m_mag),
         "trace":         trace.to_dict(),
     }
@@ -178,8 +206,10 @@ def thin_lens(
     namespace="science",
     name="bragg",
     description=(
-        "브래그 회절: nλ = 2d sinθ. 미지값 하나(wavelength|spacing|angle)을 None 으로 지정. "
-        "unit='deg'|'rad' (기본 deg)."
+        "브래그 회절 조건 n*lambda = 2 d sin(theta)에서 파장, 면간격, 회절각 중 하나를 구한다. "
+        "order는 양의 정수이고 wavelength, spacing, angle 중 정확히 하나를 생략하며 나머지는 Decimal 문자열이다. "
+        "파장과 면간격은 같은 길이 단위로 넣고, angle은 unit='deg'(기본) 또는 'rad'이며 브래그각 theta 기준이다(2theta 아님). "
+        "mpmath 40자리 계산 후 유효숫자 20자리로 돌려주며 sin theta가 1을 넘는 조합은 오류다."
     ),
     version="1.0.0",
 )
@@ -189,7 +219,7 @@ def bragg(
     spacing:     str | None = None,
     angle:       str | None = None,
     unit:        str = "deg",
-) -> dict[str, Any]:
+) -> BraggResult:
     trace = CalcTrace(
         tool="science.bragg",
         formula="n λ = 2 d sinθ",
@@ -255,14 +285,16 @@ def bragg(
     namespace="science",
     name="intensity",
     description=(
-        "빛의 강도: I = P / A. P 전력(W), A 면적(m²). 결과 W/m²."
+        "빛이나 복사의 세기(단위 면적당 전력)를 계산한다. I = P / A. power_w는 0 이상 와트, area_m2는 양수 제곱미터의 "
+        "Decimal 문자열이며 결과 단위는 W/m^2, 반올림하지 않는다. 입사각에 따른 유효 면적 보정이나 "
+        "파장별 분광 세기는 다루지 않는다. 면적을 cm² 단위로 넣으면 안 된다."
     ),
     version="1.0.0",
 )
 def intensity(
     power_w:  str,
     area_m2:  str,
-) -> dict[str, Any]:
+) -> IntensityResult:
     trace = CalcTrace(tool="science.intensity", formula="I = P / A")
     p = _parse_decimal(power_w, "power_w")
     a = _parse_decimal(area_m2, "area_m2")

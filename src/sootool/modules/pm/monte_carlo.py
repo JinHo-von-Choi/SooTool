@@ -19,8 +19,6 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 
 from sootool.core.audit import CalcTrace
@@ -29,10 +27,21 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _DEFAULT_N = 1000
 _DEFAULT_SEED = 0
 _SIG = 10
+
+
+class MonteCarloScheduleResult(TracedResult):
+    p10:   str
+    p50:   str
+    p90:   str
+    mean:  str
+    stdev: str
+    n:     int
+    seed:  int
 
 
 def _sample_pert_beta(
@@ -64,9 +73,10 @@ def _sample_pert_beta(
     namespace="pm",
     name="monte_carlo_schedule",
     description=(
-        "몬테카를로 일정 시뮬레이션. 각 task (optimistic, most_likely, pessimistic) 를 "
-        "Beta-PERT 분포로 n회 샘플링하여 프로젝트 완료 시간의 P10/P50/P90 산출. "
-        "결정론적: seed (기본 0)."
+        "작업별 낙관, 최빈, 비관 추정으로 프로젝트 총 소요 시간의 분포를 몬테카를로로 시뮬레이션해 "
+        "P10, P50, P90, 평균, 표본 표준편차를 돌려준다. tasks는 {id, optimistic, most_likely, pessimistic}(Decimal 문자열), "
+        "n은 100 이상 1,000,000 이하 정수(기본 1000), seed 기본 0이면 결과가 재현된다. float64 계산이며 유효숫자 10자리 문자열이다. "
+        "작업 기간을 단순 합산하므로 병렬 경로나 선후 관계는 반영하지 않는다."
     ),
     version="1.0.0",
 )
@@ -74,7 +84,7 @@ def monte_carlo_schedule(
     tasks:  list[dict[str, str]],
     n:      int = _DEFAULT_N,
     seed:   int = _DEFAULT_SEED,
-) -> dict[str, Any]:
+) -> MonteCarloScheduleResult:
     """Monte Carlo sum-of-durations simulation.
 
     Args:
@@ -148,7 +158,11 @@ def monte_carlo_schedule(
     trace.output(out)
 
     return {
-        **out,
+        "p10":   out["p10"],
+        "p50":   out["p50"],
+        "p90":   out["p90"],
+        "mean":  out["mean"],
+        "stdev": out["stdev"],
         "n":     n,
         "seed":  seed,
         "trace": trace.to_dict(),

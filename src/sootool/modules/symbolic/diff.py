@@ -18,15 +18,23 @@ from typing import Any
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import DomainConstraintError, InvalidExpressionError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.symbolic import _bridge
+
+
+class DiffResult(TracedResult):
+    derivative: str
+    numeric:    str | None
 
 
 @REGISTRY.tool(
     namespace="symbolic",
     name="diff",
     description=(
-        "n차 기호 미분 후 Decimal 평가. sympy.diff 로 derivative 를 구하고, variables "
-        "치환 시 수치 결과를 Decimal 문자열로 반환한다."
+        "sympy 로 n차 기호 도함수를 구하고, variables 로 값을 치환하면 그 지점의 수치를 Decimal 문자열(50자리)로 함께 반환한다. "
+        "var 는 미분 변수, order 는 1~20(기본 1). "
+        "variables 가 없거나 치환 후에도 기호가 남거나 numeric_eval=false 이면 numeric 은 null 이다. "
+        "연산은 5초로 제한되며 sympy extra 가 필요하다."
     ),
     version="1.0.0",
 )
@@ -36,7 +44,7 @@ def diff(
     order:        int                     = 1,
     variables:    dict[str, str] | None   = None,
     numeric_eval: bool                    = True,
-) -> dict[str, Any]:
+) -> DiffResult:
     if not isinstance(expression, str) or not expression.strip():
         raise InvalidExpressionError("expression must be a non-empty string")
     if not isinstance(order, int) or isinstance(order, bool) or order < 1:

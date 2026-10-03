@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -10,6 +9,7 @@ from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _MPMATH_DPS = 50
 
@@ -21,10 +21,19 @@ def _parse_decimal(value: str, name: str) -> Decimal:
         raise InvalidInputError(f"{name} 은(는) 유효한 숫자 문자열이어야 합니다: {value!r}") from exc
 
 
+class HaversineResult(TracedResult):
+    distance_km: str
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="haversine",
-    description="하버사인 공식으로 두 지리 좌표 간 대원 거리(km)를 계산합니다. mpmath 사용.",
+    description=(
+        "하버사인 공식으로 두 지점의 지구 표면 대원 거리(km)를 계산한다. "
+        "위도(-90~90)와 경도(-180~180)는 도 단위 Decimal 문자열이고 지구 반지름 기본값은 6371km 다. "
+        "mpmath 50자리 계산 후 유효숫자 30자리로 반환한다. "
+        "구면 근사이므로 실제 도로 거리나 타원체 거리와 다르며 라디안을 넣으면 안 된다."
+    ),
     version="1.0.0",
 )
 def haversine(
@@ -33,7 +42,7 @@ def haversine(
     lat2: str,
     lon2: str,
     earth_radius_km: str = "6371",
-) -> dict[str, Any]:
+) -> HaversineResult:
     """Compute the great-circle distance between two geographic points.
 
     Uses the Haversine formula with mpmath for high-precision trigonometry.

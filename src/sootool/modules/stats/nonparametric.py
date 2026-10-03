@@ -5,18 +5,36 @@ Date: 2026-04-23
 """
 from __future__ import annotations
 
-from typing import Any
-
 from sootool.core.audit import CalcTrace
 from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
 from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.stats.descriptive import _to_float_array
 
 stats = lazy_module("scipy.stats")
 
 _ALT_MAP = {"two": "two-sided", "less": "less", "greater": "greater"}
+
+
+class StatsMannWhitneyUResult(TracedResult):
+    u_stat:  str
+    p_value: str
+    n_a:     int
+    n_b:     int
+
+
+class StatsWilcoxonResult(TracedResult):
+    w_stat:  str
+    p_value: str
+    n:       int
+
+
+class StatsKruskalWallisResult(TracedResult):
+    h_stat:  str
+    p_value: str
+    df:      int
 
 
 def _fmt(x: float, digits: int = 10) -> str:
@@ -33,8 +51,9 @@ def _validate_alt(tail: str) -> str:
     namespace="stats",
     name="mann_whitney_u",
     description=(
-        "Mann-Whitney U 검정 (독립 두 표본, 순위합 비반복). "
-        "정규성 가정 불필요."
+        "독립 두 표본의 분포 위치 차이를 순위 기반 Mann-Whitney U 검정으로 판정해 u_stat, p_value, n_a, n_b를 돌려준다. "
+        "a, b는 Decimal 문자열 각 1개 이상, tail은 two(기본), less, greater이며 u_stat은 a 표본 기준이다. "
+        "정규성 가정이 필요 없고 u는 유효숫자 6자리, p값은 10자리 문자열이다. 같은 대상의 전후 측정에는 wilcoxon 을 쓴다."
     ),
     version="1.0.0",
 )
@@ -42,7 +61,7 @@ def stats_mann_whitney_u(
     a:    list[str],
     b:    list[str],
     tail: str = "two",
-) -> dict[str, Any]:
+) -> StatsMannWhitneyUResult:
     """Mann-Whitney U test.
 
     Returns:
@@ -81,7 +100,9 @@ def stats_mann_whitney_u(
     namespace="stats",
     name="wilcoxon",
     description=(
-        "Wilcoxon signed-rank test (대응 표본 또는 단일 표본 중앙값 검정)."
+        "Wilcoxon 부호순위 검정으로 대응표본의 차이 또는 단일 표본의 0 기준 위치 이동을 판정해 w_stat, p_value, n을 돌려준다. "
+        "b를 주면 a와 b는 같은 길이(1개 이상)의 짝지은 Decimal 문자열 목록이고, b를 생략하면 a 자체를 차이값으로 보고 0과 비교한다. "
+        "tail은 two(기본), less, greater. w는 유효숫자 6자리, p값은 10자리 문자열이다. 독립 두 집단에는 mann_whitney_u 를 쓴다."
     ),
     version="1.0.0",
 )
@@ -89,7 +110,7 @@ def stats_wilcoxon(
     a:    list[str],
     b:    list[str] | None = None,
     tail: str = "two",
-) -> dict[str, Any]:
+) -> StatsWilcoxonResult:
     """Wilcoxon signed-rank test.
 
     Args:
@@ -141,13 +162,15 @@ def stats_wilcoxon(
     namespace="stats",
     name="kruskal_wallis",
     description=(
-        "Kruskal-Wallis H 검정 (3개 이상 독립 표본 순위합 검정)."
+        "독립 여러 집단의 분포 위치 차이를 순위 기반 Kruskal-Wallis H 검정으로 판정해 h_stat, p_value, df(집단 수-1)를 돌려준다. "
+        "groups는 집단별 Decimal 문자열 목록이며 집단 2개 이상, 각 집단 1개 이상이다. "
+        "정규성 가정이 필요 없고 H는 유효숫자 6자리, p값은 10자리 문자열이다. 사후 쌍별 비교는 제공하지 않는다."
     ),
     version="1.0.0",
 )
 def stats_kruskal_wallis(
     groups: list[list[str]],
-) -> dict[str, Any]:
+) -> StatsKruskalWallisResult:
     """Kruskal-Wallis H test.
 
     Returns:

@@ -8,7 +8,7 @@ All Decimal.  Exponentials use mpmath for forward/futures cost-of-carry.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import NotRequired
 
 import mpmath
 
@@ -17,6 +17,24 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class FinanceFuturesPriceResult(TracedResult):
+    futures_price: str
+    carry_rate:    str
+
+
+class FinanceForwardPriceResult(TracedResult):
+    forward_price: str
+
+
+class FinanceOptionPayoffResult(TracedResult):
+    payoff:        str
+    terminal_spot: str
+    is_call:       bool
+    option_type:   str
+    activated:     NotRequired[bool]
 
 _DEFAULT_DPS = 40
 
@@ -36,8 +54,9 @@ def _exp_decimal(x: Decimal) -> Decimal:
     namespace="finance",
     name="futures_price",
     description=(
-        "선물가격 = 현물가격 × exp((r - q) × T). 연속복리 가정, "
-        "배당률 q 포함. 비배당(q=0) 상품은 무이자재정 기반."
+        "연속복리 보유비용 모형의 선물 이론가격을 계산한다. F = S x exp((r - q) x T). spot 은 양수, risk_free_rate 와 "
+        "dividend_yield(q, 기본 0)는 연속복리 연율, time_to_expiry 는 0 초과 연 단위, 모두 Decimal 문자열. "
+        "결과는 소수 8자리. 이산복리 이율을 그대로 넣으면 값이 어긋난다."
     ),
     version="1.0.0",
 )
@@ -46,7 +65,7 @@ def finance_futures_price(
     risk_free_rate:  str,
     time_to_expiry:  str,
     dividend_yield:  str = "0",
-) -> dict[str, Any]:
+) -> FinanceFuturesPriceResult:
     """Cost-of-carry futures price (continuous compounding).
 
     F = S * exp((r - q) * T)
@@ -97,8 +116,9 @@ def finance_futures_price(
     namespace="finance",
     name="forward_price",
     description=(
-        "무차익 선도가격 (동의어: 선물가격 이론). 현재는 연속복리 기준. "
-        "이산복리 필요 시 periods_per_year로 변환."
+        "무차익 선도가격을 계산한다. F = S x exp((r - y) x T), 연속복리 기준이며 income_yield(배당률이나 쿠폰수익률, "
+        "기본 0)를 차감한다. spot 은 양수, time_to_expiry 는 0 초과 연 단위, 모두 Decimal 문자열이고 결과는 소수 8자리. "
+        "이산복리 이율은 연속복리로 환산해서 넣어야 한다."
     ),
     version="1.0.0",
 )
@@ -107,7 +127,7 @@ def finance_forward_price(
     risk_free_rate:  str,
     time_to_expiry:  str,
     income_yield:    str = "0",
-) -> dict[str, Any]:
+) -> FinanceForwardPriceResult:
     """Forward price via cost-of-carry (continuous compounding).
 
     F = S * exp((r - y) * T) where y is income yield (dividends/coupons).
@@ -145,8 +165,9 @@ def finance_forward_price(
     namespace="finance",
     name="option_payoff",
     description=(
-        "옵션 만기 payoff 계산기. "
-        "지원 유형: vanilla(call/put), digital(cash-or-nothing), asian(arithmetic mean), barrier(up/down knock-in/out)."
+        "옵션의 만기 payoff 를 계산한다. option_type 은 vanilla, digital(현금 지급), asian(산술평균), "
+        "barrier(up_in, up_out, down_in, down_out). spot_path 는 기초자산 가격 문자열 목록이며 vanilla 와 digital 은 "
+        "마지막 값만 쓴다. barrier 유형은 barrier 와 barrier_type 이 필수이고 결과는 소수 8자리. 만기 가치일 뿐 프리미엄이 아니다."
     ),
     version="1.0.0",
 )
@@ -158,7 +179,7 @@ def finance_option_payoff(
     barrier:       str | None = None,
     barrier_type:  str | None = None,
     digital_cash:  str  = "1",
-) -> dict[str, Any]:
+) -> FinanceOptionPayoffResult:
     """Compute terminal payoff.
 
     Args:
@@ -240,7 +261,7 @@ def finance_option_payoff(
     trace.input("barrier_type", barrier_type)
     trace.output(str(_q8(payoff)))
 
-    result: dict[str, Any] = {
+    result: FinanceOptionPayoffResult = {
         "payoff":        str(_q8(payoff)),
         "terminal_spot": str(term),
         "is_call":       is_call,

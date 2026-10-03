@@ -27,7 +27,6 @@ Put Greeks differ by sign on delta, theta, rho per standard derivations.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import mpmath as mp
 
@@ -35,6 +34,17 @@ from sootool.core.audit import CalcTrace
 from sootool.core.cast import mpmath_to_decimal
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class BlackScholesResult(TracedResult):
+    price: str
+    delta: str
+    gamma: str
+    vega:  str
+    theta: str
+    rho:   str
+
 
 # Use 50 decimal digits of precision for mpmath computations
 mp.mp.dps = 50
@@ -58,8 +68,9 @@ def _to_mpf(s: str) -> mp.mpf:
     namespace="finance",
     name="black_scholes",
     description=(
-        "Black-Scholes 유럽형 옵션 가격 및 Greeks 계산. "
-        "mpmath 고정밀 정규분포 CDF 사용."
+        "Black-Scholes 유럽형 옵션의 가격과 델타, 감마, 베가, 세타, 로를 계산한다. option_type 은 call 또는 put, "
+        "rate, sigma, dividend_yield 는 연율 소수, time_to_expiry 는 연 단위, 모두 Decimal 문자열이며 결과는 유효숫자 12자리. "
+        "베가는 변동성 1.0 당 변화량, 세타는 연 단위이고 미국형 옵션이나 조기행사에는 맞지 않는다."
     ),
     version="1.0.0",
 )
@@ -71,7 +82,7 @@ def black_scholes(
     sigma: str,
     option_type: str,
     dividend_yield: str = "0",
-) -> dict[str, Any]:
+) -> BlackScholesResult:
     """Compute Black-Scholes European option price and Greeks.
 
     Args:
@@ -188,4 +199,12 @@ def black_scholes(
     trace.step("rho",   result["rho"])
     trace.output(result)
 
-    return {**result, "trace": trace.to_dict()}
+    return {
+        "price": result["price"],
+        "delta": result["delta"],
+        "gamma": result["gamma"],
+        "vega": result["vega"],
+        "theta": result["theta"],
+        "rho": result["rho"],
+        "trace": trace.to_dict(),
+    }

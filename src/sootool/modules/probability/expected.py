@@ -10,14 +10,20 @@ E[X] = Σ (value_i * probability_i)
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _PROB_SUM_TOLERANCE = D("1E-9")
+
+
+class ExpectedValueResult(TracedResult):
+    """기댓값 E[X]. Decimal 문자열."""
+
+    result: str
 
 
 def _parse_decimal(value: str, name: str) -> Decimal:
@@ -30,13 +36,13 @@ def _parse_decimal(value: str, name: str) -> Decimal:
 @REGISTRY.tool(
     namespace="probability",
     name="expected_value",
-    description="기댓값: E[X] = Σ(value_i * prob_i). 확률 합계 = 1 검증.",
+    description="이산 확률변수의 기댓값 E[X] = Σ value_i * prob_i 를 구한다. values 와 probabilities 는 같은 길이의 십진 문자열 리스트이며 각 확률은 [0, 1], 합은 1 에서 1e-9 이내여야 한다. Decimal 50자리로 계산하며 연속분포에는 쓸 수 없다.",
     version="1.0.0",
 )
 def expected_value(
     values: list[str],
     probabilities: list[str],
-) -> dict[str, Any]:
+) -> ExpectedValueResult:
     """Compute the expected value of a discrete random variable.
 
     Args:

@@ -10,12 +10,18 @@ posterior = prior * likelihood / marginal (P(A|B) = P(A)*P(B|A) / P(B))
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class BayesResult(TracedResult):
+    """사후확률 P(A|B). Decimal 문자열."""
+
+    posterior: str
 
 
 def _parse_probability(value: str, name: str) -> Decimal:
@@ -31,14 +37,14 @@ def _parse_probability(value: str, name: str) -> Decimal:
 @REGISTRY.tool(
     namespace="probability",
     name="bayes",
-    description="베이즈 정리: P(A|B) = P(A)*P(B|A)/P(B). 모든 입력 [0,1] 검증.",
+    description="베이즈 정리로 사후확률 P(A|B) = P(A)P(B|A)/P(B)를 구한다. prior, likelihood, marginal 은 [0, 1] 구간 십진 문자열이고 marginal 은 0 이 될 수 없으며 Decimal 50자리 정밀도로 계산한다. 입력 간 정합성(P(B) ≥ P(A)P(B|A))은 검사하지 않으므로 marginal 은 전체 확률 법칙으로 먼저 구해야 한다.",
     version="1.0.0",
 )
 def bayes(
     prior: str,
     likelihood: str,
     marginal: str,
-) -> dict[str, Any]:
+) -> BayesResult:
     """Apply Bayes' theorem to compute the posterior probability.
 
     posterior = prior * likelihood / marginal

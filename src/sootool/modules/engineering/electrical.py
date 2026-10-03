@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _ZERO = Decimal("0")
 
@@ -33,17 +33,45 @@ def _sqrt_decimal(x: Decimal) -> Decimal:
     return guess
 
 
+class ElectricalOhmResult(TracedResult):
+    """옴의 법칙 결과. 값은 Decimal 문자열."""
+
+    voltage:    str
+    current:    str
+    resistance: str
+
+
+class ElectricalPowerResult(TracedResult):
+    """전력 방정식 결과. 값은 Decimal 문자열."""
+
+    power:      str
+    voltage:    str
+    current:    str
+    resistance: str
+
+
+class ResistorNetworkResult(TracedResult):
+    """저항 직렬 또는 병렬 합성 저항. total 은 Decimal 문자열."""
+
+    total: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="electrical_ohm",
-    description="Ohm's law: V=IR. Provide exactly 2 of {voltage, current, resistance}.",
+    description=(
+        "옴의 법칙 V=IR에서 빠진 한 값을 구한다. voltage(V), current(A), resistance(Ω) 중 "
+        "정확히 2개를 Decimal 문자열로 넣으면 나머지를 계산해 세 값을 모두 돌려준다. "
+        "current와 resistance는 0 초과, voltage는 입력일 때 0 이상이어야 한다. "
+        "오용 주의: 3개 이상이나 1개만 넣으면 오류이고, 교류 임피던스에는 쓸 수 없다(ac_impedance 사용)."
+    ),
     version="1.0.0",
 )
 def electrical_ohm(
     voltage:    str | None = None,
     current:    str | None = None,
     resistance: str | None = None,
-) -> dict[str, Any]:
+) -> ElectricalOhmResult:
     """Compute the missing Ohm's law variable (V = I × R).
 
     Exactly two of the three parameters must be provided. The third is
@@ -118,7 +146,12 @@ def electrical_ohm(
 @REGISTRY.tool(
     namespace="engineering",
     name="electrical_power",
-    description="Power equations: P=VI=I²R=V²/R. Provide exactly 2 of {power, voltage, current, resistance}.",
+    description=(
+        "직류 전력 방정식 P=VI=I²R=V²/R에서 나머지 값을 구한다. power(W), voltage(V), current(A), "
+        "resistance(Ω) 중 정확히 2개를 Decimal 문자열로 넣으면 네 값을 모두 돌려준다. "
+        "(P,R) 조합은 제곱근을 쓰며 양의 근만 반환한다. "
+        "오용 주의: 교류의 유효전력은 역률을 곱해야 하므로 three_phase_power 등을 쓴다."
+    ),
     version="1.0.0",
 )
 def electrical_power(
@@ -126,7 +159,7 @@ def electrical_power(
     voltage:    str | None = None,
     current:    str | None = None,
     resistance: str | None = None,
-) -> dict[str, Any]:
+) -> ElectricalPowerResult:
     """Compute missing power/electrical variables from two given values.
 
     Supported equation sets (exactly 2 values required):
@@ -232,10 +265,14 @@ def electrical_power(
 @REGISTRY.tool(
     namespace="engineering",
     name="resistor_series",
-    description="Total resistance of resistors in series: R_total = ΣRᵢ.",
+    description=(
+        "직렬 연결 저항의 합성 저항 R_total=ΣRᵢ를 구한다. resistors 는 0 초과 저항값(Ω)의 "
+        "Decimal 문자열 목록이며 최소 1개. 계산은 유효숫자 50자리 Decimal 이다. "
+        "오용 주의: 병렬 연결에는 resistor_parallel 을 쓴다."
+    ),
     version="1.0.0",
 )
-def resistor_series(resistors: list[str]) -> dict[str, Any]:
+def resistor_series(resistors: list[str]) -> ResistorNetworkResult:
     """Compute total resistance for resistors connected in series.
 
     Formula: R_total = R₁ + R₂ + … + Rₙ
@@ -274,10 +311,14 @@ def resistor_series(resistors: list[str]) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="engineering",
     name="resistor_parallel",
-    description="Total resistance of resistors in parallel: 1/R_total = Σ(1/Rᵢ).",
+    description=(
+        "병렬 연결 저항의 합성 저항 1/R_total=Σ(1/Rᵢ)를 구한다. resistors 는 0 초과 저항값(Ω)의 "
+        "Decimal 문자열 목록이며 최소 1개. 계산은 유효숫자 50자리 Decimal 이다. "
+        "오용 주의: 직렬 연결에는 resistor_series 를 쓴다."
+    ),
     version="1.0.0",
 )
-def resistor_parallel(resistors: list[str]) -> dict[str, Any]:
+def resistor_parallel(resistors: list[str]) -> ResistorNetworkResult:
     """Compute total resistance for resistors connected in parallel.
 
     Formula: 1/R_total = 1/R₁ + 1/R₂ + … + 1/Rₙ

@@ -5,8 +5,6 @@ Date: 2026-04-23
 """
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 
 from sootool.core.audit import CalcTrace
@@ -14,9 +12,26 @@ from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
 from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.stats.descriptive import _to_float_array
 
 stats = lazy_module("scipy.stats")
+
+
+class StatsCohensDResult(TracedResult):
+    d:        str
+    hedges_g: str
+    n_a:      int
+    n_b:      int
+
+
+class StatsEtaSquaredResult(TracedResult):
+    eta_squared:   str
+    omega_squared: str
+    f_stat:        str
+    p_value:       str
+    df_between:    int
+    df_within:     int
 
 
 def _fmt(x: float, digits: int = 10) -> str:
@@ -27,15 +42,16 @@ def _fmt(x: float, digits: int = 10) -> str:
     namespace="stats",
     name="cohens_d",
     description=(
-        "Cohen's d (두 독립 표본 효과크기). "
-        "풀드 표준편차 기반. Hedges's g 보정계수도 함께 반환."
+        "두 독립 표본의 효과크기 Cohen's d와 소표본 보정값 Hedges's g를 계산한다. "
+        "d = (a 평균 - b 평균) / 풀드 표준편차이며 a 평균이 크면 양수다. a, b는 Decimal 문자열 각 2개 이상이고 "
+        "풀드 표준편차가 0이면 오류다. 결과는 유효숫자 6자리 문자열이다. 대응표본(전후 비교)에는 쓰지 않는다."
     ),
     version="1.0.0",
 )
 def stats_cohens_d(
     a: list[str],
     b: list[str],
-) -> dict[str, Any]:
+) -> StatsCohensDResult:
     """Cohen's d + Hedges's g.
 
     d = (mean_a - mean_b) / s_pooled
@@ -87,14 +103,16 @@ def stats_cohens_d(
     namespace="stats",
     name="eta_squared",
     description=(
-        "ANOVA 효과크기: eta^2 (편향됨), omega^2 (편향보정). "
-        "집단별 표본 입력."
+        "일원분산분석의 효과크기 eta^2(편향 있음)와 omega^2(편향 보정)를 계산하고 F, p값, 자유도도 함께 돌려준다. "
+        "groups는 집단별 Decimal 문자열 목록이며 집단 2개 이상, 각 집단 2개 이상이다. "
+        "eta^2 = SS_between / SS_total, 효과크기와 F는 유효숫자 6자리, p값은 10자리 문자열이다. "
+        "표본이 작으면 eta^2가 과대 추정되므로 omega^2를 함께 본다."
     ),
     version="1.0.0",
 )
 def stats_eta_squared(
     groups: list[list[str]],
-) -> dict[str, Any]:
+) -> StatsEtaSquaredResult:
     """Compute eta^2 and omega^2 for one-way ANOVA.
 
     eta^2   = SS_between / SS_total

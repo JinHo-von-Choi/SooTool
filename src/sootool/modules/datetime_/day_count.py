@@ -4,14 +4,19 @@ from __future__ import annotations
 import calendar
 from datetime import date
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, div
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _CONVENTIONS = frozenset(["30/360", "ACT/365", "ACT/ACT", "ACT/360"])
+
+
+class DayCountResult(TracedResult):
+    days:          int
+    year_fraction: str
 
 
 def _parse_date(s: str) -> date:
@@ -71,14 +76,19 @@ def _act_act_year_fraction(start: date, end: date) -> Decimal:
 @REGISTRY.tool(
     namespace="datetime",
     name="day_count",
-    description="이자 일수 계산. 컨벤션: 30/360 | ACT/365 | ACT/ACT | ACT/360",
+    description=(
+        "이자 계산용 일수 days(정수)와 연 환산 비율 year_fraction(Decimal 문자열)을 구한다. "
+        "convention 은 30/360(말일 31일 보정만 적용, 2월 말일 규칙 없음) | ACT/365 | ACT/ACT(연 경계별 "
+        "윤년 분모) | ACT/360 이며 날짜는 YYYY-MM-DD, end 는 start 이후여야 한다. 비율은 반올림 없이 "
+        "유효 50자리까지 나온다."
+    ),
     version="1.0.0",
 )
 def day_count(
     start: str,
     end: str,
     convention: str,
-) -> dict[str, Any]:
+) -> DayCountResult:
     """Calculate day count and year fraction for interest calculations.
 
     Args:

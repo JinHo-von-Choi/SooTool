@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import threading
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -26,11 +25,27 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _R = D("8.314462618")    # J/(mol·K)
 _F = D("96485.33212")    # C/mol
 _MPDPS = 40
 _MP_LOCK = threading.Lock()
+
+
+class NernstResult(TracedResult):
+    e:           str
+    unit:        str
+    coefficient: str
+
+
+class FaradayElectrolysisResult(TracedResult):
+    mass_g: str
+
+
+class BatteryCapacityResult(TracedResult):
+    result: str
+    unit:   str
 
 
 def _parse_decimal(value: str, name: str) -> Decimal:
@@ -44,8 +59,10 @@ def _parse_decimal(value: str, name: str) -> Decimal:
     namespace="science",
     name="nernst",
     description=(
-        "Nernst 방정식: E = E0 - (RT / nF) * ln(Q). "
-        "E0 표준 전극전위(V), n 전자수, Q 반응지수, T 온도(K, 기본 298.15)."
+        "Nernst 방정식으로 비표준 조건의 전극 전위를 V 단위로 계산한다. E = E0 - (RT / nF) * ln(Q). "
+        "e0(V)와 reaction_q(양수)는 Decimal 문자열, n은 양의 정수 전자수, temperature는 켈빈(기본 298.15). "
+        "R=8.314462618, F=96485.33212를 쓰고 결과는 소수 20자리로 맞춘다. "
+        "섭씨 온도를 그대로 넣거나 Q 대신 ln(Q)를 넣으면 안 된다."
     ),
     version="1.0.0",
 )
@@ -54,7 +71,7 @@ def nernst(
     n:            int,
     reaction_q:   str,
     temperature:  str = "298.15",
-) -> dict[str, Any]:
+) -> NernstResult:
     """Compute electrode potential via the Nernst equation."""
     trace = CalcTrace(
         tool="science.nernst",
@@ -104,8 +121,9 @@ def nernst(
     namespace="science",
     name="faraday_electrolysis",
     description=(
-        "패러데이 전기분해 법칙: m = (I * t * M) / (n * F). "
-        "I 전류(A), t 시간(s), M 몰질량(g/mol), n 전자수. 결과 m은 g."
+        "패러데이 법칙으로 전기분해 시 석출되는 질량(g)을 계산한다. m = (I * t * M) / (n * F). "
+        "current_a는 암페어, time_s는 초, molar_mass_g는 g/mol(모두 양수 Decimal 문자열), n_electrons는 양의 정수. "
+        "F=96485.33212 C/mol이며 반올림하지 않는다. 시간을 분이나 시간 단위로 넣으면 안 되고 전류 효율은 100%로 가정한다."
     ),
     version="1.0.0",
 )
@@ -114,7 +132,7 @@ def faraday_electrolysis(
     time_s:           str,
     molar_mass_g:     str,
     n_electrons:      int,
-) -> dict[str, Any]:
+) -> FaradayElectrolysisResult:
     """Compute deposited mass via Faraday's laws of electrolysis."""
     trace = CalcTrace(
         tool="science.faraday_electrolysis",
@@ -146,8 +164,9 @@ def faraday_electrolysis(
     namespace="science",
     name="battery_capacity",
     description=(
-        "배터리 용량 변환. Ah↔Wh: Wh = Ah * V. "
-        "mode='ah_to_wh' 또는 'wh_to_ah'. voltage는 V 단위."
+        "배터리 용량을 Ah와 Wh 사이에서 변환한다. Wh = Ah * V, Ah = Wh / V. "
+        "mode='ah_to_wh'(기본) 또는 'wh_to_ah', value는 0 이상, voltage는 양수(V)이며 Decimal 문자열이다. "
+        "나눗셈은 반올림하지 않는다. 직렬이나 병렬 구성 용량은 계산하지 않으므로 팩 전체 전압과 용량을 쌍으로 넣어야 한다."
     ),
     version="1.0.0",
 )
@@ -155,7 +174,7 @@ def battery_capacity(
     value:    str,
     voltage:  str,
     mode:     str = "ah_to_wh",
-) -> dict[str, Any]:
+) -> BatteryCapacityResult:
     """Convert battery capacity between Ah and Wh."""
     trace = CalcTrace(
         tool="science.battery_capacity",

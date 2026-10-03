@@ -15,12 +15,22 @@ VAC = BAC - EAC  (Variance at Completion)
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class EvmResult(TracedResult):
+    spi:  str
+    cpi:  str
+    sv:   str
+    cv:   str
+    eac:  str
+    etc_: str
+    vac:  str
 
 
 def _parse_decimal(value: str, name: str) -> Decimal:
@@ -34,8 +44,10 @@ def _parse_decimal(value: str, name: str) -> Decimal:
     namespace="pm",
     name="evm",
     description=(
-        "획득 가치 분석(EVM): SPI, CPI, SV, CV, EAC, ETC, VAC 계산. "
-        "전 구간 Decimal 정밀 연산."
+        "획득가치관리(EVM) 지표를 계산한다. SPI=EV/PV, CPI=EV/AC, SV=EV-PV, CV=EV-AC, "
+        "EAC=BAC/CPI, ETC=EAC-AC, VAC=BAC-EAC. pv, ev, ac, bac는 같은 통화 단위의 Decimal 문자열이며 "
+        "반올림 없이 Decimal 나눗셈 정밀도로 돌려준다. pv와 ac가 0이면 오류이고 bac는 양수여야 한다. "
+        "EAC는 현재 비용 효율이 계속된다는 가정의 추정이며 etc_ 키는 예약어 회피용 이름이다."
     ),
     version="1.0.0",
 )
@@ -44,7 +56,7 @@ def evm(
     ev: str,
     ac: str,
     bac: str,
-) -> dict[str, Any]:
+) -> EvmResult:
     """Compute Earned Value Management metrics.
 
     Args:
@@ -101,7 +113,7 @@ def evm(
     trace.step("ETC = EAC-AC",   str(etc_))
     trace.step("VAC = BAC-EAC",  str(vac))
 
-    result = {
+    result: EvmResult = {
         "spi":   str(spi),
         "cpi":   str(cpi),
         "sv":    str(sv),

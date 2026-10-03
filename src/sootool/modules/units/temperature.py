@@ -2,15 +2,20 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, mul, sub
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 # Supported temperature scales
 _SCALES = frozenset({"C", "F", "K", "R"})
+
+
+class TemperatureResult(TracedResult):
+    value: str
+    scale: str
 
 # Absolute zero constraints (values below these are physically impossible)
 _ABS_ZERO: dict[str, Decimal] = {
@@ -56,14 +61,18 @@ def _from_celsius(celsius: Decimal, scale: str) -> Decimal:
 @REGISTRY.tool(
     namespace="units",
     name="temperature",
-    description="Temperature conversion between Celsius, Fahrenheit, Kelvin, Rankine.",
+    description=(
+        "섭씨(C), 화씨(F), 켈빈(K), 랭킨(R) 사이에서 온도를 변환한다. value 는 Decimal 문자열, "
+        "from_scale 과 to_scale 은 대소문자 구분 없는 한 글자이며 결과는 value 와 대문자 scale 이다. "
+        "절대영도 미만 입력은 오류이다. 온도 차이(Δ)가 아닌 절대 온도 값 변환용이고, 5/9 계수는 유효 50자리로 근사한다."
+    ),
     version="1.0.0",
 )
 def temperature(
     value: str,
     from_scale: str,
     to_scale: str,
-) -> dict[str, Any]:
+) -> TemperatureResult:
     """Convert a temperature value between C, F, K, and R scales.
 
     Uses direct closed-form formulas (no pint) for maximum clarity:

@@ -13,7 +13,7 @@ ADR-001 Decimal 의무, ADR-003 감사 로그, ADR-007 stateless.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import cast
 
 import mpmath
 
@@ -22,6 +22,7 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D, add, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _ZERO    = Decimal("0")
 _ONE     = Decimal("1")
@@ -44,6 +45,10 @@ def _pow4(x: Decimal) -> Decimal:
     return mul(mul(x, x), mul(x, x))
 
 
+class HeatRateResult(TracedResult):
+    heat_rate_w: str
+
+
 # ---------------------------------------------------------------------------
 # Fourier conduction
 # ---------------------------------------------------------------------------
@@ -53,8 +58,10 @@ def _pow4(x: Decimal) -> Decimal:
     namespace="engineering",
     name="fourier_heat_conduction",
     description=(
-        "Fourier 열전도 Q = k A (T_hot − T_cold) / L. "
-        "부호는 hot→cold 방향 양의 값을 의미."
+        "1차원 정상상태 평판 열전도 Q = k·A·(T_hot − T_cold)/L (W)를 계산한다. "
+        "thermal_conductivity W/(m·K), area m², thickness m, 온도는 K 또는 °C(차이만 사용). "
+        "temperature_hot 이 temperature_cold 보다 낮으면 오류이며 역방향은 인자를 바꿔 호출한다. "
+        "다층벽은 층별 L/(kA)를 구해 thermal_resistance 로 합성한다. 반올림 없이 50자리 유효숫자."
     ),
     version="1.0.0",
 )
@@ -64,7 +71,7 @@ def fourier_heat_conduction(
     temperature_hot:      str,
     temperature_cold:     str,
     thickness:            str,
-) -> dict[str, Any]:
+) -> HeatRateResult:
     """Compute 1-D steady conductive heat rate through a slab.
 
     Q = k · A · ΔT / L  (W)
@@ -102,7 +109,7 @@ def fourier_heat_conduction(
     trace.step("heat_rate", str(heat_rate))
     trace.output(str(heat_rate))
 
-    return {"heat_rate_w": str(heat_rate), "trace": trace.to_dict()}
+    return cast(HeatRateResult, {"heat_rate_w": str(heat_rate), "trace": trace.to_dict()})
 
 
 # ---------------------------------------------------------------------------
@@ -110,15 +117,22 @@ def fourier_heat_conduction(
 # ---------------------------------------------------------------------------
 
 
+class ThermalResistanceResult(TracedResult):
+    total: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="thermal_resistance",
     description=(
-        "열저항 합성: series R_total = ΣRᵢ, parallel 1/R_total = Σ(1/Rᵢ)."
+        "열저항 K/W 를 합성한다. topology 'series' 는 R_total = ΣRᵢ, 'parallel' 은 "
+        "1/R_total = Σ(1/Rᵢ). resistances 는 열저항의 숫자 문자열 목록(1개 이상, 모두 0 초과, "
+        "같은 단위)이다. 0 저항(완전 전도)은 입력할 수 없고 직렬과 병렬이 섞인 회로는 단계별로 "
+        "나눠 호출해야 한다. 반올림 없이 50자리 유효숫자."
     ),
     version="1.0.0",
 )
-def thermal_resistance(resistances: list[str], topology: str) -> dict[str, Any]:
+def thermal_resistance(resistances: list[str], topology: str) -> ThermalResistanceResult:
     """Compute equivalent thermal resistance (K/W)."""
     trace = CalcTrace(
         tool="engineering.thermal_resistance",
@@ -146,7 +160,7 @@ def thermal_resistance(resistances: list[str], topology: str) -> dict[str, Any]:
     trace.step("total", str(total))
     trace.output(str(total))
 
-    return {"total": str(total), "trace": trace.to_dict()}
+    return cast(ThermalResistanceResult, {"total": str(total), "trace": trace.to_dict()})
 
 
 # ---------------------------------------------------------------------------
@@ -158,8 +172,10 @@ def thermal_resistance(resistances: list[str], topology: str) -> dict[str, Any]:
     namespace="engineering",
     name="stefan_boltzmann",
     description=(
-        "복사 열전달 Q = ε σ A (T_s⁴ − T_surr⁴). "
-        "온도는 절대온도(K), 방사율은 [0, 1]."
+        "회색체 표면과 주위 사이의 순복사 열전달 Q = ε·σ·A·(T_s⁴ − T_surr⁴) (W)를 계산한다. "
+        "σ = 5.670374419e-8 W/(m²·K⁴), emissivity 는 [0, 1], area m². 온도는 절대온도 K(0 초과)이므로 "
+        "섭씨를 그대로 넣으면 틀린다. 작은 표면이 큰 주위에 둘러싸인 경우의 식이며 표면이 더 "
+        "차가우면 음수. 반올림 없이 50자리 유효숫자."
     ),
     version="1.0.0",
 )
@@ -168,7 +184,7 @@ def stefan_boltzmann(
     area:                str,
     temperature_surface: str,
     temperature_surround: str,
-) -> dict[str, Any]:
+) -> HeatRateResult:
     """Compute net radiative heat transfer rate between a gray surface and surroundings."""
     trace = CalcTrace(
         tool="engineering.stefan_boltzmann",
@@ -198,7 +214,7 @@ def stefan_boltzmann(
     trace.step("heat_rate", str(heat_rate))
     trace.output(str(heat_rate))
 
-    return {"heat_rate_w": str(heat_rate), "trace": trace.to_dict()}
+    return cast(HeatRateResult, {"heat_rate_w": str(heat_rate), "trace": trace.to_dict()})
 
 
 # ---------------------------------------------------------------------------
@@ -206,19 +222,25 @@ def stefan_boltzmann(
 # ---------------------------------------------------------------------------
 
 
+class LmtdResult(TracedResult):
+    lmtd: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="lmtd",
     description=(
-        "열교환기 대수평균온도차 LMTD = (ΔT₁ − ΔT₂) / ln(ΔT₁/ΔT₂). "
-        "ΔT₁ == ΔT₂인 경우 LMTD = ΔT₁ (해석적 극한)."
+        "열교환기 대수평균온도차 LMTD = (ΔT₁ − ΔT₂)/ln(ΔT₁/ΔT₂)를 계산한다. 양 끝단의 온도차 "
+        "두 값(K 또는 °C 차, 모두 0 초과)을 받고 같으면 극한값 ΔT₁ 을 반환한다. 병류와 향류에 맞게 "
+        "각 끝단의 온도차를 직접 정해 넣어야 하며 다관식 열교환기의 보정계수 F 는 포함하지 않는다. "
+        "ln 은 30자리 유효숫자."
     ),
     version="1.0.0",
 )
 def lmtd(
     delta_t_hot_inlet:  str,
     delta_t_cold_outlet: str,
-) -> dict[str, Any]:
+) -> LmtdResult:
     """Compute log-mean temperature difference.
 
     Args:
@@ -253,7 +275,7 @@ def lmtd(
     trace.step("lmtd", str(result))
     trace.output(str(result))
 
-    return {"lmtd": str(result), "trace": trace.to_dict()}
+    return cast(LmtdResult, {"lmtd": str(result), "trace": trace.to_dict()})
 
 
 # ---------------------------------------------------------------------------
@@ -265,8 +287,10 @@ def lmtd(
     namespace="engineering",
     name="convective_heat_transfer",
     description=(
-        "대류 열전달 Q = h A (T_s − T_∞). "
-        "부호는 표면이 주위보다 뜨거울 때 양수."
+        "뉴턴 냉각 법칙에 따른 대류 열전달 Q = h·A·(T_s − T_∞) (W)를 계산한다. "
+        "heat_transfer_coefficient W/(m²·K), area m², 온도는 K 또는 °C(차이만 사용). 표면이 유체보다 "
+        "뜨거우면 양수, 차가우면 음수이다. h 는 입력값이며 유동 조건에서 구해 주지 않는다. "
+        "반올림 없이 50자리 유효숫자."
     ),
     version="1.0.0",
 )
@@ -275,7 +299,7 @@ def convective_heat_transfer(
     area:                      str,
     temperature_surface:       str,
     temperature_fluid:         str,
-) -> dict[str, Any]:
+) -> HeatRateResult:
     """Compute convective heat rate Q = h·A·ΔT (Newton's law of cooling)."""
     trace = CalcTrace(
         tool="engineering.convective_heat_transfer",
@@ -303,4 +327,4 @@ def convective_heat_transfer(
     trace.step("heat_rate", str(heat_rate))
     trace.output(str(heat_rate))
 
-    return {"heat_rate_w": str(heat_rate), "trace": trace.to_dict()}
+    return cast(HeatRateResult, {"heat_rate_w": str(heat_rate), "trace": trace.to_dict()})

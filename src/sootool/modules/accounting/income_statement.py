@@ -6,20 +6,32 @@ Date: 2026-04-23
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class AccountingIncomeStatementResult(TracedResult):
+    gross_profit:     str
+    gross_margin:     str
+    operating_income: str
+    operating_margin: str
+    pretax_income:    str
+    pretax_margin:    str
+    net_income:       str
+    net_margin:       str
 
 
 @REGISTRY.tool(
     namespace="accounting",
     name="income_statement",
     description=(
-        "다단계 손익계산서: 매출 → 매출총이익 → 영업이익 → 세전이익 → 당기순이익. "
-        "각 단계의 이익·이익률을 함께 반환."
+        "다단계 손익계산서: 매출에서 매출총이익, 영업이익, 세전이익, 당기순이익까지 단계별 이익과 이익률을 계산한다. "
+        "금액은 Decimal 문자열이며 매출과 매출원가는 0 이상이어야 한다. 이익은 반올림하지 않고 이익률은 소수 6자리 "
+        "(0.25 = 25%)로 반올림하며 매출이 0 이면 0 이다. 비용 항목은 양수로 입력한다."
     ),
     version="1.0.0",
 )
@@ -31,7 +43,7 @@ def accounting_income_statement(
     other_expenses:        str = "0",
     interest_expense:      str = "0",
     tax_expense:           str = "0",
-) -> dict[str, Any]:
+) -> AccountingIncomeStatementResult:
     """Build a multi-step income statement from raw line items.
 
     Flow:
@@ -97,4 +109,14 @@ def accounting_income_statement(
         "net_margin":       margin(net_income),
     }
     trace.output(out)
-    return {**out, "trace": trace.to_dict()}
+    return {
+        "gross_profit": out["gross_profit"],
+        "gross_margin": out["gross_margin"],
+        "operating_income": out["operating_income"],
+        "operating_margin": out["operating_margin"],
+        "pretax_income": out["pretax_income"],
+        "pretax_margin": out["pretax_margin"],
+        "net_income": out["net_income"],
+        "net_margin": out["net_margin"],
+        "trace": trace.to_dict(),
+    }

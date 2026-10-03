@@ -22,6 +22,7 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _SIG = 12
 _MPDPS = 40
@@ -47,12 +48,18 @@ def _parse_bounds(a: str, b: str) -> tuple[float, float]:
     return a_f, b_f
 
 
+class IntegrateSimpsonResult(TracedResult):
+    result: str
+    n:      int
+
+
 @REGISTRY.tool(
     namespace="math",
     name="integrate_simpson",
     description=(
-        "합성 심프슨 법 수치적분. n은 짝수, 2 이상. "
-        "expression 내 자유 변수는 variable 로 지정."
+        "합성 심프슨 1/3 법으로 정적분 ∫_a^b f(x) dx 의 근삿값을 구한다. "
+        "expression 은 core.calc 문법, a 와 b 는 a < b 인 Decimal 문자열, 부구간 수 n 은 2 이상 20000 이하의 짝수(기본 100). float64 계산이며 유효숫자 12자리다. "
+        "하한이 상한보다 크면 오류이므로 부호를 직접 뒤집어야 하고, 특이점이 있는 구간은 정확하지 않다."
     ),
     version="1.0.0",
 )
@@ -62,7 +69,7 @@ def integrate_simpson(
     b:          str,
     n:          int = 100,
     variable:   str = "x",
-) -> dict[str, Any]:
+) -> IntegrateSimpsonResult:
     """Composite Simpson's 1/3 rule.
 
     Args:
@@ -106,11 +113,18 @@ def integrate_simpson(
     return {"result": result_s, "n": n, "trace": trace.to_dict()}
 
 
+class IntegrateGaussLegendreResult(TracedResult):
+    result: str
+    degree: int
+
+
 @REGISTRY.tool(
     namespace="math",
     name="integrate_gauss_legendre",
     description=(
-        "가우스-르장드르 구적법 수치적분. mpmath.quad 경유, degree(노드 수) 기본 20."
+        "가우스-르장드르 구적법(mpmath.quadgl)으로 정적분 ∫_a^b f(x) dx 의 근삿값을 구한다. "
+        "expression 은 core.calc 문법, a 와 b 는 a < b 인 Decimal 문자열, degree 는 2 이상 100 이하(기본 20). 피적분 함수는 float64 로 평가하고 결과는 유효숫자 12자리다. "
+        "매끄러운 함수에 적합하며 불연속이 있는 구간은 나누어 적분한다."
     ),
     version="1.0.0",
 )
@@ -120,7 +134,7 @@ def integrate_gauss_legendre(
     b:          str,
     degree:     int = 20,
     variable:   str = "x",
-) -> dict[str, Any]:
+) -> IntegrateGaussLegendreResult:
     """Gauss-Legendre quadrature via mpmath."""
     trace = CalcTrace(
         tool="math.integrate_gauss_legendre",

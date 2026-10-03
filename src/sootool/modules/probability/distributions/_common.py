@@ -9,11 +9,18 @@ from sootool.core.cast import decimal_to_float64, float64_to_decimal_str
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.lazy import lazy_module
+from sootool.core.result_types import TracedResult
 
 stats = lazy_module("scipy.stats")
 
 
 _SIG_DIGITS = 10  # significant digits for output
+
+
+class DistributionResult(TracedResult):
+    """분포 함수(pdf, pmf, cdf, ppf) 값. float64 엔진 결과를 유효숫자 10자리 십진 문자열로 담는다."""
+
+    result: str
 
 
 def _parse_float(value: str, name: str) -> float:
@@ -60,7 +67,7 @@ def _dist_result(
     label: str,
     inputs: dict[str, Any],
     value: float,
-) -> dict[str, Any]:
+) -> DistributionResult:
     trace = CalcTrace(tool=tool_name, formula=formula)
     for k_, v_ in inputs.items():
         trace.input(k_, v_)

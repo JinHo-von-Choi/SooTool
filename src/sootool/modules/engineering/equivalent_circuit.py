@@ -11,12 +11,12 @@ ADR-001 Decimal, ADR-003 trace, ADR-007 stateless.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _ZERO = Decimal("0")
 _FOUR = Decimal("4")
@@ -25,19 +25,42 @@ _FOUR = Decimal("4")
 # ---------------------------------------------------------------------------
 # Thevenin equivalent
 # ---------------------------------------------------------------------------
+class TheveninEquivalentResult(TracedResult):
+    """테브난 등가 전압원과 저항. 값은 Decimal 문자열."""
+
+    v_th: str
+    r_th: str
+
+
+class NortonEquivalentResult(TracedResult):
+    """노턴 등가 전류원과 병렬 저항. 값은 Decimal 문자열."""
+
+    i_n: str
+    r_n: str
+
+
+class MaxPowerTransferResult(TracedResult):
+    """최대 전력 전달 조건. 값은 Decimal 문자열."""
+
+    optimal_load: str
+    max_power:    str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="thevenin_equivalent",
     description=(
-        "테브난 등가: open-circuit 전압(V_oc)과 short-circuit 전류(I_sc)로부터 "
-        "V_th = V_oc, R_th = V_oc / I_sc 산출."
+        "개방 전압과 단락 전류로 테브난 등가 회로를 구한다. V_th=V_oc, R_th=V_oc/I_sc. "
+        "open_circuit_voltage(V)와 short_circuit_current(A, 0 초과)는 Decimal 문자열. "
+        "반환: v_th, r_th. 오용 주의: 독립 전원이 없는 회로는 V_oc가 0이라 R_th가 0으로 계산되므로 "
+        "저항 합성으로 R_th를 구해야 한다."
     ),
     version="1.0.0",
 )
 def thevenin_equivalent(
     open_circuit_voltage:  str,
     short_circuit_current: str,
-) -> dict[str, Any]:
+) -> TheveninEquivalentResult:
     """Compute Thevenin equivalent source voltage and resistance."""
     trace = CalcTrace(
         tool="engineering.thevenin_equivalent",
@@ -68,15 +91,16 @@ def thevenin_equivalent(
     namespace="engineering",
     name="norton_equivalent",
     description=(
-        "노턴 등가: I_N = V_th / R_th, R_N = R_th. "
-        "테브난 파라미터로부터 직접 변환."
+        "테브난 등가(V_th, R_th)를 노턴 등가로 변환한다. I_N=V_th/R_th, R_N=R_th. "
+        "v_th(V)와 r_th(Ω, 0 초과)는 Decimal 문자열. 반환: i_n(A), r_n(Ω). "
+        "오용 주의: 개방 전압과 단락 전류에서 바로 구하려면 먼저 thevenin_equivalent 를 쓴다."
     ),
     version="1.0.0",
 )
 def norton_equivalent(
     v_th: str,
     r_th: str,
-) -> dict[str, Any]:
+) -> NortonEquivalentResult:
     """Convert a Thevenin source (V_th, R_th) to Norton form (I_N, R_N)."""
     trace = CalcTrace(
         tool="engineering.norton_equivalent",
@@ -107,15 +131,16 @@ def norton_equivalent(
     namespace="engineering",
     name="max_power_transfer",
     description=(
-        "최대 전력 전달 정리: 부하 R_L = R_th일 때 P_max = V_th² / (4 R_th). "
-        "반환: optimal_load (= R_th), max_power."
+        "최대 전력 전달 정리로 최적 부하와 최대 전력을 구한다. R_L=R_th일 때 P_max=V_th²/(4R_th). "
+        "v_th(V)와 r_th(Ω, 0 초과)는 Decimal 문자열. 반환: optimal_load(Ω), max_power(W). "
+        "오용 주의: 이때 효율은 50%이므로 전력 효율이 중요한 전원 설계의 부하 선정 기준은 아니다."
     ),
     version="1.0.0",
 )
 def max_power_transfer(
     v_th: str,
     r_th: str,
-) -> dict[str, Any]:
+) -> MaxPowerTransferResult:
     """Return optimal load resistance and maximum transferable power."""
     trace = CalcTrace(
         tool="engineering.max_power_transfer",

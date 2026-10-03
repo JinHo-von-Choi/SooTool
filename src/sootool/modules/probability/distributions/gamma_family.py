@@ -2,10 +2,9 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
 from sootool.core.registry import REGISTRY
 from sootool.modules.probability.distributions._common import (
+    DistributionResult,
     _dist_result,
     _parse_float,
     _parse_quantile,
@@ -18,10 +17,10 @@ from sootool.modules.probability.distributions._common import (
 @REGISTRY.tool(
     namespace="probability",
     name="gamma_pdf",
-    description="감마분포 PDF: f(x; k, θ). scipy.stats.gamma.pdf (k=shape, θ=scale).",
+    description="감마분포의 확률밀도 f(x; k, θ)를 구한다. x 는 0 이상, shape(k)는 양수, scale(θ, 기본 1)은 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. scale 은 rate 의 역수이므로 rate 를 그대로 넣으면 틀린다.",
     version="1.0.0",
 )
-def gamma_pdf(x: str, shape: str, scale: str = "1") -> dict[str, Any]:
+def gamma_pdf(x: str, shape: str, scale: str = "1") -> DistributionResult:
     x_f     = _parse_float(x,     "x")
     shape_f = _parse_float(shape, "shape")
     scale_f = _parse_float(scale, "scale")
@@ -41,10 +40,10 @@ def gamma_pdf(x: str, shape: str, scale: str = "1") -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="gamma_cdf",
-    description="감마분포 CDF: P(X ≤ x). scipy.stats.gamma.cdf.",
+    description="감마분포의 누적확률 P(X ≤ x)를 구한다. x 는 0 이상, shape(k)는 양수, scale(θ, 기본 1)은 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. scale 은 rate 의 역수이므로 rate 를 그대로 넣으면 틀린다.",
     version="1.0.0",
 )
-def gamma_cdf(x: str, shape: str, scale: str = "1") -> dict[str, Any]:
+def gamma_cdf(x: str, shape: str, scale: str = "1") -> DistributionResult:
     x_f     = _parse_float(x,     "x")
     shape_f = _parse_float(shape, "shape")
     scale_f = _parse_float(scale, "scale")
@@ -64,10 +63,10 @@ def gamma_cdf(x: str, shape: str, scale: str = "1") -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="gamma_ppf",
-    description="감마분포 역CDF: x = F⁻¹(q). scipy.stats.gamma.ppf.",
+    description="감마분포의 분위수를 구한다. q 는 0 초과 1 미만, shape(k)는 양수, scale(θ, 기본 1)은 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. scale 은 rate 의 역수이므로 rate 를 그대로 넣으면 틀린다.",
     version="1.0.0",
 )
-def gamma_ppf(q: str, shape: str, scale: str = "1") -> dict[str, Any]:
+def gamma_ppf(q: str, shape: str, scale: str = "1") -> DistributionResult:
     q_f     = _parse_quantile(q,  "q")
     shape_f = _parse_float(shape, "shape")
     scale_f = _parse_float(scale, "scale")
@@ -86,10 +85,10 @@ def gamma_ppf(q: str, shape: str, scale: str = "1") -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="exponential_pdf",
-    description="지수분포 PDF: f(x; λ) = λ e^(-λx). scale=1/λ 사용.",
+    description="지수분포의 확률밀도 f(x; λ) = λe^(-λx)를 구한다. x 는 0 이상, rate(λ)는 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. rate 에 평균(1/λ)을 넣으면 틀린다.",
     version="1.0.0",
 )
-def exponential_pdf(x: str, rate: str) -> dict[str, Any]:
+def exponential_pdf(x: str, rate: str) -> DistributionResult:
     x_f    = _parse_float(x,    "x")
     rate_f = _parse_float(rate, "rate")
     _validate_nonneg_float(x_f,        "x",    x)
@@ -107,10 +106,10 @@ def exponential_pdf(x: str, rate: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="exponential_cdf",
-    description="지수분포 CDF: P(X ≤ x) = 1 - e^(-λx).",
+    description="지수분포의 누적확률 P(X ≤ x) = 1 - e^(-λx)를 구한다. x 는 0 이상, rate(λ)는 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. rate 에 평균(1/λ)을 넣으면 틀린다.",
     version="1.0.0",
 )
-def exponential_cdf(x: str, rate: str) -> dict[str, Any]:
+def exponential_cdf(x: str, rate: str) -> DistributionResult:
     x_f    = _parse_float(x,    "x")
     rate_f = _parse_float(rate, "rate")
     _validate_nonneg_float(x_f,        "x",    x)
@@ -128,10 +127,10 @@ def exponential_cdf(x: str, rate: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="exponential_ppf",
-    description="지수분포 역CDF(분위수) x = -ln(1-q)/λ. q 는 0 이상 1 미만의 확률, rate 는 λ.",
+    description="지수분포의 분위수 x = -ln(1-q)/λ 를 구한다. q 는 0 초과 1 미만, rate(λ)는 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. rate 에 평균(1/λ)을 넣으면 틀린다.",
     version="1.0.0",
 )
-def exponential_ppf(q: str, rate: str) -> dict[str, Any]:
+def exponential_ppf(q: str, rate: str) -> DistributionResult:
     q_f    = _parse_quantile(q, "q")
     rate_f = _parse_float(rate, "rate")
     _validate_positive_float(rate_f, "rate", rate)
@@ -148,10 +147,10 @@ def exponential_ppf(q: str, rate: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="chi_square_pdf",
-    description="카이제곱분포 PDF. scipy.stats.chi2.pdf, df = 자유도.",
+    description="카이제곱분포의 확률밀도를 구한다. x 는 0 이상, df(자유도)는 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 밀도값이지 확률이 아니므로 누적확률은 chi_square_cdf 를 쓴다.",
     version="1.0.0",
 )
-def chi_square_pdf(x: str, df: str) -> dict[str, Any]:
+def chi_square_pdf(x: str, df: str) -> DistributionResult:
     x_f  = _parse_float(x,  "x")
     df_f = _parse_float(df, "df")
     _validate_nonneg_float(x_f,        "x",  x)
@@ -169,10 +168,10 @@ def chi_square_pdf(x: str, df: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="chi_square_cdf",
-    description="카이제곱분포 CDF. scipy.stats.chi2.cdf.",
+    description="카이제곱분포의 누적확률 P(X ≤ x)를 구한다. x 는 0 이상, df(자유도)는 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 검정의 p 값은 1 에서 이 값을 뺀 오른쪽 꼬리다.",
     version="1.0.0",
 )
-def chi_square_cdf(x: str, df: str) -> dict[str, Any]:
+def chi_square_cdf(x: str, df: str) -> DistributionResult:
     x_f  = _parse_float(x,  "x")
     df_f = _parse_float(df, "df")
     _validate_nonneg_float(x_f,        "x",  x)
@@ -190,10 +189,10 @@ def chi_square_cdf(x: str, df: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="chi_square_ppf",
-    description="카이제곱분포 역CDF(분위수). q 는 0~1 사이 확률, df 는 자유도.",
+    description="카이제곱분포의 분위수를 구한다. q 는 0 초과 1 미만, df(자유도)는 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 유의수준 α 의 임계값은 q 에 1-α 를 넣는다.",
     version="1.0.0",
 )
-def chi_square_ppf(q: str, df: str) -> dict[str, Any]:
+def chi_square_ppf(q: str, df: str) -> DistributionResult:
     q_f  = _parse_quantile(q,  "q")
     df_f = _parse_float(df,    "df")
     _validate_positive_float(df_f, "df", df)

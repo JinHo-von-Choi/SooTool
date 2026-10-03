@@ -12,7 +12,6 @@ exp·log·sqrt·atan 등 초월함수는 mpmath workdps(50) → mpmath_to_decima
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -21,6 +20,7 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _ZERO    = Decimal("0")
 _ONE     = Decimal("1")
@@ -58,13 +58,22 @@ def _pi_dec() -> Decimal:
 # ---------------------------------------------------------------------------
 # First-order system
 # ---------------------------------------------------------------------------
+class FirstOrderResponseResult(TracedResult):
+    """1차 시스템 스텝 응답. 값은 모두 Decimal 문자열."""
+
+    response:      str
+    steady_state:  str
+    time_constant: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="first_order_response",
     description=(
-        "1차 시스템 스텝 응답. G(s) = K / (τ s + 1). "
-        "y(t) = K·u·(1 − exp(−t/τ)). "
-        "반환: 응답값·정상상태(K·u)·시정수."
+        "1차 시스템 G(s)=K/(τs+1)의 스텝 응답 y(t)=K·u·(1−exp(−t/τ))를 구한다. "
+        "gain K, time_constant τ(초, 0 초과), input_step u, time t(초, 0 이상)는 Decimal 문자열. "
+        "지수항은 유효숫자 30자리. 반환: response, steady_state(K·u), time_constant. "
+        "오용 주의: 2차 이상 시스템이나 임펄스 응답에는 쓸 수 없다."
     ),
     version="1.0.0",
 )
@@ -73,7 +82,7 @@ def first_order_response(
     time_constant:  str,
     input_step:     str,
     time:           str,
-) -> dict[str, Any]:
+) -> FirstOrderResponseResult:
     """First-order step response y(t)."""
     trace = CalcTrace(
         tool="engineering.first_order_response",
@@ -115,21 +124,31 @@ def first_order_response(
 # ---------------------------------------------------------------------------
 # Second-order system
 # ---------------------------------------------------------------------------
+class SecondOrderResponseResult(TracedResult):
+    """2차 시스템 특성. 값은 Decimal 문자열이며 settling_time 은 ζ=0 이면 "Infinity"."""
+
+    damped_freq:   str
+    overshoot:     str
+    settling_time: str
+    regime:        str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="second_order_response",
     description=(
-        "2차 시스템 특성. G(s) = ωn² / (s² + 2ζωn s + ωn²). "
-        "ζ, ωn 입력 → damped_freq ωd = ωn·√(1−ζ²), "
-        "overshoot = exp(−π ζ / √(1−ζ²)) (ζ<1), "
-        "settling_time ≈ 4 / (ζ ωn) (2% 기준)."
+        "2차 시스템 G(s)=ωn²/(s²+2ζωn·s+ωn²)의 감쇠 고유진동수 ωd, 최대 오버슈트, 정착시간을 구한다. "
+        "damping_ratio ζ(0 이상)와 natural_freq ωn(rad/s, 0 초과)은 Decimal 문자열. "
+        "overshoot 는 비율(0~1, 백분율 아님)이고 ζ≥1 이면 0, ζ=0 이면 1. "
+        "settling_time=4/(ζωn)은 2% 기준 근사이며 ζ=0 이면 \"Infinity\". "
+        "regime: underdamped, critically_damped, overdamped. 초월함수는 유효숫자 30자리."
     ),
     version="1.0.0",
 )
 def second_order_response(
     damping_ratio:    str,
     natural_freq:     str,
-) -> dict[str, Any]:
+) -> SecondOrderResponseResult:
     """Compute canonical second-order system metrics."""
     trace = CalcTrace(
         tool="engineering.second_order_response",
@@ -192,14 +211,21 @@ def second_order_response(
 # ---------------------------------------------------------------------------
 # Bode magnitude / phase
 # ---------------------------------------------------------------------------
+class BodeMagnitudePhaseResult(TracedResult):
+    """Bode 크기(dB)와 위상(도). 값은 Decimal 문자열."""
+
+    magnitude_db: str
+    phase_deg:    str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="bode_magnitude_phase",
     description=(
-        "1차 전달함수 Bode 크기(dB)·위상(deg). "
-        "mode='pole': G(jω) = 1 / (1 + jω/ωc). "
-        "mode='zero': G(jω) = 1 + jω/ωc. "
-        "magnitude_db = 20 log10|G|, phase = arg(G)."
+        "단일 극점 또는 영점 1차 전달함수의 Bode 크기(dB)와 위상(도)을 구한다. "
+        "mode='pole'이면 G(jω)=1/(1+jω/ωc), 'zero'이면 G(jω)=1+jω/ωc. "
+        "corner_freq ωc와 frequency ω는 같은 단위(rad/s 또는 Hz)의 0 초과 Decimal 문자열이며 "
+        "비율만 쓴다. 유효숫자 30자리. 오용 주의: 극점과 영점이 여러 개인 전달함수는 직접 합산해야 한다."
     ),
     version="1.0.0",
 )
@@ -207,7 +233,7 @@ def bode_magnitude_phase(
     mode:            str,
     corner_freq:     str,
     frequency:       str,
-) -> dict[str, Any]:
+) -> BodeMagnitudePhaseResult:
     """Compute Bode magnitude (dB) and phase (deg) for a single pole or zero."""
     trace = CalcTrace(tool="engineering.bode_magnitude_phase", formula="")
     if mode not in ("pole", "zero"):
@@ -253,13 +279,25 @@ def bode_magnitude_phase(
 # ---------------------------------------------------------------------------
 # Discrete PID
 # ---------------------------------------------------------------------------
+class PidDiscreteOutputResult(TracedResult):
+    """이산 PID 출력과 항별 기여도. 값은 Decimal 문자열."""
+
+    output:  str
+    delta_u: str
+    p_term:  str
+    i_term:  str
+    d_term:  str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="pid_discrete_output",
     description=(
-        "이산 PID (velocity form). Δu = Kp·Δe + Ki·e·Ts + Kd·(Δe − Δe_prev)/Ts. "
-        "입력: kp, ki, kd, sample_time Ts, error_curr, error_prev, error_prev2, "
-        "output_prev. 반환: output, delta_u, 항별 기여도."
+        "속도형(velocity form) 이산 PID의 새 출력 u_k=u_{k-1}+Δu를 구한다. "
+        "Δu=Kp·Δe+Ki·e·Ts+Kd·(Δe−Δe_prev)/Ts. kp, ki, kd, sample_time Ts(0 초과), "
+        "error_curr, error_prev, error_prev2, output_prev 는 Decimal 문자열. "
+        "반환: output, delta_u, p_term, i_term, d_term. 적분항은 현재 오차 e에 Ts를 곱하는 방식이며 "
+        "출력 포화와 anti-windup은 없다."
     ),
     version="1.0.0",
 )
@@ -272,7 +310,7 @@ def pid_discrete_output(
     error_prev:   str,
     error_prev2:  str,
     output_prev:  str,
-) -> dict[str, Any]:
+) -> PidDiscreteOutputResult:
     """Velocity-form discrete PID — returns the new output u_k."""
     trace = CalcTrace(
         tool="engineering.pid_discrete_output",

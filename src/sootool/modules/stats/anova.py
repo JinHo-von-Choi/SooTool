@@ -7,7 +7,7 @@ Internal dtype: float64 (scipy). Boundaries: Decimal strings.
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import NotRequired, TypedDict
 
 import numpy as np
 
@@ -16,9 +16,29 @@ from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
 from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.stats.descriptive import _to_float_array
 
 stats = lazy_module("scipy.stats")
+
+
+class TukeyPair(TypedDict):
+    group_i:   int
+    group_j:   int
+    mean_diff: str
+    q_stat:    str
+    p_value:   str
+    reject_h0: bool
+
+
+class StatsAnovaOnewayResult(TracedResult):
+    f_stat:     str
+    p_value:    str
+    df_between: int
+    df_within:  int
+    alpha:      str
+    reject_h0:  bool
+    tukey_hsd:  NotRequired[list[TukeyPair]]
 
 
 def _fmt(x: float, digits: int = 10) -> str:
@@ -28,7 +48,7 @@ def _fmt(x: float, digits: int = 10) -> str:
 def _tukey_hsd(
     groups: list[np.ndarray],
     alpha:  float,
-) -> list[dict[str, Any]]:
+) -> list[TukeyPair]:
     """Tukey HSD pairwise comparison (equal n assumed; otherwise Tukey-Kramer)."""
     k = len(groups)
     ns     = [len(g) for g in groups]
@@ -42,7 +62,7 @@ def _tukey_hsd(
 
     q_crit = float(stats.studentized_range.ppf(1 - alpha, k, df_w))
 
-    pairs: list[dict[str, Any]] = []
+    pairs: list[TukeyPair] = []
     for i in range(k):
         for j in range(i + 1, k):
             mean_diff = means[i] - means[j]
@@ -66,8 +86,10 @@ def _tukey_hsd(
     namespace="stats",
     name="anova_oneway",
     description=(
-        "일원분산분석(one-way ANOVA) + Tukey HSD 사후검정. "
-        "집단 간 평균 차이 유의성을 F-통계량과 쌍별 비교로 검정."
+        "둘 이상 집단의 평균 차이를 일원분산분석(one-way ANOVA)으로 검정하고 Tukey HSD 쌍별 비교를 덧붙인다. "
+        "groups는 집단별 Decimal 문자열 목록(집단 2개 이상, 각 2개 이상), alpha는 유의수준 실수(기본 0.05), "
+        "include_tukey 기본 True. 집단 크기가 다르면 Tukey-Kramer 방식이다. F는 유효숫자 6자리, 나머지는 10자리 문자열이다. "
+        "정규성과 등분산을 가정하므로 어긋나면 kruskal_wallis 를 쓴다."
     ),
     version="1.0.0",
 )
@@ -75,7 +97,7 @@ def stats_anova_oneway(
     groups:        list[list[str]],
     alpha:         float = 0.05,
     include_tukey: bool  = True,
-) -> dict[str, Any]:
+) -> StatsAnovaOnewayResult:
     """One-way ANOVA with optional Tukey HSD.
 
     Args:
@@ -114,7 +136,7 @@ def stats_anova_oneway(
     trace.input("alpha",    alpha)
     trace.output({"f_stat": _fmt(f_stat), "p_value": _fmt(p_val)})
 
-    result: dict[str, Any] = {
+    result: StatsAnovaOnewayResult = {
         "f_stat":     _fmt(f_stat, 6),
         "p_value":    _fmt(p_val),
         "df_between": df_between,

@@ -15,12 +15,23 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, mul, power, sub
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class BondYtmResult(TracedResult):
+    ytm:        str
+    iterations: int
+    converged:  bool
+
+
+class BondDurationResult(TracedResult):
+    macaulay: str
+    modified: str
 
 
 def _price_from_ytm(
@@ -56,7 +67,11 @@ def _dprice_from_ytm(
 @REGISTRY.tool(
     namespace="finance",
     name="bond_ytm",
-    description="채권 만기수익률(YTM) 계산. Newton-Raphson 수치해법.",
+    description=(
+        "채권 만기수익률(YTM)을 뉴턴법으로 구한다. price 와 face 는 양수 Decimal 문자열, coupon_rate 는 연 표면이율 소수 "
+        "(예 0.05), years 는 만기 연수 정수, freq 는 연 이자지급 횟수(기본 2). ytm 은 기간 수익률 x freq 인 연율이다. "
+        "수렴하지 못하면 converged=false 로 마지막 추정값이 나오므로 확인해야 하며 이자 지급일 사이의 경과이자는 지원하지 않는다."
+    ),
     version="1.0.0",
 )
 def bond_ytm(
@@ -67,7 +82,7 @@ def bond_ytm(
     freq: int = 2,
     max_iter: int = 100,
     tol: str = "1e-10",
-) -> dict[str, Any]:
+) -> BondYtmResult:
     """Compute the Yield-to-Maturity of a coupon bond.
 
     Args:
@@ -171,7 +186,11 @@ def bond_ytm(
 @REGISTRY.tool(
     namespace="finance",
     name="bond_duration",
-    description="Macaulay Duration과 Modified Duration 계산.",
+    description=(
+        "채권의 맥컬리 듀레이션과 수정 듀레이션을 연 단위로 계산한다. face 는 양수, coupon_rate 와 ytm 은 연율 소수 "
+        "Decimal 문자열, years 는 만기 연수 정수, freq 는 연 이자지급 횟수(기본 2). 가격은 ytm 으로 현금흐름을 할인해 "
+        "구하며 반올림하지 않는다. 시장 가격만 알면 먼저 bond_ytm 으로 ytm 을 구한다."
+    ),
     version="1.0.0",
 )
 def bond_duration(
@@ -180,7 +199,7 @@ def bond_duration(
     years: int,
     ytm: str,
     freq: int = 2,
-) -> dict[str, Any]:
+) -> BondDurationResult:
     """Compute Macaulay and Modified Duration of a bond.
 
     Args:

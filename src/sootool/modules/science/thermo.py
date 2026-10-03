@@ -13,16 +13,23 @@ PV = nRT  →  단위: P [Pa], V [m³], n [mol], T [K]
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 # NIST 2018 CODATA: R = 8.314462618 J mol⁻¹ K⁻¹
 _R = D("8.314462618")
 _VARS = ("pressure", "volume", "moles", "temperature")
+
+
+class IdealGasResult(TracedResult):
+    pressure:    str
+    volume:      str
+    moles:       str
+    temperature: str
 
 
 def _parse_optional(value: str | None, name: str) -> Decimal | None:
@@ -38,9 +45,10 @@ def _parse_optional(value: str | None, name: str) -> Decimal | None:
     namespace="science",
     name="ideal_gas",
     description=(
-        "이상 기체 법칙: PV = nRT. "
-        "P [Pa], V [m³], n [mol], T [K] 중 3개 제공 시 나머지 계산. "
-        "R = 8.314462618 J/(mol·K) (NIST 2018 CODATA). 전 구간 Decimal."
+        "이상 기체 법칙 PV = nRT에서 빠진 변수 하나를 계산한다. 압력 Pa, 부피 m³, 물질량 mol, 온도 K 중 "
+        "정확히 3개를 Decimal 문자열로 주고 나머지는 생략한다. R = 8.314462618 J/(mol K)(CODATA 2018), "
+        "Decimal 정확 연산이며 반올림하지 않는다. 계산값이 음수이거나 0으로 나누면 오류다. "
+        "atm, L, 섭씨를 그대로 넣으면 안 되고 SI 단위로 환산해야 한다."
     ),
     version="1.0.0",
 )
@@ -49,7 +57,7 @@ def ideal_gas(
     volume:      str | None = None,
     moles:       str | None = None,
     temperature: str | None = None,
-) -> dict[str, Any]:
+) -> IdealGasResult:
     """Compute the missing variable in the ideal gas law PV = nRT.
 
     Exactly 3 of the 4 variables must be provided; the remaining one is computed.
@@ -146,4 +154,10 @@ def ideal_gas(
     }
     trace.output(result)
 
-    return {**result, "trace": trace.to_dict()}
+    return {
+        "pressure":    result["pressure"],
+        "volume":      result["volume"],
+        "moles":       result["moles"],
+        "temperature": result["temperature"],
+        "trace":       trace.to_dict(),
+    }

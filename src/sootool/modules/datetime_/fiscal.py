@@ -16,11 +16,11 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 # country -> fiscal year starting (month, day)
 # KR/US: 회계연도 = 1/1
@@ -32,6 +32,33 @@ _FY_START: dict[str, tuple[int, int]] = {
     "JP": (4, 1),
     "UK": (4, 6),
 }
+
+
+class FiscalYearResult(TracedResult):
+    fiscal_year: int
+    start_date:  str
+    end_date:    str
+    country:     str
+
+
+class FiscalQuarterResult(TracedResult):
+    fiscal_year: int
+    quarter:     int
+    start_date:  str
+    end_date:    str
+    country:     str
+
+
+class TaxPeriodKrResult(TracedResult):
+    tax_year:   int
+    start_date: str
+    end_date:   str
+    country:    str
+
+
+class PayrollPeriodResult(TracedResult):
+    period_start: str
+    period_end:   str
 
 
 def _parse_date(s: str) -> date:
@@ -59,12 +86,13 @@ def _fiscal_year_of(d: date, country: str) -> int:
     namespace="datetime",
     name="fiscal_year",
     description=(
-        "회계연도 경계 산정. country: KR | US | JP | UK. "
-        "KR/US=1/1, JP=4/1, UK=4/6 기준."
+        "기준일 as_of(YYYY-MM-DD)가 속한 회계연도의 라벨 fiscal_year 와 시작·종료일을 구한다. "
+        "country 는 KR | US(1/1~12/31), JP(4/1~다음 해 3/31), UK(4/6~다음 해 4/5)이며 라벨은 시작일이 속한 해이다. "
+        "기업별 결산기는 반영하지 않으므로 고정 국가 기준 연도 판정에만 쓴다."
     ),
     version="1.0.0",
 )
-def fiscal_year(as_of: str, country: str = "KR") -> dict[str, Any]:
+def fiscal_year(as_of: str, country: str = "KR") -> FiscalYearResult:
     """Return the fiscal year bounds containing the given date.
 
     Args:
@@ -109,11 +137,13 @@ def fiscal_year(as_of: str, country: str = "KR") -> dict[str, Any]:
     namespace="datetime",
     name="fiscal_quarter",
     description=(
-        "회계분기 경계 산정. country의 회계연도 시작일 기준 Q1..Q4를 3개월 단위로 계산."
+        "기준일 as_of(YYYY-MM-DD)가 속한 회계분기 번호 quarter(1~4)와 시작·종료일을 구한다. "
+        "country(KR | US | JP | UK, 기본 KR)의 회계연도 시작일에서 3개월씩 끊으며 시작일의 일자를 유지한다"
+        "(UK 는 분기마다 6일 시작). 부가세 신고 등 법정 신고기한은 계산하지 않는다."
     ),
     version="1.0.0",
 )
-def fiscal_quarter(as_of: str, country: str = "KR") -> dict[str, Any]:
+def fiscal_quarter(as_of: str, country: str = "KR") -> FiscalQuarterResult:
     """Return the fiscal quarter containing the given date."""
     trace = CalcTrace(
         tool="datetime.fiscal_quarter",
@@ -174,12 +204,13 @@ def fiscal_quarter(as_of: str, country: str = "KR") -> dict[str, Any]:
     namespace="datetime",
     name="tax_period_kr",
     description=(
-        "한국 세법 상 과세기간 판정 (소득세 기준 1/1~12/31). "
-        "주어진 날짜가 속한 과세기간의 경계와 라벨을 반환."
+        "as_of(YYYY-MM-DD)가 속한 한국 소득세 과세기간(소득세법 제5조, 1/1~12/31)의 연도 tax_year 와 "
+        "경계일을 반환한다. 사업 개시·폐업, 사망, 출국으로 달라지는 중도 종료 기간은 다루지 않으며 "
+        "법인의 사업연도에는 쓰지 않는다."
     ),
     version="1.0.0",
 )
-def tax_period_kr(as_of: str) -> dict[str, Any]:
+def tax_period_kr(as_of: str) -> TaxPeriodKrResult:
     """Return Korean tax period (calendar year) containing the given date."""
     trace = CalcTrace(
         tool="datetime.tax_period_kr",
@@ -208,11 +239,13 @@ def tax_period_kr(as_of: str) -> dict[str, Any]:
     namespace="datetime",
     name="payroll_period",
     description=(
-        "월급 정산 주기 산출. start_day 기준 월별 급여 기간을 계산한다 (기본 매월 1일 시작)."
+        "as_of(YYYY-MM-DD)가 속한 월 단위 급여 정산 기간의 period_start, period_end 를 구한다. "
+        "start_day(1~28, 기본 1)일에 시작해 다음 달 start_day 전날에 끝난다. "
+        "지급일이 아닌 산정 기간이며 29~31일 시작은 지원하지 않는다."
     ),
     version="1.0.0",
 )
-def payroll_period(as_of: str, start_day: int = 1) -> dict[str, Any]:
+def payroll_period(as_of: str, start_day: int = 1) -> PayrollPeriodResult:
     """Return the payroll period containing the given date.
 
     Args:

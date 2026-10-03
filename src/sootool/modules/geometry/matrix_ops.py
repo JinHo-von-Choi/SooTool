@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import numpy as np
 
@@ -11,6 +10,7 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 
 def _parse_matrix(M: list[list[str]], name: str) -> list[list[Decimal]]:
@@ -49,13 +49,22 @@ def _float_matrix_to_str(M: np.ndarray) -> list[list[str]]:
     return [[str(D(repr(v))) for v in row] for row in M]
 
 
+class MatrixMultiplyResult(TracedResult):
+    result: list[list[str]]
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="matrix_multiply",
-    description="행렬 곱셈 A @ B. Decimal 루프 연산 (정밀도 보장).",
+    description=(
+        "행렬 곱 A @ B 를 Decimal 로 계산한다. "
+        "A 는 m×k, B 는 k×n 의 Decimal 문자열 2차원 리스트이며 A 의 열 수와 B 의 행 수가 같아야 한다. "
+        "행과 열은 각각 200 이하. float 를 거치지 않아 반올림 오차가 없다. "
+        "행렬 곱은 교환법칙이 성립하지 않으므로 A @ B 와 B @ A 는 다르다."
+    ),
     version="1.0.0",
 )
-def matrix_multiply(A: list[list[str]], B: list[list[str]]) -> dict[str, Any]:
+def matrix_multiply(A: list[list[str]], B: list[list[str]]) -> MatrixMultiplyResult:
     """Compute matrix multiplication A @ B using Decimal arithmetic.
 
     Args:
@@ -108,13 +117,21 @@ def matrix_multiply(A: list[list[str]], B: list[list[str]]) -> dict[str, Any]:
     return {"result": result_str, "trace": trace.to_dict()}
 
 
+class MatrixDeterminantResult(TracedResult):
+    result: str
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="matrix_determinant",
-    description="행렬식(determinant). n≤3: Decimal 전개, n>3: numpy float64.",
+    description=(
+        "정방행렬 M 의 행렬식을 계산한다. "
+        "M 은 n×n Decimal 문자열 2차원 리스트(n 은 200 이하). n 이 3 이하면 Decimal 로 정확히 전개하고 n 이 4 이상이면 numpy float64 로 계산해 약 15자리 정밀도만 보장한다. "
+        "정방행렬이 아니면 오류이며 n≥4 결과는 근사값임에 유의한다."
+    ),
     version="1.0.0",
 )
-def matrix_determinant(M: list[list[str]]) -> dict[str, Any]:
+def matrix_determinant(M: list[list[str]]) -> MatrixDeterminantResult:
     """Compute the determinant of a square matrix.
 
     Uses Decimal cofactor expansion for n ≤ 3, numpy for larger matrices.
@@ -154,13 +171,21 @@ def matrix_determinant(M: list[list[str]]) -> dict[str, Any]:
     return {"result": str(det), "trace": trace.to_dict()}
 
 
+class MatrixInverseResult(TracedResult):
+    result: list[list[str]]
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="matrix_inverse",
-    description="역행렬. numpy linalg.inv 후 Decimal 문자열 변환.",
+    description=(
+        "정방행렬의 역행렬을 numpy.linalg.inv(float64)로 계산한다. "
+        "M 은 n×n Decimal 문자열 2차원 리스트(n 은 200 이하). 결과 원소는 float64 repr 문자열이라 '1e-05' 같은 지수 표기가 나올 수 있고 정밀도는 약 15자리다. "
+        "특이행렬이면 오류. 연립방정식 해가 목적이면 역행렬을 곱하지 말고 matrix_solve 를 쓴다."
+    ),
     version="1.0.0",
 )
-def matrix_inverse(M: list[list[str]]) -> dict[str, Any]:
+def matrix_inverse(M: list[list[str]]) -> MatrixInverseResult:
     """Compute the inverse of a square matrix using numpy.linalg.inv.
 
     Args:
@@ -190,13 +215,21 @@ def matrix_inverse(M: list[list[str]]) -> dict[str, Any]:
     return {"result": result_str, "trace": trace.to_dict()}
 
 
+class MatrixSolveResult(TracedResult):
+    x: list[str]
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="matrix_solve",
-    description="선형 방정식 Ax=b 풀기. numpy.linalg.solve 사용.",
+    description=(
+        "연립일차방정식 Ax = b 의 해 x 를 numpy.linalg.solve(float64)로 구한다. "
+        "A 는 n×n Decimal 문자열 2차원 리스트, b 는 길이 n 리스트. 해는 float64 repr 문자열이며 정밀도는 약 15자리다. "
+        "특이행렬이거나 b 의 길이가 n 과 다르면 오류. 비정방(과결정, 부족결정) 시스템은 지원하지 않는다."
+    ),
     version="1.0.0",
 )
-def matrix_solve(A: list[list[str]], b: list[str]) -> dict[str, Any]:
+def matrix_solve(A: list[list[str]], b: list[str]) -> MatrixSolveResult:
     """Solve the linear system Ax = b using numpy.linalg.solve.
 
     Args:

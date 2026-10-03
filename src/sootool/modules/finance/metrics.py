@@ -13,14 +13,24 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, power
 from sootool.core.errors import InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy, apply
+
+
+class NpvResult(TracedResult):
+    npv: str
+
+
+class IrrResult(TracedResult):
+    irr:        str | None
+    iterations: int
+    converged:  bool
 
 
 def _parse_policy(rounding: str) -> RoundingPolicy:
@@ -57,7 +67,11 @@ def _dnpv_decimal(rate_d: Decimal, cashflows_d: list[Decimal]) -> Decimal:
 @REGISTRY.tool(
     namespace="finance",
     name="npv",
-    description="순현재가치(NPV) 계산. NPV = sum(CF_t / (1+r)^t)",
+    description=(
+        "순현재가치를 계산한다. NPV = sum(CF_t / (1+r)^t). cashflows 의 index 0 은 t=0 시점이라 할인하지 않으며 "
+        "초기 투자는 음수로 넣는다. rate 는 기간당 할인율(0 이상 Decimal 문자열), decimals(기본 2)자리로 "
+        "rounding(기본 HALF_EVEN) 처리한다. 첫 현금흐름을 1기 말로 보려면 앞에 0 을 추가한다."
+    ),
     version="1.0.0",
 )
 def npv(
@@ -65,7 +79,7 @@ def npv(
     cashflows: list[str],
     rounding: str = "HALF_EVEN",
     decimals: int = 2,
-) -> dict[str, Any]:
+) -> NpvResult:
     """Compute Net Present Value.
 
     Args:
@@ -112,7 +126,11 @@ def npv(
 @REGISTRY.tool(
     namespace="finance",
     name="irr",
-    description="내부수익률(IRR) 계산. Newton-Raphson + 이분법 폴백.",
+    description=(
+        "내부수익률(IRR), 즉 NPV 를 0 으로 만드는 기간 수익률을 구한다. cashflows 는 2개 이상이며 index 0 이 t=0, "
+        "양수와 음수가 모두 있어야 한다. 뉴턴법이 실패하면 -0.99 이상 10 이하 구간 이분법을 쓰고 max_iter 는 10000 이하. "
+        "해를 못 찾으면 irr=null, converged=false 를 돌려준다. 월별 현금흐름의 결과는 연율이 아니라 월 수익률이다."
+    ),
     version="1.0.0",
 )
 def irr(
@@ -120,7 +138,7 @@ def irr(
     guess: str = "0.1",
     max_iter: int = 100,
     tol: str = "1e-10",
-) -> dict[str, Any]:
+) -> IrrResult:
     """Compute Internal Rate of Return.
 
     Uses Newton-Raphson first; falls back to bisection over [-0.99, 10]

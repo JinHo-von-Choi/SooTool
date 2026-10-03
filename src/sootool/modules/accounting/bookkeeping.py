@@ -7,15 +7,27 @@ from typing import Any
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class BalanceResult(TracedResult):
+    balanced:     bool
+    debit_total:  str
+    credit_total: str
+    diff:         str
 
 
 @REGISTRY.tool(
     namespace="accounting",
     name="balance",
-    description="차변/대변 합계 균형 검증. balanced=false 시 diff 제공.",
+    description=(
+        "분개 목록의 차변 합계와 대변 합계가 같은지 검증한다. entries 는 {account, debit, credit} 항목의 목록이며 "
+        "금액은 Decimal 문자열, 비어 있으면 0 으로 본다. 반환값은 balanced 여부, 두 합계, 차이의 절댓값(diff). "
+        "account 는 합계에 쓰이지 않으므로 계정별 잔액 검증에는 쓸 수 없다."
+    ),
     version="1.0.0",
 )
-def balance(entries: list[dict[str, Any]]) -> dict[str, Any]:
+def balance(entries: list[dict[str, Any]]) -> BalanceResult:
     """Verify that total debits equal total credits across journal entries.
 
     Args:

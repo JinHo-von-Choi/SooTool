@@ -2,14 +2,13 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
 from sootool.core.audit import CalcTrace
 from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import DomainConstraintError
 from sootool.core.registry import REGISTRY
 from sootool.modules.probability.distributions._common import (
     _SIG_DIGITS,
+    DistributionResult,
     _parse_float,
     _parse_quantile,
     stats,
@@ -19,14 +18,14 @@ from sootool.modules.probability.distributions._common import (
 @REGISTRY.tool(
     namespace="probability",
     name="normal_pdf",
-    description="정규분포 PDF: f(x; μ, σ). scipy.stats.norm.pdf, 10 유효 자리 출력.",
+    description="정규분포의 확률밀도 f(x; μ, σ)를 구한다. x, mu(평균, 기본 0), sigma(표준편차, 양수, 기본 1)는 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 밀도값이지 확률이 아니므로 구간 확률은 normal_cdf 의 차로 구한다.",
     version="1.0.0",
 )
 def normal_pdf(
     x: str,
     mu: str = "0",
     sigma: str = "1",
-) -> dict[str, Any]:
+) -> DistributionResult:
     """Compute the normal distribution PDF value.
 
     Args:
@@ -64,14 +63,14 @@ def normal_pdf(
 @REGISTRY.tool(
     namespace="probability",
     name="normal_cdf",
-    description="정규분포 CDF: P(X ≤ x). scipy.stats.norm.cdf.",
+    description="정규분포의 누적확률 P(X ≤ x)를 구한다. x, mu(평균, 기본 0), sigma(표준편차, 양수, 기본 1)는 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. sigma 에 분산을 넣으면 틀리므로 표준편차를 넣는다.",
     version="1.0.0",
 )
 def normal_cdf(
     x: str,
     mu: str = "0",
     sigma: str = "1",
-) -> dict[str, Any]:
+) -> DistributionResult:
     """Compute the normal distribution CDF value P(X <= x).
 
     Args:
@@ -109,14 +108,14 @@ def normal_cdf(
 @REGISTRY.tool(
     namespace="probability",
     name="normal_ppf",
-    description="정규분포 역CDF(분위수함수): x = Φ⁻¹(q). scipy.stats.norm.ppf.",
+    description="정규분포의 분위수 x = μ + σΦ⁻¹(q)를 구한다. q 는 0 초과 1 미만 확률, mu(기본 0), sigma(표준편차, 양수, 기본 1)이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. q 가 0 또는 1 이면 오류이고, 양측 임계값은 q 에 1-α/2 를 넣는다.",
     version="1.0.0",
 )
 def normal_ppf(
     q: str,
     mu: str = "0",
     sigma: str = "1",
-) -> dict[str, Any]:
+) -> DistributionResult:
     """Compute the normal distribution percent point function (inverse CDF).
 
     Args:

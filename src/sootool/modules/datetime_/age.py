@@ -2,13 +2,23 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
 
 from dateutil.relativedelta import relativedelta
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class AgeResult(TracedResult):
+    years:  int
+    months: int
+    days:   int
+
+
+class DiffResult(TracedResult):
+    value: str
 
 
 def _parse_date(s: str) -> date:
@@ -22,15 +32,16 @@ def _parse_date(s: str) -> date:
     namespace="datetime",
     name="age",
     description=(
-        "만나이(한국 법정 연령) 계산. 생일 당일에 나이가 증가하며 년·월·일을 반환한다. "
-        "reference_date 를 생략하면 오늘(UTC) 기준."
+        "만 나이(한국 법정 연령)를 years, months, days 정수로 계산한다. 날짜는 YYYY-MM-DD 이고 "
+        "생일 당일에 한 살이 오른다. reference_date 를 생략하면 서버의 오늘 날짜를 쓰므로 실행일마다 "
+        "결과가 달라진다. 기준일이 생일보다 앞서면 오류이며 세는나이는 계산하지 않는다."
     ),
     version="1.0.0",
 )
 def age(
     birth_date: str,
     reference_date: str | None = None,
-) -> dict[str, Any]:
+) -> AgeResult:
     """Calculate Korean civil age (만나이) at reference_date.
 
     만나이: full years elapsed since birth_date. Increments on birthday.
@@ -84,14 +95,18 @@ _UNIT_FACTORS = {
 @REGISTRY.tool(
     namespace="datetime",
     name="diff",
-    description="두 날짜 간 기간 차이 계산. unit: days | weeks | months | years.",
+    description=(
+        "두 날짜의 차이를 unit(days | weeks | months | years) 단위의 정수 문자열 value 로 돌려준다. "
+        "날짜는 YYYY-MM-DD 이다. weeks 는 일수를 7 로 나눈 몫(내림), months 와 years 는 가득 찬 달과 해만 "
+        "세며 end 가 start 보다 앞서면 음수이다. 소수 단위나 남는 일수는 주지 않는다."
+    ),
     version="1.0.0",
 )
 def diff(
     start: str,
     end: str,
     unit: str,
-) -> dict[str, Any]:
+) -> DiffResult:
     """Calculate difference between two dates in the specified unit.
 
     Args:

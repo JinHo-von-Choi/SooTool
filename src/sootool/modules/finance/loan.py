@@ -18,16 +18,30 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import TypedDict
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, mul, power, sub
 from sootool.core.errors import InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy, apply
 
 _VALID_METHODS = {"EQUAL_PAYMENT", "EQUAL_PRINCIPAL"}
+
+
+class LoanScheduleRow(TypedDict):
+    month:     int
+    payment:   str
+    principal: str
+    interest:  str
+    balance:   str
+
+
+class LoanScheduleResult(TracedResult):
+    monthly_payment: str | None
+    schedule:        list[LoanScheduleRow]
 
 
 def _parse_policy(rounding: str) -> RoundingPolicy:
@@ -40,7 +54,12 @@ def _parse_policy(rounding: str) -> RoundingPolicy:
 @REGISTRY.tool(
     namespace="finance",
     name="loan_schedule",
-    description="대출 상환 스케줄 계산. 원리금균등(EQUAL_PAYMENT) 또는 원금균등(EQUAL_PRINCIPAL).",
+    description=(
+        "대출 상환 스케줄을 계산한다. method 는 EQUAL_PAYMENT(원리금균등, 기본) 또는 EQUAL_PRINCIPAL(원금균등). "
+        "annual_rate 는 연이율 소수(예 0.03)이며 월이율 = 연이율 / 12, months 는 1 이상 1200 이하 정수. "
+        "decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리하고 마지막 회차가 잔액을 정리한다. "
+        "원금균등은 monthly_payment 가 null 이다. 거치기간과 중도상환은 지원하지 않는다."
+    ),
     version="1.0.0",
 )
 def loan_schedule(
@@ -50,7 +69,7 @@ def loan_schedule(
     method: str = "EQUAL_PAYMENT",
     rounding: str = "HALF_EVEN",
     decimals: int = 0,
-) -> dict[str, Any]:
+) -> LoanScheduleResult:
     """Compute a loan amortization schedule.
 
     Args:
@@ -117,7 +136,7 @@ def _equal_payment(
     policy: RoundingPolicy,
     decimals: int,
     trace: CalcTrace,
-) -> dict[str, Any]:
+) -> LoanScheduleResult:
     """원리금균등 상환 스케줄."""
     n = D(str(months))
 
@@ -136,7 +155,7 @@ def _equal_payment(
     trace.step("monthly_payment_raw", str(payment_raw))
     trace.step("monthly_payment",     str(monthly_payment))
 
-    schedule: list[dict[str, Any]] = []
+    schedule: list[LoanScheduleRow] = []
     balance = principal_d
 
     for month in range(1, months + 1):
@@ -177,13 +196,13 @@ def _equal_principal(
     policy: RoundingPolicy,
     decimals: int,
     trace: CalcTrace,
-) -> dict[str, Any]:
+) -> LoanScheduleResult:
     """원금균등 상환 스케줄."""
     n = D(str(months))
     principal_per_month = apply(div(principal_d, n), decimals, policy)
     trace.step("principal_per_month", str(principal_per_month))
 
-    schedule: list[dict[str, Any]] = []
+    schedule: list[LoanScheduleRow] = []
     balance = principal_d
 
     for month in range(1, months + 1):

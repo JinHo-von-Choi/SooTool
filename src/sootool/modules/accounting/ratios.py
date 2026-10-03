@@ -8,14 +8,25 @@ All inputs/outputs Decimal strings. No float. (ADR-008)
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
+
+
+class AccountingRatiosResult(TracedResult):
+    current_ratio:  str
+    quick_ratio:    str
+    debt_to_equity: str
+    debt_ratio:     str
+    equity_ratio:   str
+    roe:            str
+    roa:            str
+    net_margin:     str
 
 
 def _safe_div(numerator: Decimal, denominator: Decimal, field: str) -> Decimal:
@@ -28,8 +39,9 @@ def _safe_div(numerator: Decimal, denominator: Decimal, field: str) -> Decimal:
     namespace="accounting",
     name="ratios",
     description=(
-        "재무비율 일괄 계산: 유동비율·당좌비율·부채비율·자기자본비율·ROE·ROA. "
-        "정규정 재무제표 항목을 입력받아 8개 비율 반환."
+        "재무상태표와 손익 항목으로 유동비율, 당좌비율, 부채/자기자본, 부채/총자산, 자기자본비율, ROE, ROA, 순이익률 "
+        "8개를 한 번에 계산한다. 금액은 Decimal 문자열이며 비율은 배수(0.5 = 50%)로 decimals(기본 4)자리 HALF_EVEN "
+        "반올림한다. 분모(유동부채, 자기자본, 총자산, 매출)가 0 이면 오류이며 백분율로 쓰려면 직접 100 을 곱한다."
     ),
     version="1.0.0",
 )
@@ -43,7 +55,7 @@ def accounting_ratios(
     net_income:            str,
     revenue:               str,
     decimals:              int = 4,
-) -> dict[str, Any]:
+) -> AccountingRatiosResult:
     """Compute 8 financial ratios from a balance-sheet + income snapshot.
 
     Returns:
@@ -107,4 +119,14 @@ def accounting_ratios(
         "net_margin":      str(nm),
     }
     trace.output(out)
-    return {**out, "trace": trace.to_dict()}
+    return {
+        "current_ratio": out["current_ratio"],
+        "quick_ratio": out["quick_ratio"],
+        "debt_to_equity": out["debt_to_equity"],
+        "debt_ratio": out["debt_ratio"],
+        "equity_ratio": out["equity_ratio"],
+        "roe": out["roe"],
+        "roa": out["roa"],
+        "net_margin": out["net_margin"],
+        "trace": trace.to_dict(),
+    }

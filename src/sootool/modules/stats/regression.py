@@ -7,8 +7,6 @@ Internal dtype: float64 (statsmodels/numpy). Boundaries: Decimal strings.
 """
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 
 from sootool.core.audit import CalcTrace
@@ -16,8 +14,17 @@ from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
 from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 sm = lazy_module("statsmodels.api")
+
+
+class StatsRegressionLinearResult(TracedResult):
+    coefficients: list[str]
+    intercept:    str
+    r_squared:    str
+    p_values:     list[str]
+    residuals:    list[str]
 
 
 def _fmt(x: float, digits: int = 10) -> str:
@@ -32,8 +39,10 @@ def _fmt_p(p: float) -> str:
     namespace="stats",
     name="regression_linear",
     description=(
-        "선형회귀 (OLS). X: n_samples x n_features, y: n_samples. "
-        "계수, 절편, R², p-values, 잔차 반환."
+        "최소제곱(OLS) 선형회귀로 계수, 절편, R², 계수별 p값, 잔차를 구한다. "
+        "X는 표본 수 x 특징 수의 Decimal 문자열 행렬, y는 표본 수 길이의 목록이며 표본 수는 특징 수 + 절편 수보다 커야 한다. "
+        "add_intercept 기본 True이고 False면 절편은 \"0\"이다. p_values는 절편을 제외한 계수 순서이며 "
+        "float64 계산 결과를 유효숫자 10자리 문자열로 돌려준다. 범주형 변수는 수치로 부호화해 넣어야 한다."
     ),
     version="1.0.0",
 )
@@ -41,7 +50,7 @@ def stats_regression_linear(
     X:             list[list[str]],
     y:             list[str],
     add_intercept: bool = True,
-) -> dict[str, Any]:
+) -> StatsRegressionLinearResult:
     """Ordinary Least Squares linear regression.
 
     Args:

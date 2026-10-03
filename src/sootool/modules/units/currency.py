@@ -2,12 +2,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy, apply
 
 # ISO 4217 minor units — number of decimal places for final rounding.
@@ -82,6 +82,16 @@ CURRENCY_DECIMALS: dict[str, int] = {
 _DEFAULT_DECIMALS = 2
 
 
+class FxConvertResult(TracedResult):
+    amount:   str
+    currency: str
+
+
+class FxTriangulateResult(TracedResult):
+    amount:   str
+    currency: str
+
+
 def _currency_decimals(ccy: str) -> int:
     """Return the number of minor-unit decimal places for a currency code."""
     return CURRENCY_DECIMALS.get(ccy.upper(), _DEFAULT_DECIMALS)
@@ -97,7 +107,11 @@ def _parse_policy(rounding: str) -> RoundingPolicy:
 @REGISTRY.tool(
     namespace="units",
     name="fx_convert",
-    description="FX direct conversion: amount * rate, rounded to to_ccy minor units.",
+    description=(
+        "amount * rate 를 to_ccy 의 소수 자릿수로 반올림해 amount(문자열)와 currency 를 반환한다. "
+        "자릿수는 JPY, KRW 등 0, USD 등 2, KWD 등 3 이고 표에 없는 통화는 2 이다. rounding 은 HALF_EVEN(기본), "
+        "HALF_UP, DOWN, UP, FLOOR, CEIL. rate 는 from_ccy 에서 to_ccy 방향의 양수이며 환율을 조회하지는 않는다."
+    ),
     version="1.0.0",
 )
 def fx_convert(
@@ -106,7 +120,7 @@ def fx_convert(
     to_ccy: str,
     rate: str,
     rounding: str = "HALF_EVEN",
-) -> dict[str, Any]:
+) -> FxConvertResult:
     """Convert an amount from one currency to another using a direct exchange rate.
 
     Formula: result = amount * rate, rounded to to_ccy decimal places.
@@ -162,7 +176,11 @@ def fx_convert(
 @REGISTRY.tool(
     namespace="units",
     name="fx_triangulate",
-    description="Triangulated FX: from_ccy → via_ccy → to_ccy using two rates.",
+    description=(
+        "중간 통화를 거치는 삼각 환산 amount * rate1 * rate2 를 to_ccy 의 소수 자릿수로 한 번만 반올림해 "
+        "amount(문자열)와 currency 를 반환한다. rate1 은 from_ccy 에서 via_ccy, rate2 는 via_ccy 에서 to_ccy "
+        "방향의 양수이며 중간 금액은 반올림하지 않는다. rounding 기본값은 HALF_EVEN 이다."
+    ),
     version="1.0.0",
 )
 def fx_triangulate(
@@ -173,7 +191,7 @@ def fx_triangulate(
     rate1: str,
     rate2: str,
     rounding: str = "HALF_EVEN",
-) -> dict[str, Any]:
+) -> FxTriangulateResult:
     """Convert an amount through an intermediate currency (triangulation).
 
     Formula: intermediate = amount * rate1; result = intermediate * rate2,

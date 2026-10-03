@@ -9,7 +9,6 @@ Rounded to 8 decimals on output.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import numpy as np
 
@@ -18,8 +17,42 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 stats = lazy_module("scipy.stats")
+
+
+class FinanceVarHistoricalResult(TracedResult):
+    var:        str
+    cvar:       str
+    n:          int
+    confidence: str
+
+
+class FinanceVarParametricResult(TracedResult):
+    var:        str
+    cvar:       str
+    mu:         str
+    sigma:      str
+    z:          str
+    n:          int
+    confidence: str
+
+
+class FinanceSharpeRatioResult(TracedResult):
+    sharpe:      str
+    mean_excess: str
+    stdev:       str
+    annualized:  str | None
+    n:           int
+
+
+class FinanceSortinoRatioResult(TracedResult):
+    sortino:      str
+    mean_excess:  str
+    downside_dev: str
+    annualized:   str | None
+    n:            int
 
 
 def _to_decimal_array(values: list[str]) -> list[Decimal]:
@@ -67,15 +100,16 @@ def _q8(v: Decimal) -> Decimal:
     namespace="finance",
     name="var_historical",
     description=(
-        "Historical VaR: 수익률 배열의 (1-confidence) 분위수를 손실로 반환. "
-        "분포 가정 없음."
+        "과거 수익률의 경험적 분위수로 VaR 와 CVaR(기대부족액)을 계산한다. returns 는 기간 수익률 문자열 목록(2개 이상), "
+        "confidence 는 0 초과 1 미만(기본 0.95)이며 분위수는 선형보간한다. 손실을 양수로 나타낸 소수 8자리 값이고 분포 가정은 "
+        "없다. 표본이 적으면 꼬리 추정이 불안정하다."
     ),
     version="1.0.0",
 )
 def finance_var_historical(
     returns:    list[str],
     confidence: str = "0.95",
-) -> dict[str, Any]:
+) -> FinanceVarHistoricalResult:
     """Historical Value at Risk.
 
     VaR = -quantile(returns, 1-confidence)
@@ -125,15 +159,16 @@ def finance_var_historical(
     namespace="finance",
     name="var_parametric",
     description=(
-        "Parametric VaR (정규분포 가정): VaR = -(mu + z_alpha * sigma). "
-        "분포 모수 추정."
+        "정규분포를 가정한 모수적 VaR 와 CVaR 를 계산한다. 표본 평균과 표본표준편차(n-1)로 VaR = -(mu + z x sigma). "
+        "returns 는 기간 수익률 문자열 목록(2개 이상), confidence 는 0 초과 1 미만(기본 0.95). 손실을 양수로 나타낸 소수 8자리 값. "
+        "꼬리가 두꺼운 분포에서는 손실을 작게 추정하므로 var_historical 과 비교한다."
     ),
     version="1.0.0",
 )
 def finance_var_parametric(
     returns:    list[str],
     confidence: str = "0.95",
-) -> dict[str, Any]:
+) -> FinanceVarParametricResult:
     """Parametric (Gaussian) VaR.
 
     VaR = -(mu + z_{1-c} * sigma)  where z is standard normal ppf.
@@ -188,7 +223,9 @@ def finance_var_parametric(
     namespace="finance",
     name="sharpe_ratio",
     description=(
-        "Sharpe ratio: (평균수익 - 무위험수익) / 표준편차. 연환산 옵션."
+        "샤프지수 = (평균수익률 - 무위험수익률) / 표본표준편차(n-1)를 계산한다. returns 는 기간 수익률 문자열 목록(2개 이상), "
+        "risk_free_rate 는 같은 기간 단위(기본 0), periods_per_year 가 0 보다 크면 sqrt(periods_per_year)를 곱해 연환산한다. "
+        "표준편차가 0 이면 오류, 결과는 소수 8자리. 연 무위험수익률을 일간 수익률에서 그대로 빼지 않는다."
     ),
     version="1.0.0",
 )
@@ -196,7 +233,7 @@ def finance_sharpe_ratio(
     returns:        list[str],
     risk_free_rate: str  = "0",
     periods_per_year: int = 0,
-) -> dict[str, Any]:
+) -> FinanceSharpeRatioResult:
     """Sharpe ratio.
 
     Args:
@@ -250,8 +287,9 @@ def finance_sharpe_ratio(
     namespace="finance",
     name="sortino_ratio",
     description=(
-        "Sortino ratio: 하방편차만 사용한 위험조정수익률. "
-        "Sharpe 대비 상승 변동성 페널티 제외."
+        "소르티노 비율 = (평균수익률 - 무위험수익률) / 하방편차를 계산한다. 하방편차 = sqrt(mean(min(r - rf, 0)^2)), "
+        "평균은 전체 표본 수로 나눈다. returns 는 기간 수익률 문자열 목록(2개 이상), risk_free_rate 는 같은 기간 단위(기본 0), "
+        "periods_per_year 가 0 보다 크면 연환산. 하방편차가 0 이면 오류, 결과는 소수 8자리."
     ),
     version="1.0.0",
 )
@@ -259,7 +297,7 @@ def finance_sortino_ratio(
     returns:          list[str],
     risk_free_rate:   str  = "0",
     periods_per_year: int  = 0,
-) -> dict[str, Any]:
+) -> FinanceSortinoRatioResult:
     """Sortino ratio with downside semi-deviation.
 
     downside_dev = sqrt( mean( min(r - rf, 0)^2 ) )

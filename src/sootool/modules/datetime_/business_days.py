@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Any
 
 import holidays
 
@@ -10,6 +9,15 @@ from sootool.core.audit import CalcTrace
 from sootool.core.errors import InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class AddBusinessDaysResult(TracedResult):
+    end_date: str
+
+
+class CountBusinessDaysResult(TracedResult):
+    count: int
 
 
 def _parse_date(s: str) -> date:
@@ -37,7 +45,11 @@ def _build_holiday_set(country: str, years: set[int], extra_holidays: list[str])
 @REGISTRY.tool(
     namespace="datetime",
     name="add_business_days",
-    description="영업일 기준으로 start_date에 days를 더한 날짜를 반환. 주말·공휴일 자동 제외.",
+    description=(
+        "start_date 에 영업일 기준으로 days 를 더한(음수면 뺀) 날짜 end_date 를 YYYY-MM-DD 로 반환한다. "
+        "토·일, holidays 패키지의 country(기본 KR) 공휴일, extra_holidays 를 건너뛰고 시작일은 세지 않는다. "
+        "days 는 절대값 100000 이하이며, 0 이면 시작일이 휴일이어도 그대로 반환한다."
+    ),
     version="1.0.0",
 )
 def add_business_days(
@@ -45,7 +57,7 @@ def add_business_days(
     days: int,
     country: str = "KR",
     extra_holidays: list[str] | None = None,
-) -> dict[str, Any]:
+) -> AddBusinessDaysResult:
     """Add business days to a start date, skipping weekends and holidays.
 
     Args:
@@ -75,17 +87,23 @@ def add_business_days(
         trace.output(start_date)
         return {"end_date": start_date, "trace": trace.to_dict()}
 
-    # Determine year range to cover (add buffer for long spans)
-    end_estimate_year = start.year + (abs(days) // 200 + 2)
-    years = set(range(start.year, end_estimate_year + 1))
-    holiday_set = _build_holiday_set(country, years, extra_holidays)
+    # 영업일을 세며 지나는 연도의 공휴일을 필요할 때 읽는다(과거 방향 계산도 같은 방식).
+    holiday_set: set[date] = set()
+    loaded_years: set[int] = set()
 
+    def ensure_holidays(year: int) -> None:
+        if year not in loaded_years:
+            holiday_set.update(_build_holiday_set(country, {year}, extra_holidays))
+            loaded_years.add(year)
+
+    ensure_holidays(start.year)
     current = start
     step    = 1 if days > 0 else -1
     remaining = abs(days)
 
     while remaining > 0:
         current = current + timedelta(days=step)
+        ensure_holidays(current.year)
         if _is_business_day(current, holiday_set):
             remaining -= 1
 
@@ -99,14 +117,18 @@ def add_business_days(
 @REGISTRY.tool(
     namespace="datetime",
     name="count_business_days",
-    description="start~end 사이 영업일 수 계산 (양 끝 날짜 포함).",
+    description=(
+        "start 와 end 사이의 영업일 수 count 를 정수로 센다. 날짜는 YYYY-MM-DD 이고 양 끝 날짜를 포함하며 "
+        "토·일과 holidays 패키지의 country(기본 KR) 공휴일은 제외한다. end 가 start 보다 앞서거나 "
+        "구간이 100000일을 넘으면 오류이고, 임시 휴일을 더하는 입력은 없다."
+    ),
     version="1.0.0",
 )
 def count_business_days(
     start: str,
     end: str,
     country: str = "KR",
-) -> dict[str, Any]:
+) -> CountBusinessDaysResult:
     """Count business days between start and end dates (inclusive).
 
     Args:

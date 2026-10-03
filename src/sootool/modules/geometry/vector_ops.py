@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -10,6 +9,7 @@ from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _MPMATH_DPS = 50
 
@@ -21,13 +21,21 @@ def _parse_decimal_list(values: list[str], name: str) -> list[Decimal]:
         raise InvalidInputError(f"{name} 변환 오류: {exc}") from exc
 
 
+class VectorDotResult(TracedResult):
+    result: str
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="vector_dot",
-    description="벡터 내적(dot product). a, b: Decimal 문자열 리스트.",
+    description=(
+        "두 벡터의 내적 Σ a_i * b_i 를 Decimal 로 계산한다. "
+        "a, b 는 같은 길이의 비어 있지 않은 Decimal 문자열 리스트이며 반올림 없는 정확한 합이다. "
+        "길이가 다르면 오류. 3차원 벡터의 직교 방향이 필요하면 vector_cross 를 쓴다."
+    ),
     version="1.0.0",
 )
-def vector_dot(a: list[str], b: list[str]) -> dict[str, Any]:
+def vector_dot(a: list[str], b: list[str]) -> VectorDotResult:
     """Compute the dot product of two vectors: Σ a_i * b_i.
 
     Args:
@@ -59,13 +67,22 @@ def vector_dot(a: list[str], b: list[str]) -> dict[str, Any]:
     return {"result": str(result), "trace": trace.to_dict()}
 
 
+class VectorCrossResult(TracedResult):
+    result: list[str]
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="vector_cross",
-    description="3D 벡터 외적(cross product). a, b: 각 3개 원소 Decimal 문자열 리스트.",
+    description=(
+        "3차원 벡터의 외적 a × b 를 Decimal 로 계산한다. "
+        "a, b 는 정확히 3개 원소의 Decimal 문자열 리스트이고 결과도 3개 원소 리스트다. "
+        "외적은 순서를 바꾸면 부호가 반대가 되므로 a × b 와 b × a 를 혼동하지 않는다. "
+        "2차원 벡터는 z 성분 0 을 직접 채워 넣는다."
+    ),
     version="1.0.0",
 )
-def vector_cross(a: list[str], b: list[str]) -> dict[str, Any]:
+def vector_cross(a: list[str], b: list[str]) -> VectorCrossResult:
     """Compute the cross product of two 3D vectors.
 
     Args:
@@ -103,13 +120,21 @@ def vector_cross(a: list[str], b: list[str]) -> dict[str, Any]:
     return {"result": result, "trace": trace.to_dict()}
 
 
+class VectorNormResult(TracedResult):
+    result: str
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="vector_norm",
-    description="벡터 L-p 노름. v: Decimal 문자열 리스트, p: 정수(기본 2). mpmath sqrt 사용.",
+    description=(
+        "벡터의 L-p 노름 (Σ |v_i|^p)^(1/p) 을 계산한다. "
+        "v 는 비어 있지 않은 Decimal 문자열 리스트, p 는 1 이상의 정수(기본 2, 유클리드 길이). mpmath 50자리 계산 후 유효숫자 30자리로 반환한다. "
+        "최댓값 노름(p=∞)과 정수가 아닌 p 는 지원하지 않는다."
+    ),
     version="1.0.0",
 )
-def vector_norm(v: list[str], p: int = 2) -> dict[str, Any]:
+def vector_norm(v: list[str], p: int = 2) -> VectorNormResult:
     """Compute the L-p norm of a vector: (Σ |v_i|^p)^(1/p).
 
     Args:

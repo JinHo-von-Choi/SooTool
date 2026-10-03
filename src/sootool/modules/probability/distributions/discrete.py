@@ -2,14 +2,13 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
 from sootool.core.audit import CalcTrace
 from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import DomainConstraintError
 from sootool.core.registry import REGISTRY
 from sootool.modules.probability.distributions._common import (
     _SIG_DIGITS,
+    DistributionResult,
     _parse_float,
     _parse_prob,
     _validate_non_negative_int,
@@ -20,10 +19,10 @@ from sootool.modules.probability.distributions._common import (
 @REGISTRY.tool(
     namespace="probability",
     name="binomial_pmf",
-    description="이항분포 PMF: P(X=k; n, p). scipy.stats.binom.pmf.",
+    description="이항분포의 확률질량 P(X=k; n, p)를 구한다. k 와 n 은 0 이상 정수(k ≤ n), p 는 [0, 1] 구간 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 'k 회 이하' 확률이 필요하면 binomial_cdf 를 쓴다.",
     version="1.0.0",
 )
-def binomial_pmf(k: int, n: int, p: str) -> dict[str, Any]:
+def binomial_pmf(k: int, n: int, p: str) -> DistributionResult:
     """Compute the binomial distribution PMF: P(X = k).
 
     Args:
@@ -61,10 +60,10 @@ def binomial_pmf(k: int, n: int, p: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="binomial_cdf",
-    description="이항분포 CDF: P(X≤k; n, p). scipy.stats.binom.cdf.",
+    description="이항분포의 누적확률 P(X ≤ k; n, p)를 구한다. k 와 n 은 0 이상 정수(k ≤ n), p 는 [0, 1] 구간 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 'k 회 이상'은 1 - cdf(k-1)로 구해야 하며 cdf(k)는 'k 회 이하'다.",
     version="1.0.0",
 )
-def binomial_cdf(k: int, n: int, p: str) -> dict[str, Any]:
+def binomial_cdf(k: int, n: int, p: str) -> DistributionResult:
     """Compute the binomial distribution CDF: P(X <= k).
 
     Args:
@@ -102,10 +101,10 @@ def binomial_cdf(k: int, n: int, p: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="poisson_pmf",
-    description="포아송 분포 PMF: P(X=k; λ). scipy.stats.poisson.pmf.",
+    description="포아송분포의 확률질량 P(X=k; λ)를 구한다. k 는 0 이상 정수, lam(λ)은 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. lam 은 관측 구간 길이에 맞춘 평균 발생 횟수여야 하며 단위 시간당 비율을 그대로 넣으면 틀린다.",
     version="1.0.0",
 )
-def poisson_pmf(k: int, lam: str) -> dict[str, Any]:
+def poisson_pmf(k: int, lam: str) -> DistributionResult:
     """Compute the Poisson distribution PMF: P(X = k).
 
     Args:
@@ -140,10 +139,10 @@ def poisson_pmf(k: int, lam: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="poisson_cdf",
-    description="포아송 분포 CDF: P(X≤k; λ). scipy.stats.poisson.cdf.",
+    description="포아송분포의 누적확률 P(X ≤ k; λ)를 구한다. k 는 0 이상 정수, lam(λ)은 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 'k 회 이상'은 1 - cdf(k-1)로 구해야 하며 cdf(k)는 'k 회 이하'다.",
     version="1.0.0",
 )
-def poisson_cdf(k: int, lam: str) -> dict[str, Any]:
+def poisson_cdf(k: int, lam: str) -> DistributionResult:
     """Compute the Poisson distribution CDF: P(X <= k).
 
     Args:

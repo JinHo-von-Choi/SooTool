@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import threading
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -27,8 +26,18 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _MPDPS = 40
+
+
+class QtcResult(TracedResult):
+    qtc:  str
+    unit: str
+
+
+class QtcHodgesResult(QtcResult):
+    hr_bpm: str
 _MP_LOCK = threading.Lock()
 
 
@@ -54,12 +63,14 @@ def _to_seconds(qt: Decimal, rr: Decimal, unit: str) -> tuple[Decimal, Decimal]:
     namespace="medical",
     name="qtc_bazett",
     description=(
-        "Bazett 공식 QT 보정: QTc = QT / sqrt(RR). unit='ms'|'s' (기본 ms). "
-        "출력 unit는 입력 unit과 동일."
+        "Bazett 공식으로 QT 간격을 심박수에 맞춰 보정한다. QTc = QT / sqrt(RR). "
+        "qt와 rr은 Decimal 문자열이며 unit='ms'(기본) 또는 's'로 둘 다 같은 단위로 넣고, 결과 단위도 같다. "
+        "내부는 mpmath 40자리로 계산해 유효숫자 20자리 문자열로 돌려준다(반올림 소수 자릿수 고정 없음). "
+        "빠른 심박(RR 짧음)에서는 과대 보정되므로 그 구간엔 Fridericia를 고려한다."
     ),
     version="1.0.0",
 )
-def qtc_bazett(qt: str, rr: str, unit: str = "ms") -> dict[str, Any]:
+def qtc_bazett(qt: str, rr: str, unit: str = "ms") -> QtcResult:
     trace = CalcTrace(tool="medical.qtc_bazett", formula="QTc = QT / sqrt(RR)")
     qt_d = _parse_positive(qt, "qt")
     rr_d = _parse_positive(rr, "rr")
@@ -85,11 +96,14 @@ def qtc_bazett(qt: str, rr: str, unit: str = "ms") -> dict[str, Any]:
     namespace="medical",
     name="qtc_fridericia",
     description=(
-        "Fridericia 공식 QT 보정: QTc = QT / RR^(1/3). unit='ms'|'s' (기본 ms)."
+        "Fridericia 공식으로 QT 간격을 심박수에 맞춰 보정한다. QTc = QT / RR^(1/3). "
+        "qt와 rr은 Decimal 문자열이며 unit='ms'(기본) 또는 's'로 둘 다 같은 단위로 넣고, 결과 단위도 같다. "
+        "내부는 mpmath 40자리로 계산해 유효숫자 20자리 문자열로 돌려준다. "
+        "RR을 심박수(bpm)로 넣으면 안 된다. RR은 R-R 간격 시간이다."
     ),
     version="1.0.0",
 )
-def qtc_fridericia(qt: str, rr: str, unit: str = "ms") -> dict[str, Any]:
+def qtc_fridericia(qt: str, rr: str, unit: str = "ms") -> QtcResult:
     trace = CalcTrace(tool="medical.qtc_fridericia", formula="QTc = QT / RR^(1/3)")
     qt_d = _parse_positive(qt, "qt")
     rr_d = _parse_positive(rr, "rr")
@@ -116,12 +130,14 @@ def qtc_fridericia(qt: str, rr: str, unit: str = "ms") -> dict[str, Any]:
     namespace="medical",
     name="qtc_framingham",
     description=(
-        "Framingham 선형 QT 보정: QTc = QT + 0.154 * (1 - RR_seconds). "
-        "원식은 초 단위. unit='ms'|'s' (기본 ms, 내부 초 변환)."
+        "Framingham 선형 공식으로 QT 간격을 보정한다. QTc = QT + 0.154 * (1 - RR_초). "
+        "qt와 rr은 Decimal 문자열이며 unit='ms'(기본) 또는 's'로 둘 다 같은 단위로 넣고, "
+        "내부에서 초로 환산해 계산한 뒤 입력 단위로 돌려준다. Decimal 정확 연산이며 반올림하지 않는다. "
+        "RR을 심박수(bpm)로 넣으면 안 된다."
     ),
     version="1.0.0",
 )
-def qtc_framingham(qt: str, rr: str, unit: str = "ms") -> dict[str, Any]:
+def qtc_framingham(qt: str, rr: str, unit: str = "ms") -> QtcResult:
     trace = CalcTrace(
         tool="medical.qtc_framingham",
         formula="QTc_s = QT_s + 0.154 * (1 - RR_s)",
@@ -148,12 +164,14 @@ def qtc_framingham(qt: str, rr: str, unit: str = "ms") -> dict[str, Any]:
     namespace="medical",
     name="qtc_hodges",
     description=(
-        "Hodges 공식 QT 보정: QTc_ms = QT_ms + 1.75 * (HR - 60). "
-        "HR은 60 / RR_s. unit='ms'|'s' (기본 ms, 내부 ms 변환)."
+        "Hodges 공식으로 QT 간격을 심박수에 맞춰 보정한다. QTc_ms = QT_ms + 1.75 * (HR - 60), HR = 60 / RR_초. "
+        "qt와 rr은 Decimal 문자열이며 unit='ms'(기본) 또는 's'로 둘 다 같은 단위로 넣고, "
+        "결과는 입력 단위로 돌려주며 계산에 쓴 심박수 hr_bpm도 함께 반환한다. Decimal 연산이며 반올림하지 않는다. "
+        "RR 대신 심박수를 넣으면 안 된다."
     ),
     version="1.0.0",
 )
-def qtc_hodges(qt: str, rr: str, unit: str = "ms") -> dict[str, Any]:
+def qtc_hodges(qt: str, rr: str, unit: str = "ms") -> QtcHodgesResult:
     trace = CalcTrace(
         tool="medical.qtc_hodges",
         formula="QTc_ms = QT_ms + 1.75 * (HR - 60), HR = 60 / RR_s",

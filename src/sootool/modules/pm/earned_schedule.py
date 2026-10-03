@@ -20,12 +20,19 @@ PV 타임라인은 step-function 또는 부분 선형으로 가정: (시간, 누
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class EarnedScheduleResult(TracedResult):
+    es:     str
+    spi_t:  str
+    tspi_t: str
+    ieac_t: str
 
 
 def _parse_decimal(value: str, name: str) -> Decimal:
@@ -70,8 +77,10 @@ def _earned_schedule(
     namespace="pm",
     name="earned_schedule",
     description=(
-        "Earned Schedule: SPI(t)=ES/AT, TSPI(t)=(PD-ES)/(PD-AT), IEAC(t)=PD/SPI(t). "
-        "pv_timeline은 [{time: '...', cumulative_pv: '...'}] 시간 오름차순."
+        "획득일정(Earned Schedule) 지표를 계산한다. ES는 획득가치(EV)에 해당하는 계획 시점으로 "
+        "pv_timeline을 선형 보간해 역산하고, SPI(t)=ES/AT, TSPI(t)=(PD-ES)/(PD-AT), IEAC(t)=PD/SPI(t). "
+        "pv_timeline은 [{time, cumulative_pv}] 시간 오름차순에 누적 PV 비감소이며 모든 수는 Decimal 문자열, "
+        "시간 단위를 통일한다. AT와 PD는 양수여야 하고 PD와 AT가 같으면 TSPI는 0을 돌려준다. 반올림하지 않는다."
     ),
     version="1.0.0",
 )
@@ -80,7 +89,7 @@ def earned_schedule(
     earned_value:      str,
     actual_time:       str,
     planned_duration:  str,
-) -> dict[str, Any]:
+) -> EarnedScheduleResult:
     """Compute Earned Schedule metrics.
 
     Args:

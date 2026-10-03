@@ -10,8 +10,6 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 
 from sootool.core.audit import CalcTrace
@@ -20,6 +18,7 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 scipy_interpolate = lazy_module("scipy.interpolate")
 
@@ -47,12 +46,17 @@ def _validate_strictly_increasing(xs: np.ndarray) -> None:
         raise DomainConstraintError("xs는 엄격히 증가해야 합니다.")
 
 
+class InterpolateLinearResult(TracedResult):
+    result: str
+
+
 @REGISTRY.tool(
     namespace="math",
     name="interpolate_linear",
     description=(
-        "1차원 선형 보간. (xs, ys) 샘플을 받아 x_query 위치의 y 를 반환. "
-        "xs 는 엄격히 증가해야 하며, x_query 는 [min(xs), max(xs)] 구간 내."
+        "표본점 (xs, ys) 를 직선으로 이어 x_query 에서의 값을 구하는 1차원 선형 보간이다. "
+        "xs 는 엄격히 증가하는 2개 이상의 Decimal 문자열 리스트, ys 는 같은 길이. x_query 가 [min(xs), max(xs)] 밖이면 외삽하지 않고 오류를 낸다. "
+        "float64 계산, 유효숫자 12자리."
     ),
     version="1.0.0",
 )
@@ -60,7 +64,7 @@ def interpolate_linear(
     xs:      list[str],
     ys:      list[str],
     x_query: str,
-) -> dict[str, Any]:
+) -> InterpolateLinearResult:
     trace = CalcTrace(
         tool="math.interpolate_linear",
         formula="y(x) = y_i + (y_{i+1} - y_i) * (x - x_i) / (x_{i+1} - x_i)",
@@ -93,12 +97,17 @@ def interpolate_linear(
     return {"result": y_str, "trace": trace.to_dict()}
 
 
+class InterpolateCubicSplineResult(TracedResult):
+    result: str
+
+
 @REGISTRY.tool(
     namespace="math",
     name="interpolate_cubic_spline",
     description=(
-        "3차 스플라인 보간 (자연 경계조건 기본). (xs, ys) 샘플을 받아 x_query 에서의 값 반환. "
-        "scipy.interpolate.CubicSpline 기반, bc_type='natural'."
+        "3차 스플라인 보간(scipy CubicSpline)으로 x_query 에서의 값을 구한다. "
+        "xs 는 엄격히 증가하는 4개 이상의 Decimal 문자열 리스트, ys 는 같은 길이. bc_type 은 natural(기본), clamped, not-a-knot 중 하나. x_query 가 표본 구간 밖이면 외삽하지 않고 오류를 낸다. "
+        "유효숫자 12자리."
     ),
     version="1.0.0",
 )
@@ -107,7 +116,7 @@ def interpolate_cubic_spline(
     ys:      list[str],
     x_query: str,
     bc_type: str = "natural",
-) -> dict[str, Any]:
+) -> InterpolateCubicSplineResult:
     trace = CalcTrace(
         tool="math.interpolate_cubic_spline",
         formula="Piecewise cubic polynomial S_i(x) with C^2 continuity",

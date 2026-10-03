@@ -2,13 +2,23 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, mul, sub
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy, apply
+
+
+class VatExtractResult(TracedResult):
+    net: str
+    vat: str
+
+
+class VatAddResult(TracedResult):
+    gross: str
+    vat:   str
 
 
 def _parse_policy(rounding: str) -> RoundingPolicy:
@@ -21,14 +31,18 @@ def _parse_policy(rounding: str) -> RoundingPolicy:
 @REGISTRY.tool(
     namespace="accounting",
     name="vat_extract",
-    description="공급대가(gross)에서 공급가액(net)과 VAT를 역산. 한국 표준 기본 rounding=DOWN.",
+    description=(
+        "공급대가(부가세 포함 금액)에서 공급가액과 부가세를 역산한다. 공급가액 = gross / (1 + rate)를 정수 자리로 "
+        "rounding(기본 DOWN, 절사) 처리하고 부가세 = gross - 공급가액. rate 기본 0.1, 금액은 Decimal 문자열. "
+        "공급가액에서 공급대가를 구하는 순방향 계산에는 vat_add 를 쓴다."
+    ),
     version="1.0.0",
 )
 def vat_extract(
     gross: str,
     rate: str = "0.1",
     rounding: str = "DOWN",
-) -> dict[str, Any]:
+) -> VatExtractResult:
     """Extract net (공급가액) and VAT from gross (공급대가).
 
     Formula: net = floor(gross / (1 + rate)), vat = gross - net
@@ -83,14 +97,18 @@ def vat_extract(
 @REGISTRY.tool(
     namespace="accounting",
     name="vat_add",
-    description="공급가액(net)에 VAT를 가산하여 공급대가(gross) 계산.",
+    description=(
+        "공급가액에 부가세를 더해 공급대가를 계산한다. 부가세 = 공급가액 x rate(기본 0.1)를 정수 자리로 "
+        "rounding 처리하며 기본은 HALF_EVEN 으로 vat_extract 의 기본(DOWN)과 다르다. 금액은 Decimal 문자열. "
+        "공급대가에서 공급가액을 구하려면 vat_extract 를 쓴다."
+    ),
     version="1.0.0",
 )
 def vat_add(
     net: str,
     rate: str = "0.1",
     rounding: str = "HALF_EVEN",
-) -> dict[str, Any]:
+) -> VatAddResult:
     """Add VAT to net to compute gross.
 
     Formula: vat = net * rate (rounded), gross = net + vat

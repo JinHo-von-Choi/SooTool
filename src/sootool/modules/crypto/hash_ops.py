@@ -2,22 +2,30 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _SUPPORTED_ALGORITHMS = frozenset({"sha256", "sha512", "blake2b"})
+
+
+class HashDataResult(TracedResult):
+    hex: str
 
 
 @REGISTRY.tool(
     namespace="crypto",
     name="hash",
-    description="데이터 문자열의 해시를 반환합니다. algorithm: sha256 | sha512 | blake2b.",
+    description=(
+        "문자열을 UTF-8 로 인코딩해 해시를 소문자 16진수 hex 로 반환한다. "
+        "algorithm 은 sha256(기본) | sha512 | blake2b(64바이트 출력)이며 대소문자를 구분하지 않는다. "
+        "무결성 지문 확인용이고, 솔트와 반복이 없어 비밀번호 저장에는 쓰지 않는다."
+    ),
     version="1.0.0",
 )
-def hash_data(data: str, algorithm: str = "sha256") -> dict[str, Any]:
+def hash_data(data: str, algorithm: str = "sha256") -> HashDataResult:
     """Compute a cryptographic hash of a UTF-8 string.
 
     Args:

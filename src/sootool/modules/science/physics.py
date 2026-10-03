@@ -14,7 +14,6 @@ fraction  = remaining / initial = (0.5)^(t / T)
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -23,8 +22,14 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _MPMATH_DPS = 50
+
+
+class HalfLifeResult(TracedResult):
+    remaining: str
+    fraction:  str
 
 
 def _parse_decimal(value: str, name: str) -> Decimal:
@@ -38,8 +43,10 @@ def _parse_decimal(value: str, name: str) -> Decimal:
     namespace="science",
     name="half_life",
     description=(
-        "방사성 붕괴: N(t) = N₀ × (0.5)^(t/T). "
-        "mpmath 고정밀 지수 연산. 동일 단위 사용 필수."
+        "방사성 붕괴로 남은 양을 계산한다. N(t) = N0 x 0.5^(t/T). initial_amount는 양수, half_life는 양수, "
+        "elapsed_time은 0 이상의 Decimal 문자열이며 half_life와 elapsed_time은 같은 시간 단위여야 한다. "
+        "mpmath 50자리로 계산해 유효숫자 30자리 문자열로 돌려주며 남은 비율(fraction)도 함께 반환한다. "
+        "단위가 다른 반감기와 경과 시간을 섞으면 안 된다."
     ),
     version="1.0.0",
 )
@@ -47,7 +54,7 @@ def half_life(
     initial_amount: str,
     half_life: str,
     elapsed_time: str,
-) -> dict[str, Any]:
+) -> HalfLifeResult:
     """Compute radioactive decay using the half-life formula.
 
     Args:

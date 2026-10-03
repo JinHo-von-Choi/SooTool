@@ -11,7 +11,7 @@ Tools:
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Literal, NotRequired, cast
 
 import mpmath
 
@@ -20,6 +20,7 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _ZERO             = Decimal("0")
 _ONE              = Decimal("1")
@@ -41,10 +42,20 @@ def _reynolds_regime(re: Decimal) -> str:
     return "transitional"
 
 
+class FluidReynoldsResult(TracedResult):
+    reynolds: str
+    regime:   Literal["laminar", "transitional", "turbulent"]
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="fluid_reynolds",
-    description="Reynolds number: Re = ρvL/μ. Classifies flow as laminar/transitional/turbulent.",
+    description=(
+        "레이놀즈 수 Re = ρvL/μ 를 계산하고 층류(Re < 2300), 천이(2300 이상 4000 이하), "
+        "난류(4000 초과)로 분류한다. 밀도 kg/m³, 속도 m/s, 특성길이 m, 점성계수 Pa·s 를 숫자 문자열로 "
+        "받고 모두 0 초과여야 한다. 경계값은 관 유동 기준이라 평판 등 다른 형상에는 맞지 않는다. "
+        "반올림 없이 50자리 유효숫자로 계산한다."
+    ),
     version="1.0.0",
 )
 def fluid_reynolds(
@@ -52,7 +63,7 @@ def fluid_reynolds(
     velocity:  str,
     length:    str,
     viscosity: str,
-) -> dict[str, Any]:
+) -> FluidReynoldsResult:
     """Calculate the Reynolds number and classify the flow regime.
 
     Formula: Re = (ρ × v × L) / μ
@@ -102,11 +113,11 @@ def fluid_reynolds(
     trace.step("regime",    regime)
     trace.output({"reynolds": str(reynolds), "regime": regime})
 
-    return {
+    return cast(FluidReynoldsResult, {
         "reynolds": str(reynolds),
         "regime":   regime,
         "trace":    trace.to_dict(),
-    }
+    })
 
 
 def _sqrt_mp(x: Decimal) -> Decimal:
@@ -133,13 +144,20 @@ def _pow_mp(base: Decimal, exponent: Decimal) -> Decimal:
 # ---------------------------------------------------------------------------
 
 
+class BernoulliResult(TracedResult):
+    pressure_2:  NotRequired[str]
+    velocity_2:  NotRequired[str]
+    elevation_2: NotRequired[str]
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="bernoulli",
     description=(
-        "베르누이 방정식 P + ½ρv² + ρgz = const. "
-        "State 1 완전 입력 + State 2에서 정확히 하나가 None인 항목을 해(解). "
-        "비압축성·비점성·정상류 가정."
+        "베르누이 방정식 P + ½ρv² + ρgz = 일정 을 풀어 상태 2의 미지수 하나를 구한다. "
+        "pressure_2, velocity_2, elevation_2 중 정확히 하나만 생략(None)하며 압력 Pa, 속도 m/s, "
+        "높이 m, 밀도 kg/m³, 중력가속도 기본 9.80665 m/s². 비압축성 비점성 정상류 가정이라 펌프나 "
+        "마찰 손실이 있는 관로에는 쓰지 않는다. 속도 해는 30자리, 나머지는 반올림 없음."
     ),
     version="1.0.0",
 )
@@ -152,7 +170,7 @@ def bernoulli(
     velocity_2:  str | None = None,
     elevation_2: str | None = None,
     gravity:     str = "9.80665",
-) -> dict[str, Any]:
+) -> BernoulliResult:
     """Solve Bernoulli equation for exactly one missing state-2 term.
 
     P₁ + ½ρv₁² + ρgz₁ = P₂ + ½ρv₂² + ρgz₂
@@ -206,7 +224,7 @@ def bernoulli(
         p2 = total - mul(half_rho, mul(v2_d, v2_d)) - mul(rho_g, z2_d)
         trace.step("pressure_2", str(p2))
         trace.output({"pressure_2": str(p2)})
-        return {"pressure_2": str(p2), "trace": trace.to_dict()}
+        return cast(BernoulliResult, {"pressure_2": str(p2), "trace": trace.to_dict()})
 
     if velocity_2 is None:
         p2_d = D(pressure_2)
@@ -220,7 +238,7 @@ def bernoulli(
         v2 = _sqrt_mp(v2_sq)
         trace.step("velocity_2", str(v2))
         trace.output({"velocity_2": str(v2)})
-        return {"velocity_2": str(v2), "trace": trace.to_dict()}
+        return cast(BernoulliResult, {"velocity_2": str(v2), "trace": trace.to_dict()})
 
     # elevation_2 is None
     p2_d = D(pressure_2)
@@ -231,7 +249,7 @@ def bernoulli(
     z2 = div(residual, rho_g)
     trace.step("elevation_2", str(z2))
     trace.output({"elevation_2": str(z2)})
-    return {"elevation_2": str(z2), "trace": trace.to_dict()}
+    return cast(BernoulliResult, {"elevation_2": str(z2), "trace": trace.to_dict()})
 
 
 # ---------------------------------------------------------------------------
@@ -239,12 +257,19 @@ def bernoulli(
 # ---------------------------------------------------------------------------
 
 
+class DarcyWeisbachResult(TracedResult):
+    head_loss_m:      str
+    pressure_drop_pa: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="darcy_weisbach",
     description=(
-        "Darcy-Weisbach 마찰 손실 수두 h_f = f · (L/D) · (v²/(2g)). "
-        "반환: head_loss_m 및 pressure_drop_pa."
+        "다르시-바이스바흐 식으로 관 마찰 손실 수두 h_f = f·(L/D)·v²/(2g) (m)와 압력강하 ρ·g·h_f (Pa)를 "
+        "계산한다. friction_factor 무차원, length 와 diameter m, velocity m/s, density 기본 1000 kg/m³, "
+        "gravity 기본 9.80665. 마찰계수를 모르면 moody_friction_factor 로 먼저 구하며 밸브나 곡관의 "
+        "국부 손실은 포함하지 않는다. 반올림 없이 50자리 유효숫자."
     ),
     version="1.0.0",
 )
@@ -255,7 +280,7 @@ def darcy_weisbach(
     velocity:        str,
     density:         str = "1000",
     gravity:         str = "9.80665",
-) -> dict[str, Any]:
+) -> DarcyWeisbachResult:
     """Compute Darcy-Weisbach head loss (and equivalent pressure drop)."""
     trace = CalcTrace(
         tool="engineering.darcy_weisbach",
@@ -296,11 +321,11 @@ def darcy_weisbach(
         "pressure_drop_pa":  str(pressure),
     })
 
-    return {
+    return cast(DarcyWeisbachResult, {
         "head_loss_m":      str(head_loss),
         "pressure_drop_pa": str(pressure),
         "trace":            trace.to_dict(),
-    }
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -308,13 +333,20 @@ def darcy_weisbach(
 # ---------------------------------------------------------------------------
 
 
+class MoodyFrictionFactorResult(TracedResult):
+    friction_factor: str
+    iterations:      int
+    regime:          Literal["laminar", "turbulent"]
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="moody_friction_factor",
     description=(
-        "Moody 마찰계수 — Colebrook 방정식 1/√f = -2 log10(ε/(3.7D) + 2.51/(Re √f))을 "
-        "최대 100회 반복, 수렴 허용오차 1e-10으로 푼다. "
-        "Re<2300 laminar 영역은 64/Re로 즉시 반환."
+        "콜브룩 방정식 1/√f = -2·log10(ε/(3.7D) + 2.51/(Re·√f)) 를 스위미-제인 초기값에서 시작해 "
+        "최대 100회, 허용오차 1e-10 으로 반복 풀어 다르시 마찰계수 f 를 구한다. Re 2300 미만은 "
+        "f = 64/Re 로 즉시 반환(iterations 0). reynolds 무차원, roughness 와 diameter 는 같은 길이 "
+        "단위, 수렴 실패 시 오류. 난류 결과는 30자리 유효숫자."
     ),
     version="1.0.0",
 )
@@ -322,7 +354,7 @@ def moody_friction_factor(
     reynolds:     str,
     roughness:    str,
     diameter:     str,
-) -> dict[str, Any]:
+) -> MoodyFrictionFactorResult:
     """Compute the Darcy friction factor via the Colebrook equation.
 
     Laminar (Re < 2300)     : f = 64 / Re (closed form, not Colebrook).
@@ -356,12 +388,12 @@ def moody_friction_factor(
         trace.step("regime", "laminar")
         trace.step("friction_factor", str(friction))
         trace.output({"friction_factor": str(friction), "iterations": "0", "regime": "laminar"})
-        return {
+        return cast(MoodyFrictionFactorResult, {
             "friction_factor": str(friction),
             "iterations":      0,
             "regime":          "laminar",
             "trace":           trace.to_dict(),
-        }
+        })
 
     rel_roughness = div(eps_d, d_d)
     term1_const   = div(rel_roughness, Decimal("3.7"))
@@ -419,12 +451,12 @@ def moody_friction_factor(
         "regime":          "turbulent",
     })
 
-    return {
+    return cast(MoodyFrictionFactorResult, {
         "friction_factor": str(friction),
         "iterations":      iterations,
         "regime":          "turbulent",
         "trace":           trace.to_dict(),
-    }
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -432,13 +464,18 @@ def moody_friction_factor(
 # ---------------------------------------------------------------------------
 
 
+class HazenWilliamsFlowResult(TracedResult):
+    flow_rate_m3s: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="hazen_williams_flow",
     description=(
-        "Hazen-Williams 식으로 파이프 유량 Q 계산. "
-        "SI 단위: Q = 0.278 · C · D^2.63 · S^0.54 (m³/s), "
-        "S = h_f / L."
+        "하젠-윌리엄스 식(SI)으로 관 유량 Q = 0.278·C·D^2.63·S^0.54 (m³/s)를 계산한다. "
+        "S = head_loss/length 는 동수경사, coefficient 는 관 조도계수 C(무차원), diameter 와 "
+        "head_loss, length 는 m. 물 관로용 경험식이라 다른 유체에는 쓰지 않는다. 손실수두가 0 이면 "
+        "유량 0, 지수 계산은 30자리 유효숫자."
     ),
     version="1.0.0",
 )
@@ -447,7 +484,7 @@ def hazen_williams_flow(
     diameter:     str,
     head_loss:    str,
     length:       str,
-) -> dict[str, Any]:
+) -> HazenWilliamsFlowResult:
     """Compute flow rate via Hazen-Williams (SI form)."""
     trace = CalcTrace(
         tool="engineering.hazen_williams_flow",
@@ -485,7 +522,7 @@ def hazen_williams_flow(
     trace.step("flow_rate",       str(flow))
     trace.output(str(flow))
 
-    return {"flow_rate_m3s": str(flow), "trace": trace.to_dict()}
+    return cast(HazenWilliamsFlowResult, {"flow_rate_m3s": str(flow), "trace": trace.to_dict()})
 
 
 # ---------------------------------------------------------------------------
@@ -493,12 +530,18 @@ def hazen_williams_flow(
 # ---------------------------------------------------------------------------
 
 
+class PumpHydraulicPowerResult(TracedResult):
+    hydraulic_power_w: str
+    shaft_power_w:     NotRequired[str]
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="pump_hydraulic_power",
     description=(
-        "펌프 수력 동력 P_hyd = ρ g Q H. "
-        "efficiency가 주어지면 shaft_power = P_hyd / η도 반환."
+        "펌프 수력 동력 P = ρ·g·Q·H (W)를 계산하고, efficiency(0 초과 1 이하)를 주면 축동력 "
+        "P/η 도 반환한다. density kg/m³, flow_rate m³/s, head m, gravity 기본 9.80665. 효율은 "
+        "백분율(80)이 아니라 소수(0.8)로 넣어야 한다. 반올림 없이 50자리 유효숫자."
     ),
     version="1.0.0",
 )
@@ -508,7 +551,7 @@ def pump_hydraulic_power(
     head:        str,
     gravity:     str = "9.80665",
     efficiency:  str | None = None,
-) -> dict[str, Any]:
+) -> PumpHydraulicPowerResult:
     """Compute hydraulic (and optionally shaft) power for a pump."""
     trace = CalcTrace(
         tool="engineering.pump_hydraulic_power",
@@ -535,10 +578,10 @@ def pump_hydraulic_power(
     hyd_power = mul(rho_d, mul(g_d, mul(q_d, h_d)))
     trace.step("hydraulic_power", str(hyd_power))
 
-    result: dict[str, Any] = {
+    result = cast(PumpHydraulicPowerResult, {
         "hydraulic_power_w": str(hyd_power),
         "trace":             trace.to_dict(),
-    }
+    })
 
     if efficiency is not None:
         eta_d = D(efficiency)

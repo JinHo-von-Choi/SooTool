@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import NotRequired
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.engineering.electrical_ac._common import (
     _ONE,
     _TWO,
@@ -32,12 +33,46 @@ def _impedance_rlc_series(
     return r, xl - xc
 
 
+class AcImpedanceResult(TracedResult):
+    """합성 임피던스. 값은 Decimal 문자열이며 위상은 도 단위."""
+
+    magnitude: str
+    phase_deg: str
+    real:      str
+    imag:      str
+
+
+class RlcTimeConstantResult(TracedResult):
+    """모드별 결과. rc 와 rl 은 tau, rlc 는 alpha, omega0, zeta, regime 을 돌려준다."""
+
+    tau:    NotRequired[str]
+    alpha:  NotRequired[str]
+    omega0: NotRequired[str]
+    zeta:   NotRequired[str]
+    regime: NotRequired[str]
+
+
+class LcResonantFrequencyResult(TracedResult):
+    """LC 공진 주파수(Hz). Decimal 문자열."""
+
+    frequency: str
+
+
+class RcFilterCutoffResult(TracedResult):
+    """RC 필터 차단 주파수(Hz). cutoff_hz 는 Decimal 문자열이고 filter_type 은 입력 그대로."""
+
+    cutoff_hz:   str
+    filter_type: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="ac_impedance",
     description=(
-        "AC 회로의 R/L/C 임피던스 크기 및 위상각 계산. "
-        "topology는 'series' 또는 'parallel'."
+        "R, L, C 조합의 AC 합성 임피던스 크기와 위상각을 구한다. frequency(Hz, 0 초과), "
+        "resistance(Ω), inductance(H), capacitance(F)는 0 이상 Decimal 문자열이고 "
+        "topology='series' 또는 'parallel'. 반환: magnitude(Ω), phase_deg(도), real, imag. "
+        "값 0은 그 소자가 없다는 뜻이며 단락이나 0 용량이 아니다. 병렬에서 소자를 모두 생략하면 오류."
     ),
     version="1.0.0",
 )
@@ -47,7 +82,7 @@ def ac_impedance(
     inductance:  str = "0",
     capacitance: str = "0",
     topology:    str = "series",
-) -> dict[str, Any]:
+) -> AcImpedanceResult:
     """Compute AC impedance magnitude and phase for an R-L-C combination.
 
     Series:   Z = R + j(ωL - 1/(ωC))
@@ -129,8 +164,10 @@ def ac_impedance(
     namespace="engineering",
     name="rlc_time_constant",
     description=(
-        "RC·RL·RLC 회로의 시정수(τ) 계산. "
-        "mode: 'rc' (τ=RC), 'rl' (τ=L/R), 'rlc' (감쇠율 α=R/(2L), ω0=1/√(LC))."
+        "RC, RL, 직렬 RLC 회로의 시정수 또는 감쇠 특성을 구한다. mode='rc'면 τ=RC, 'rl'이면 τ=L/R, "
+        "'rlc'면 α=R/(2L), ω₀=1/√(LC), ζ=α/ω₀와 regime(underdamped, critically_damped, overdamped)을 반환한다. "
+        "필요한 R(Ω), L(H), C(F)는 모드별로 0 초과 Decimal 문자열이며 빠뜨리면 오류. "
+        "오용 주의: ζ는 직렬 RLC 기준이라 병렬 RLC에는 맞지 않는다."
     ),
     version="1.0.0",
 )
@@ -139,7 +176,7 @@ def rlc_time_constant(
     resistance:  str | None = None,
     inductance:  str | None = None,
     capacitance: str | None = None,
-) -> dict[str, Any]:
+) -> RlcTimeConstantResult:
     """Compute RC, RL, or RLC time constant / characteristic frequencies.
 
     Args:
@@ -219,10 +256,14 @@ def rlc_time_constant(
 @REGISTRY.tool(
     namespace="engineering",
     name="lc_resonant_frequency",
-    description="LC 공진 주파수 f0 = 1 / (2π√(LC)). inductance 는 인덕턴스(H), capacitance 는 정전용량(F), 결과는 Hz.",
+    description=(
+        "LC 공진 주파수 f0=1/(2π√(LC))를 구한다. inductance(H)와 capacitance(F)는 0 초과 "
+        "Decimal 문자열이고 결과는 Hz(각주파수 rad/s가 아님). 이상적인 L, C만 가정하며 "
+        "저항 손실에 의한 주파수 이동은 반영하지 않는다."
+    ),
     version="1.0.0",
 )
-def lc_resonant_frequency(inductance: str, capacitance: str) -> dict[str, Any]:
+def lc_resonant_frequency(inductance: str, capacitance: str) -> LcResonantFrequencyResult:
     """Compute LC resonant frequency f₀ = 1/(2π√(LC))."""
     trace = CalcTrace(
         tool="engineering.lc_resonant_frequency",
@@ -251,8 +292,9 @@ def lc_resonant_frequency(inductance: str, capacitance: str) -> dict[str, Any]:
     namespace="engineering",
     name="rc_filter_cutoff",
     description=(
-        "RC 필터 차단 주파수 fc = 1/(2πRC). "
-        "filter_type='low_pass' 또는 'high_pass' (수식 동일, 해석만 다름)."
+        "1차 RC 필터의 -3 dB 차단 주파수 fc=1/(2πRC)를 Hz로 구한다. resistance(Ω)와 capacitance(F)는 "
+        "0 초과 Decimal 문자열. filter_type 은 'low_pass' 또는 'high_pass'이며 수식은 같고 "
+        "입력 그대로 반환될 뿐이다. 오용 주의: 2차 이상 필터나 부하가 걸린 필터에는 맞지 않는다."
     ),
     version="1.0.0",
 )
@@ -260,7 +302,7 @@ def rc_filter_cutoff(
     resistance:  str,
     capacitance: str,
     filter_type: str = "low_pass",
-) -> dict[str, Any]:
+) -> RcFilterCutoffResult:
     """Compute the -3 dB cutoff frequency of a first-order RC filter."""
     trace = CalcTrace(
         tool="engineering.rc_filter_cutoff",

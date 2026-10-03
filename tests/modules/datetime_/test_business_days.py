@@ -18,6 +18,20 @@ class TestAddBusinessDays:
         assert result["end_date"] == "2026-01-05"
         assert "trace" in result
 
+    def test_negative_days_cross_year_boundary_honours_prior_year_holidays(self) -> None:
+        """2025-01-02 에서 영업일 5일 전: 2025-01-01 과 2024-12-25 는 공휴일이라 2024-12-24."""
+        result = REGISTRY.invoke(
+            "datetime.add_business_days", start_date="2025-01-02", days=-5, country="KR",
+        )
+        assert result["end_date"] == "2024-12-24"
+
+    def test_positive_days_cross_year_boundary_honours_next_year_holidays(self) -> None:
+        """2025-12-30 에서 영업일 3일 후: 2026-01-01 은 공휴일, 1월 3~4일은 주말이라 2026-01-05."""
+        result = REGISTRY.invoke(
+            "datetime.add_business_days", start_date="2025-12-30", days=3, country="KR",
+        )
+        assert result["end_date"] == "2026-01-05"
+
     def test_add_zero_days_same_date(self) -> None:
         result = REGISTRY.invoke(
             "datetime.add_business_days",

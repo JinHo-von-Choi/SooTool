@@ -19,6 +19,7 @@ from typing import Any
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import DomainConstraintError, InvalidExpressionError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.symbolic import _bridge
 
 
@@ -37,12 +38,19 @@ def _split_equation(equation: str) -> tuple[str, str]:
     )
 
 
+class SolveResult(TracedResult):
+    solutions: list[str]
+    symbolic:  list[str]
+
+
 @REGISTRY.tool(
     namespace="symbolic",
     name="solve",
     description=(
-        "방정식 기호 풀이 후 Decimal 재평가. `lhs=rhs` 또는 단일식(=0 가정)을 sympy.solve "
-        "로 풀고, variables 치환 시 수치해를 Decimal 문자열로 평가한다."
+        "sympy 로 방정식을 기호 풀이한다. "
+        "equation 은 'lhs = rhs' 또는 단일식(=0 가정), var 는 풀 변수이며 variables 값은 풀기 전에 치환한다. "
+        "solutions 에는 실수해만 Decimal 문자열로 담기고(variables 를 주면 수치 정밀도가 약 15자리), 복소해와 기호해는 symbolic 에만 담기며 numeric_eval=false 면 solutions 는 빈 리스트다. "
+        "연산은 5초로 제한되며 sympy extra 가 필요하다."
     ),
     version="1.0.0",
 )
@@ -51,7 +59,7 @@ def solve(
     var:          str,
     variables:    dict[str, str] | None = None,
     numeric_eval: bool                   = True,
-) -> dict[str, Any]:
+) -> SolveResult:
     if not isinstance(equation, str) or not equation.strip():
         raise InvalidExpressionError("equation must be a non-empty string")
     _bridge._validate_var(var)

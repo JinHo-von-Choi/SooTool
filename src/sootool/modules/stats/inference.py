@@ -7,8 +7,6 @@ Internal dtype: float64 (scipy). Boundaries: Decimal strings.
 """
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 
 from sootool.core.audit import CalcTrace
@@ -16,10 +14,39 @@ from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
 from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
-from sootool.modules.stats.ci import _ci_mean_from_array
+from sootool.core.result_types import TracedResult
+from sootool.modules.stats.ci import MeanInterval, _ci_mean_from_array
 from sootool.modules.stats.descriptive import _to_float_array
 
 stats = lazy_module("scipy.stats")
+
+
+class StatsTtestOneSampleResult(TracedResult):
+    t:       str
+    df:      int
+    p_value: str
+    ci_95:   MeanInterval
+
+
+class StatsTtestTwoSampleResult(TracedResult):
+    t:       str
+    df:      str
+    p_value: str
+    ci_95:   MeanInterval
+
+
+class StatsTtestPairedResult(TracedResult):
+    t:       str
+    df:      int
+    p_value: str
+    ci_95:   MeanInterval
+
+
+class StatsChiSquareIndependenceResult(TracedResult):
+    chi2:     str
+    df:       int
+    p_value:  str
+    expected: list[list[str]]
 
 
 def _fmt(x: float, digits: int = 10) -> str:
@@ -45,8 +72,10 @@ def _adjust_p(p: float, tail: str) -> float:
     namespace="stats",
     name="ttest_one_sample",
     description=(
-        "일표본 t-검정: 표본 평균과 모집단 평균 popmean 을 비교한다. tail 은 two, less, greater. "
-        "t, df, p_value, ci_95 를 반환한다."
+        "표본 평균이 기준값 popmean과 다른지 일표본 t-검정으로 판정해 t, df(n-1), p_value, ci_95를 돌려준다. "
+        "values는 Decimal 문자열 2개 이상, popmean은 Decimal 문자열, tail은 two(기본), less, greater이며 "
+        "p값은 방향에 맞게 scipy가 계산한다. ci_95는 방향과 무관한 표본 평균의 95% t-구간이다. "
+        "t는 유효숫자 6자리, p값은 10자리 문자열이다. 두 집단 비교에는 ttest_two_sample 을 쓴다."
     ),
     version="1.0.0",
 )
@@ -54,7 +83,7 @@ def stats_ttest_one_sample(
     values:  list[str],
     popmean: str,
     tail:    str = "two",
-) -> dict[str, Any]:
+) -> StatsTtestOneSampleResult:
     """One-sample t-test comparing sample mean against a known population mean.
 
     Args:
@@ -101,7 +130,11 @@ def stats_ttest_one_sample(
 @REGISTRY.tool(
     namespace="stats",
     name="ttest_two_sample",
-    description="이표본 t-검정 (Welch 기본, 분산 동일성 옵션).",
+    description=(
+        "독립 두 표본의 평균 차이를 t-검정으로 판정해 t, df, p_value, ci_95(a 평균 - b 평균의 95% 구간)를 돌려준다. "
+        "a, b는 Decimal 문자열 각 2개 이상, equal_var 기본 False는 Welch 검정(df는 소수 가능)이고 True면 Student 검정이다. "
+        "tail은 two(기본), less, greater이며 df는 문자열이다. 같은 대상의 전후 측정에는 ttest_paired 를 쓴다."
+    ),
     version="1.0.0",
 )
 def stats_ttest_two_sample(
@@ -109,7 +142,7 @@ def stats_ttest_two_sample(
     b:         list[str],
     equal_var: bool = False,
     tail:      str  = "two",
-) -> dict[str, Any]:
+) -> StatsTtestTwoSampleResult:
     """Two-sample t-test (Welch's by default).
 
     Args:
@@ -154,7 +187,7 @@ def stats_ttest_two_sample(
     se_diff   = float(np.sqrt(np.var(arr_a, ddof=1)/len(arr_a) + np.var(arr_b, ddof=1)/len(arr_b)))
     df_ci     = df_raw
     t_crit    = float(stats.t.ppf(0.975, df=df_ci))
-    ci = {
+    ci: MeanInterval = {
         "lower": _fmt(mean_diff - t_crit * se_diff),
         "upper": _fmt(mean_diff + t_crit * se_diff),
     }
@@ -178,8 +211,10 @@ def stats_ttest_two_sample(
     namespace="stats",
     name="ttest_paired",
     description=(
-        "대응표본 t-검정(전후 비교 등). a 와 b 는 같은 길이의 숫자 문자열 목록, "
-        "tail 은 two, less, greater. t, df, p_value, ci_95 를 반환한다."
+        "같은 대상의 전후 측정 등 대응표본의 평균 차이를 t-검정으로 판정해 t, df(n-1), p_value, "
+        "ci_95(a 평균 - b 평균의 95% 구간)를 돌려준다. a, b는 같은 길이의 Decimal 문자열 목록(2개 이상)이고 "
+        "같은 위치끼리 짝이다. tail은 two(기본), less, greater. t는 유효숫자 6자리, p값은 10자리다. "
+        "서로 다른 대상의 두 집단에는 ttest_two_sample 을 쓴다."
     ),
     version="1.0.0",
 )
@@ -187,7 +222,7 @@ def stats_ttest_paired(
     a:    list[str],
     b:    list[str],
     tail: str = "two",
-) -> dict[str, Any]:
+) -> StatsTtestPairedResult:
     """Paired t-test (matched samples).
 
     Args:
@@ -240,14 +275,15 @@ def stats_ttest_paired(
     namespace="stats",
     name="chi_square_independence",
     description=(
-        "카이제곱 독립성 검정(분할표). observed 는 관측 빈도의 2차원 숫자 문자열 행렬. "
-        "chi2, df, p_value, expected 를 반환한다."
+        "분할표의 두 범주형 변수가 독립인지 카이제곱 검정으로 판정해 chi2, df, p_value, 기대빈도 표를 돌려준다. "
+        "observed는 관측 빈도의 2x2 이상 Decimal 문자열 행렬이다. scipy 기본값에 따라 2x2 표에는 Yates 연속성 보정이 적용된다. "
+        "결과는 유효숫자 10자리 문자열이다. 비율 자료나 기대빈도가 5 미만인 칸이 많은 표에는 부적합하다."
     ),
     version="1.0.0",
 )
 def stats_chi_square_independence(
     observed: list[list[str]],
-) -> dict[str, Any]:
+) -> StatsChiSquareIndependenceResult:
     """Chi-square test of independence for a contingency table.
 
     Args:

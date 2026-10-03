@@ -7,14 +7,25 @@ Internal dtype: float64 (numpy). Boundaries: Decimal strings.
 """
 from __future__ import annotations
 
-from typing import Any
-
 import numpy as np
 
 from sootool.core.audit import CalcTrace
 from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class StatsDescriptiveResult(TracedResult):
+    n:        int
+    mean:     str
+    median:   str
+    variance: str
+    stdev:    str
+    min:      str
+    max:      str
+    q1:       str
+    q3:       str
 
 
 def _to_float_array(values: list[str]) -> np.ndarray:
@@ -32,13 +43,18 @@ def _fmt(x: float, digits: int = 10) -> str:
 @REGISTRY.tool(
     namespace="stats",
     name="descriptive",
-    description="기술통계량 계산 (n, mean, median, variance, stdev, min, max, q1, q3).",
+    description=(
+        "숫자 목록의 기술통계량(n, mean, median, variance, stdev, min, max, q1, q3)을 계산한다. "
+        "values는 Decimal 문자열 2개 이상, ddof 기본 1은 표본 분산과 표준편차, 0이면 모집단 값이다. "
+        "q1과 q3는 numpy 선형 보간 백분위수이고 float64 계산 결과를 유효숫자 10자리 문자열로 돌려준다. "
+        "모집단 전체 자료에는 ddof=0을 지정해야 한다."
+    ),
     version="1.0.0",
 )
 def stats_descriptive(
     values: list[str],
     ddof:   int = 1,
-) -> dict[str, Any]:
+) -> StatsDescriptiveResult:
     """Compute summary statistics for a list of numeric Decimal strings.
 
     Args:

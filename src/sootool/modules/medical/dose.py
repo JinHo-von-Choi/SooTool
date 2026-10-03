@@ -6,22 +6,31 @@ Date: 2026-04-22
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
+
+
+class MedicalDoseWeightBasedResult(TracedResult):
+    dose:   str
+    unit:   str
+    capped: bool
 
 
 @REGISTRY.tool(
     namespace="medical",
     name="dose_weight_based",
     description=(
-        "체중 기반 약물 용량 계산. "
-        "dose = weight_kg * dose_per_kg, max_dose 초과 시 cap 적용."
+        "체중 기반 약물 용량을 계산한다. dose = weight_kg * dose_per_kg, "
+        "max_dose를 주면 초과 시 max_dose로 제한하고 capped=true를 돌려준다. "
+        "입력은 kg과 kg당 용량의 Decimal 문자열(0 이상), 결과는 소수 4자리 HALF_EVEN 반올림 후 "
+        "후행 0을 제거한 고정소수점 문자열. unit은 표시용 문자열이며 환산하지 않는다. "
+        "단위가 다른 dose_per_kg와 max_dose를 섞으면 안 된다."
     ),
     version="1.0.0",
 )
@@ -30,7 +39,7 @@ def medical_dose_weight_based(
     dose_per_kg:  str,
     max_dose:     str | None = None,
     unit:         str        = "mg",
-) -> dict[str, Any]:
+) -> MedicalDoseWeightBasedResult:
     """Calculate weight-based dose with optional ceiling.
 
     Args:

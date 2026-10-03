@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -10,6 +9,7 @@ from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _MPMATH_DPS = 50
 
@@ -26,13 +26,22 @@ def _require_non_negative(value: Decimal, name: str) -> None:
         raise DomainConstraintError(f"{name} 은(는) 음수가 될 수 없습니다: {value}")
 
 
+class VolumeSphereResult(TracedResult):
+    volume: str
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="volume_sphere",
-    description="구의 부피: (4/3) * π * r³. mpmath 고정밀 π 사용.",
+    description=(
+        "구의 부피 (4/3) * π * r³ 를 계산한다. "
+        "radius 는 0 이상 Decimal 문자열이며 결과 단위는 길이 단위의 세제곱이다. "
+        "π 는 mpmath 50자리로 계산하고 유효숫자 30자리 문자열로 반환한다. "
+        "지름이 아니라 반지름을 넣는다."
+    ),
     version="1.0.0",
 )
-def volume_sphere(radius: str) -> dict[str, Any]:
+def volume_sphere(radius: str) -> VolumeSphereResult:
     """Compute the volume of a sphere: (4/3) * π * r³.
 
     Args:
@@ -60,13 +69,22 @@ def volume_sphere(radius: str) -> dict[str, Any]:
     return {"volume": str(result), "trace": trace.to_dict()}
 
 
+class VolumeCylinderResult(TracedResult):
+    volume: str
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="volume_cylinder",
-    description="원기둥 부피: π * r² * h. mpmath 고정밀 π 사용.",
+    description=(
+        "원기둥 부피 π * r² * h 를 계산한다. "
+        "radius(밑면 반지름)와 height 는 0 이상 Decimal 문자열이며 같은 길이 단위여야 한다. "
+        "π 는 mpmath 50자리로 계산하고 유효숫자 30자리 문자열로 반환한다. "
+        "지름을 radius 로 넣으면 4배 큰 값이 나온다."
+    ),
     version="1.0.0",
 )
-def volume_cylinder(radius: str, height: str) -> dict[str, Any]:
+def volume_cylinder(radius: str, height: str) -> VolumeCylinderResult:
     """Compute the volume of a cylinder: π * r² * h.
 
     Args:
@@ -100,13 +118,21 @@ def volume_cylinder(radius: str, height: str) -> dict[str, Any]:
     return {"volume": str(result), "trace": trace.to_dict()}
 
 
+class VolumeCuboidResult(TracedResult):
+    volume: str
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="volume_cuboid",
-    description="직육면체 부피: length * width * height. 순수 Decimal 연산.",
+    description=(
+        "직육면체 부피 length * width * height 를 Decimal 로 계산한다. "
+        "세 값은 0 이상 Decimal 문자열이며 같은 길이 단위여야 하고 float 를 거치지 않는다. "
+        "cm 와 m 처럼 단위를 섞어 넣으면 틀린 값이 나온다."
+    ),
     version="1.0.0",
 )
-def volume_cuboid(length: str, width: str, height: str) -> dict[str, Any]:
+def volume_cuboid(length: str, width: str, height: str) -> VolumeCuboidResult:
     """Compute the volume of a cuboid: length * width * height.
 
     Args:

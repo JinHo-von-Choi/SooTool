@@ -2,11 +2,10 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
 from sootool.core.errors import DomainConstraintError
 from sootool.core.registry import REGISTRY
 from sootool.modules.probability.distributions._common import (
+    DistributionResult,
     _dist_result,
     _parse_float,
     _parse_quantile,
@@ -19,10 +18,10 @@ from sootool.modules.probability.distributions._common import (
 @REGISTRY.tool(
     namespace="probability",
     name="beta_pdf",
-    description="베타분포 PDF: f(x; α, β). scipy.stats.beta.pdf, 지지역 [0, 1].",
+    description="베타분포의 확률밀도 f(x; α, β)를 구한다. x 는 [0, 1] 구간, alpha 와 beta 는 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 밀도값은 1 을 넘을 수 있고 확률이 아니다.",
     version="1.0.0",
 )
-def beta_pdf(x: str, alpha: str, beta: str) -> dict[str, Any]:
+def beta_pdf(x: str, alpha: str, beta: str) -> DistributionResult:
     x_f     = _parse_float(x,     "x")
     alpha_f = _parse_float(alpha, "alpha")
     beta_f  = _parse_float(beta,  "beta")
@@ -43,10 +42,10 @@ def beta_pdf(x: str, alpha: str, beta: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="beta_cdf",
-    description="베타분포 CDF: P(X ≤ x). scipy.stats.beta.cdf, 정규화 불완전 베타함수.",
+    description="베타분포의 누적확률 P(X ≤ x) = I_x(α, β)를 구한다. x 는 [0, 1] 구간, alpha 와 beta 는 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. alpha 와 beta 를 서로 바꾸면 결과가 달라진다.",
     version="1.0.0",
 )
-def beta_cdf(x: str, alpha: str, beta: str) -> dict[str, Any]:
+def beta_cdf(x: str, alpha: str, beta: str) -> DistributionResult:
     x_f     = _parse_float(x,     "x")
     alpha_f = _parse_float(alpha, "alpha")
     beta_f  = _parse_float(beta,  "beta")
@@ -67,10 +66,10 @@ def beta_cdf(x: str, alpha: str, beta: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="beta_ppf",
-    description="베타분포 역CDF. scipy.stats.beta.ppf.",
+    description="베타분포의 분위수를 구한다. q 는 0 초과 1 미만, alpha 와 beta 는 양수 십진 문자열이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. q 가 0 또는 1 이면 오류이며 결과는 [0, 1] 구간의 값이다.",
     version="1.0.0",
 )
-def beta_ppf(q: str, alpha: str, beta: str) -> dict[str, Any]:
+def beta_ppf(q: str, alpha: str, beta: str) -> DistributionResult:
     q_f     = _parse_quantile(q,  "q")
     alpha_f = _parse_float(alpha, "alpha")
     beta_f  = _parse_float(beta,  "beta")
@@ -89,10 +88,10 @@ def beta_ppf(q: str, alpha: str, beta: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="f_pdf",
-    description="F 분포 PDF. scipy.stats.f.pdf, dfn/dfd 분자·분모 자유도.",
+    description="F 분포의 확률밀도를 구한다. x 는 0 이상, dfn 은 분자 자유도, dfd 는 분모 자유도(둘 다 양수 십진 문자열)이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. dfn 과 dfd 를 바꾸면 결과가 달라진다.",
     version="1.0.0",
 )
-def f_pdf(x: str, dfn: str, dfd: str) -> dict[str, Any]:
+def f_pdf(x: str, dfn: str, dfd: str) -> DistributionResult:
     x_f   = _parse_float(x,   "x")
     dfn_f = _parse_float(dfn, "dfn")
     dfd_f = _parse_float(dfd, "dfd")
@@ -112,10 +111,10 @@ def f_pdf(x: str, dfn: str, dfd: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="f_cdf",
-    description="F 분포 CDF (scipy.stats.f.cdf). x 는 0 이상, dfn 은 분자 자유도, dfd 는 분모 자유도.",
+    description="F 분포의 누적확률 P(X ≤ x)를 구한다. x 는 0 이상, dfn 은 분자 자유도, dfd 는 분모 자유도(둘 다 양수 십진 문자열)이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 검정의 p 값은 1 에서 이 값을 뺀 오른쪽 꼬리다.",
     version="1.0.0",
 )
-def f_cdf(x: str, dfn: str, dfd: str) -> dict[str, Any]:
+def f_cdf(x: str, dfn: str, dfd: str) -> DistributionResult:
     x_f   = _parse_float(x,   "x")
     dfn_f = _parse_float(dfn, "dfn")
     dfd_f = _parse_float(dfd, "dfd")
@@ -135,10 +134,10 @@ def f_cdf(x: str, dfn: str, dfd: str) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="f_ppf",
-    description="F 분포 역CDF(분위수). q 는 0~1 사이 확률, dfn 은 분자 자유도, dfd 는 분모 자유도.",
+    description="F 분포의 분위수를 구한다. q 는 0 초과 1 미만, dfn 은 분자 자유도, dfd 는 분모 자유도(둘 다 양수 십진 문자열)이며 scipy float64 계산 후 유효숫자 10자리로 반올림한 문자열을 반환한다. 유의수준 α 의 임계값은 q 에 1-α 를 넣는다.",
     version="1.0.0",
 )
-def f_ppf(q: str, dfn: str, dfd: str) -> dict[str, Any]:
+def f_ppf(q: str, dfn: str, dfd: str) -> DistributionResult:
     q_f   = _parse_quantile(q, "q")
     dfn_f = _parse_float(dfn,  "dfn")
     dfd_f = _parse_float(dfd,  "dfd")

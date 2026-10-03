@@ -12,7 +12,7 @@ ADR-001 Decimal, ADR-003 trace, ADR-007 stateless.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Literal, cast
 
 import mpmath
 
@@ -21,6 +21,7 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _ZERO    = Decimal("0")
 _ONE     = Decimal("1")
@@ -43,19 +44,26 @@ def _pow_mp(base: Decimal, exponent: Decimal) -> Decimal:
 # ---------------------------------------------------------------------------
 # Gear ratio
 # ---------------------------------------------------------------------------
+class GearRatioResult(TracedResult):
+    ratio:     str
+    direction: Literal["reduction", "overdrive", "direct"]
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="gear_ratio",
     description=(
-        "기어비 i = N_driven / N_driver (치차수 기준). "
-        "i > 1 감속, i < 1 증속."
+        "단순 기어쌍의 기어비 i = 피동 잇수 / 구동 잇수 를 계산하고 방향을 함께 반환한다. "
+        "i > 1 이면 reduction(감속), i < 1 이면 overdrive(증속), 1 이면 direct. 잇수는 0 초과 "
+        "숫자 문자열이며 구동과 피동 인수를 바꾸면 역수가 나온다. 다단 기어열은 단별로 구해 곱해야 "
+        "한다. 반올림 없이 50자리 유효숫자."
     ),
     version="1.0.0",
 )
 def gear_ratio(
     teeth_driver:  str,
     teeth_driven:  str,
-) -> dict[str, Any]:
+) -> GearRatioResult:
     """Compute simple gear ratio."""
     trace = CalcTrace(tool="engineering.gear_ratio", formula="i = N_driven / N_driver")
     nd_d = D(teeth_driver)
@@ -72,18 +80,29 @@ def gear_ratio(
     trace.step("ratio",     str(ratio))
     trace.step("direction", direction)
     trace.output({"ratio": str(ratio), "direction": direction})
-    return {"ratio": str(ratio), "direction": direction, "trace": trace.to_dict()}
+    return cast(GearRatioResult, {
+        "ratio":     str(ratio),
+        "direction": direction,
+        "trace":     trace.to_dict(),
+    })
 
 
 # ---------------------------------------------------------------------------
 # Gear torque transmission
 # ---------------------------------------------------------------------------
+class GearTorqueTransmissionResult(TracedResult):
+    output_torque: str
+    ratio:         str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="gear_torque_transmission",
     description=(
-        "기어 토크 전달: τ_out = τ_in · i · η. "
-        "i=N_driven/N_driver, η 효율 ∈ [0, 1]."
+        "기어쌍을 통과한 출력 토크 τ_out = τ_in·(피동 잇수/구동 잇수)·η 를 계산하고 기어비도 "
+        "반환한다. 출력 토크는 input_torque 와 같은 단위(예: N·m)이고 efficiency 는 기본 1, "
+        "[0, 1] 범위의 소수여야 한다(95 가 아니라 0.95). 속도는 기어비에 반비례해 변하므로 출력 "
+        "속도는 별도로 구해야 한다. 반올림 없이 50자리 유효숫자."
     ),
     version="1.0.0",
 )
@@ -92,7 +111,7 @@ def gear_torque_transmission(
     teeth_driver:   str,
     teeth_driven:   str,
     efficiency:     str = "1",
-) -> dict[str, Any]:
+) -> GearTorqueTransmissionResult:
     """Compute output torque after gear transmission with efficiency loss."""
     trace = CalcTrace(
         tool="engineering.gear_torque_transmission",
@@ -118,22 +137,29 @@ def gear_torque_transmission(
     trace.step("ratio",         str(ratio))
     trace.step("output_torque", str(t_out))
     trace.output({"output_torque": str(t_out), "ratio": str(ratio)})
-    return {
+    return cast(GearTorqueTransmissionResult, {
         "output_torque": str(t_out),
         "ratio":         str(ratio),
         "trace":         trace.to_dict(),
-    }
+    })
 
 
 # ---------------------------------------------------------------------------
 # Bearing basic rating life (L10)
 # ---------------------------------------------------------------------------
+class BearingLifeL10Result(TracedResult):
+    l10_million_revolutions: str
+    exponent:                str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="bearing_life_l10",
     description=(
-        "베어링 기본정격수명 L10 = (C / P)^p [×10⁶ rev]. "
-        "bearing_type='ball' → p=3, 'roller' → p=10/3."
+        "구름 베어링 기본정격수명 L10 = (C/P)^p 를 백만 회전(10⁶ rev) 단위로 계산한다. "
+        "bearing_type 'ball' 은 p=3(정확 계산), 'roller' 는 p=10/3(30자리 유효숫자). "
+        "dynamic_capacity 와 equivalent_load 는 같은 힘 단위이고 0 초과여야 한다. 신뢰도나 "
+        "윤활 보정계수는 적용하지 않으며 등가하중은 bearing_equivalent_load 로 먼저 구한다."
     ),
     version="1.0.0",
 )
@@ -141,7 +167,7 @@ def bearing_life_l10(
     dynamic_capacity: str,
     equivalent_load:  str,
     bearing_type:     str,
-) -> dict[str, Any]:
+) -> BearingLifeL10Result:
     """Compute basic rating life L10 in millions of revolutions."""
     trace = CalcTrace(
         tool="engineering.bearing_life_l10",
@@ -176,23 +202,28 @@ def bearing_life_l10(
     trace.step("l10_mrev", str(life))
     trace.output(str(life))
 
-    return {
+    return cast(BearingLifeL10Result, {
         "l10_million_revolutions": str(life),
         "exponent":                str(exponent),
         "trace":                   trace.to_dict(),
-    }
+    })
 
 
 # ---------------------------------------------------------------------------
 # Bearing equivalent load P = X·Fr + Y·Fa
 # ---------------------------------------------------------------------------
+class BearingEquivalentLoadResult(TracedResult):
+    equivalent_load: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="bearing_equivalent_load",
     description=(
-        "베어링 등가하중 P = X·Fr + Y·Fa. "
-        "X, Y는 베어링 카탈로그의 반경·축 하중 계수. "
-        "순수 반경 하중만 있으면 Fa=0, Y=0으로 전달."
+        "베어링 동등가하중 P = X·Fr + Y·Fa 를 계산한다. 반경하중, 축하중, 계수 X 와 Y 는 모두 "
+        "0 이상이고 두 하중이 동시에 0 이면 오류다. X, Y 는 카탈로그 값을 직접 넣어야 하며 "
+        "Fa/Fr 과 e 의 비교로 계수를 고르는 과정은 하지 않는다. 순수 반경하중이면 axial_load 와 "
+        "y_factor 를 0 으로 둔다. 결과는 bearing_life_l10 의 equivalent_load 로 쓴다."
     ),
     version="1.0.0",
 )
@@ -201,7 +232,7 @@ def bearing_equivalent_load(
     axial_load:   str,
     x_factor:     str,
     y_factor:     str,
-) -> dict[str, Any]:
+) -> BearingEquivalentLoadResult:
     """Compute dynamic equivalent load P for a rolling-element bearing."""
     trace = CalcTrace(
         tool="engineering.bearing_equivalent_load",
@@ -227,4 +258,4 @@ def bearing_equivalent_load(
     trace.step("equivalent_load", str(load))
     trace.output(str(load))
 
-    return {"equivalent_load": str(load), "trace": trace.to_dict()}
+    return cast(BearingEquivalentLoadResult, {"equivalent_load": str(load), "trace": trace.to_dict()})

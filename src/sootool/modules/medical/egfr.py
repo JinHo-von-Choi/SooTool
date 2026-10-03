@@ -19,14 +19,20 @@ CKD staging per KDIGO 2012 Clinical Practice Guideline:
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
+
+
+class MedicalEgfrResult(TracedResult):
+    egfr:  str
+    stage: str
+
 
 # CKD-EPI 2021 race-free creatinine equation coefficients
 # eGFR = 142 * min(Scr/kappa, 1)^alpha * max(Scr/kappa, 1)^(-1.200)
@@ -87,9 +93,10 @@ def _ckd_stage(egfr: Decimal) -> str:
     namespace="medical",
     name="egfr",
     description=(
-        "eGFR 계산 (CKD-EPI 2021, race-free). "
-        "KDIGO 2012 기준 CKD stage 반환. "
-        "단위: mL/min/1.73m²."
+        "혈청 크레아티닌으로 추정 사구체여과율(eGFR)을 CKD-EPI 2021(인종 계수 없음) 식으로 계산하고 "
+        "KDIGO 2012 CKD 병기(G1~G5)를 돌려준다. 입력은 mg/dL Decimal 문자열, 정수 나이, "
+        "sex=male|female. 결과 단위는 mL/min/1.73m², 소수 1자리 HALF_EVEN 반올림이며 병기는 반올림한 값으로 정한다. "
+        "race 인자는 무시된다. 시스타틴 C 기반 식이나 소아 식에는 쓸 수 없다."
     ),
     version="1.0.0",
 )
@@ -98,7 +105,7 @@ def medical_egfr(
     age:              int,
     sex:              str,
     race:             str = "non_black",
-) -> dict[str, Any]:
+) -> MedicalEgfrResult:
     """Calculate eGFR and CKD stage.
 
     Args:

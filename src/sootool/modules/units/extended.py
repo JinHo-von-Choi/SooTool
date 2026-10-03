@@ -10,13 +10,35 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.units import _UREG
+
+
+class MagnitudeUnitResult(TracedResult):
+    magnitude: str
+    unit:      str
+
+
+class EnergyConvertResult(MagnitudeUnitResult):
+    pass
+
+
+class PressureConvertResult(MagnitudeUnitResult):
+    pass
+
+
+class DataSizeConvertResult(MagnitudeUnitResult):
+    pass
+
+
+class TimeSmallConvertResult(MagnitudeUnitResult):
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Energy conversion factors (to Joule)
@@ -37,8 +59,9 @@ _ENERGY_TO_J: dict[str, Decimal] = {
     namespace="units",
     name="energy_convert",
     description=(
-        "에너지 단위 변환. 지원: J, kJ, cal, kcal, eV, BTU, Wh, kWh. "
-        "Decimal 정밀 환산 (J 기준)."
+        "에너지 단위를 J 기준 Decimal 계수로 변환한다. 지원 단위는 J, kJ, cal, kcal, eV, BTU, Wh, kWh 이며 "
+        "대소문자를 구분하고 magnitude 는 Decimal 문자열이다. cal 은 열화학 칼로리(4.184 J)이고 "
+        "결과는 magnitude 와 unit 이다. 목록에 없는 단위(MJ, 국제표 칼로리 등)는 오류이다."
     ),
     version="1.0.0",
 )
@@ -46,7 +69,7 @@ def energy_convert(
     magnitude: str,
     from_unit: str,
     to_unit:   str,
-) -> dict[str, Any]:
+) -> EnergyConvertResult:
     trace = CalcTrace(
         tool="units.energy_convert",
         formula="result = magnitude * factor(from→J) / factor(to→J)",
@@ -95,7 +118,9 @@ _PRESSURE_TO_PA: dict[str, Decimal] = {
     namespace="units",
     name="pressure_convert",
     description=(
-        "압력 단위 변환. 지원: Pa, kPa, MPa, atm, bar, mbar, psi, mmHg, torr."
+        "압력 단위를 Pa 기준 Decimal 계수로 변환한다. 지원 단위는 Pa, kPa, MPa, atm, bar, mbar, psi, mmHg, torr 이며 "
+        "대소문자를 구분하고 magnitude 는 Decimal 문자열이다. 단순 배율 변환이라 게이지압과 절대압의 "
+        "차이는 반영하지 않는다. 결과는 magnitude 와 unit 이다."
     ),
     version="1.0.0",
 )
@@ -103,7 +128,7 @@ def pressure_convert(
     magnitude: str,
     from_unit: str,
     to_unit:   str,
-) -> dict[str, Any]:
+) -> PressureConvertResult:
     trace = CalcTrace(
         tool="units.pressure_convert",
         formula="result = magnitude * factor(from→Pa) / factor(to→Pa)",
@@ -159,8 +184,9 @@ _IEC_DATA_TO_BYTES: dict[str, Decimal] = {
     namespace="units",
     name="data_size_convert",
     description=(
-        "데이터 크기 단위 변환. mode='si' (B,kB,MB,GB,TB,PB,b) 또는 "
-        "'iec' (B,KiB,MiB,GiB,TiB,PiB). 교차 변환은 mode='mixed' + 'B' 경유."
+        "데이터 크기 단위를 바이트 기준으로 변환한다. mode 'si'(b, B, kB, MB, GB, TB, PB, 1000 배, b 는 비트, 기본)와 "
+        "'iec'(B, KiB, MiB, GiB, TiB, PiB, 1024 배)는 각 표의 단위만, 'mixed' 는 두 표를 함께 허용한다. "
+        "magnitude 는 0 이상 Decimal 문자열이고 단위는 대소문자를 구분한다(KB 는 오류, kB 만 유효)."
     ),
     version="1.0.0",
 )
@@ -169,7 +195,7 @@ def data_size_convert(
     from_unit: str,
     to_unit:   str,
     mode:      str = "si",
-) -> dict[str, Any]:
+) -> DataSizeConvertResult:
     trace = CalcTrace(
         tool="units.data_size_convert",
         formula="result_bytes = magnitude * factor(from→B); result = result_bytes / factor(to→B)",
@@ -227,7 +253,9 @@ _TIME_UNITS = frozenset(["s", "ms", "us", "ns", "ps", "min", "hour", "day"])
     namespace="units",
     name="time_small_convert",
     description=(
-        "시간 단위 (s, ms, us, ns, ps, min, hour, day) 변환. pint Decimal 정밀."
+        "짧은 시간 단위 s, ms, us, ns, ps, min, hour, day 사이를 pint 로 변환한다. magnitude 는 Decimal 문자열이고 "
+        "단위는 대소문자를 구분하며 1 day 는 86400 s 이다. 월과 연은 길이가 일정하지 않아 지원하지 않으므로 "
+        "날짜 간격에는 datetime.diff 를 쓴다."
     ),
     version="1.0.0",
 )
@@ -235,7 +263,7 @@ def time_small_convert(
     magnitude: str,
     from_unit: str,
     to_unit:   str,
-) -> dict[str, Any]:
+) -> TimeSmallConvertResult:
     trace = CalcTrace(
         tool="units.time_small_convert",
         formula="quantity = magnitude [from]; result = quantity.to(to_unit)",

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.engineering.electrical_ac._common import (
     _ONE,
     _TWO,
@@ -18,12 +18,29 @@ from sootool.modules.engineering.electrical_ac._common import (
 )
 
 
+class ThreePhasePowerResult(TracedResult):
+    """균형 3상 전력. 값은 Decimal 문자열(VA, W, VAR)."""
+
+    apparent: str
+    real:     str
+    reactive: str
+
+
+class PowerFactorCorrectionResult(TracedResult):
+    """역률 보정 결과. capacitance(F)와 reactive_power_canceled(VAR)는 Decimal 문자열."""
+
+    capacitance:             str
+    reactive_power_canceled: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="three_phase_power",
     description=(
-        "균형 3상 전력: P = √3 · V_LL · I_L · cos(φ). "
-        "connection: 'wye' 또는 'delta' (선간·선전류 수식 동일)."
+        "균형 3상 회로의 피상, 유효, 무효 전력을 선간 값으로 구한다. S=√3·V_LL·I_L, P=S·cosφ, "
+        "Q=√(S²−P²). line_voltage(V)와 line_current(A)는 0 초과, power_factor는 -1 이상 1 이하 "
+        "Decimal 문자열. connection('wye'/'delta')은 검증만 하고 수식은 같다. "
+        "Q는 항상 0 이상이라 진상 지상을 구분하지 못한다."
     ),
     version="1.0.0",
 )
@@ -32,7 +49,7 @@ def three_phase_power(
     line_current: str,
     power_factor: str,
     connection:   str = "wye",
-) -> dict[str, Any]:
+) -> ThreePhasePowerResult:
     """Compute balanced three-phase real, reactive, and apparent power.
 
     Formulas (line quantities):
@@ -85,8 +102,10 @@ def three_phase_power(
     namespace="engineering",
     name="power_factor_correction",
     description=(
-        "역률 보정용 병렬 커패시턴스 C = Q_c / (2π f V²), "
-        "Q_c = P · (tan φ₁ − tan φ₂)."
+        "지상(유도성) 부하의 역률을 목표 역률로 올리는 병렬 커패시턴스를 구한다. "
+        "Q_c=P·(tanφ₁−tanφ₂), C=Q_c/(2π·f·V²). real_power(W), voltage(V), frequency(Hz)는 0 초과, "
+        "current_pf와 target_pf는 (0,1] 범위이며 target_pf가 더 커야 한다. 반환: capacitance(F), "
+        "reactive_power_canceled(VAR). 오용 주의: 3상은 상별 전력과 커패시터 양단 전압으로 환산해 넣는다."
     ),
     version="1.0.0",
 )
@@ -96,7 +115,7 @@ def power_factor_correction(
     target_pf:           str,
     voltage:             str,
     frequency:           str,
-) -> dict[str, Any]:
+) -> PowerFactorCorrectionResult:
     """Compute the shunt capacitance required to correct the power factor.
 
     Assumes lagging load (inductive).

@@ -13,12 +13,13 @@ ADR-001 Decimal 의무, ADR-003 감사 로그, ADR-007 stateless.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, div, mul
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _ZERO    = Decimal("0")
 _ONE     = Decimal("1")
@@ -32,13 +33,22 @@ _HALF    = Decimal("0.5")
 # ---------------------------------------------------------------------------
 
 
+class MechStressResult(TracedResult):
+    stress: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="mech_stress",
-    description="응력 σ = F / A. force 는 힘(N), area 는 단면적(m²), 결과는 Pa(N/m²).",
+    description=(
+        "수직응력 σ = F / A 를 계산한다. force 는 힘(N), area 는 단면적(m², 0 초과)이며 결과는 "
+        "Pa(N/m²). 단위 변환은 하지 않고 입력 단위 그대로 나누므로 N 과 mm² 를 넣으면 MPa 가 "
+        "나온다. force 부호는 유지되며 인장과 압축의 부호 약속은 호출자가 정한다. 반올림 없이 "
+        "50자리 유효숫자."
+    ),
     version="1.0.0",
 )
-def mech_stress(force: str, area: str) -> dict[str, Any]:
+def mech_stress(force: str, area: str) -> MechStressResult:
     """Compute stress σ = F / A."""
     trace = CalcTrace(tool="engineering.mech_stress", formula="σ = F / A")
     f_d = D(force)
@@ -53,7 +63,7 @@ def mech_stress(force: str, area: str) -> dict[str, Any]:
     trace.step("stress", str(stress))
     trace.output(str(stress))
 
-    return {"stress": str(stress), "trace": trace.to_dict()}
+    return cast(MechStressResult, {"stress": str(stress), "trace": trace.to_dict()})
 
 
 # ---------------------------------------------------------------------------
@@ -61,13 +71,21 @@ def mech_stress(force: str, area: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+class MechStrainResult(TracedResult):
+    strain: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="mech_strain",
-    description="선형 변형률 ε = ΔL / L (무차원). delta_length 와 original_length 는 같은 길이 단위.",
+    description=(
+        "선형 변형률 ε = ΔL / L (무차원)을 계산한다. delta_length 와 original_length 는 같은 길이 "
+        "단위여야 하며(mm 와 m 을 섞으면 틀림) original_length 는 0 초과, delta_length 는 "
+        "음수(수축)도 가능하다. 반올림 없이 50자리 유효숫자."
+    ),
     version="1.0.0",
 )
-def mech_strain(delta_length: str, original_length: str) -> dict[str, Any]:
+def mech_strain(delta_length: str, original_length: str) -> MechStrainResult:
     """Compute linear strain ε = ΔL / L."""
     trace = CalcTrace(tool="engineering.mech_strain", formula="ε = ΔL / L")
     dl_d = D(delta_length)
@@ -82,7 +100,7 @@ def mech_strain(delta_length: str, original_length: str) -> dict[str, Any]:
     trace.step("strain", str(strain))
     trace.output(str(strain))
 
-    return {"strain": str(strain), "trace": trace.to_dict()}
+    return cast(MechStrainResult, {"strain": str(strain), "trace": trace.to_dict()})
 
 
 # ---------------------------------------------------------------------------
@@ -90,12 +108,21 @@ def mech_strain(delta_length: str, original_length: str) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+class ElasticModulusRelateResult(TracedResult):
+    young:   str
+    shear:   str
+    poisson: str
+    bulk:    str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="elastic_modulus_relate",
     description=(
-        "선형 탄성 관계식으로 E(Young), G(전단), nu(푸아송), K(체적) 중 2개 입력 → "
-        "나머지 2개 계산. 등방성 재료 가정."
+        "등방성 선형 탄성체에서 영률 E, 전단탄성계수 G, 푸아송비 ν, 체적탄성계수 K 중 정확히 2개를 "
+        "받아 나머지 2개를 계산한다(E = 2G(1+ν) = 3K(1−2ν)). 탄성계수는 같은 응력 단위로 0 초과, "
+        "푸아송비는 -1 초과 0.5 미만이며 입력이 2개가 아니면 오류. 이방성 재료에는 쓸 수 없다. "
+        "반올림 없이 50자리 유효숫자."
     ),
     version="1.0.0",
 )
@@ -104,7 +131,7 @@ def elastic_modulus_relate(
     shear:     str | None = None,
     poisson:   str | None = None,
     bulk:      str | None = None,
-) -> dict[str, Any]:
+) -> ElasticModulusRelateResult:
     """Relate E, G, ν, K assuming isotropic linear elasticity.
 
     Standard identities (isotropic):
@@ -189,13 +216,13 @@ def elastic_modulus_relate(
         "bulk":    str(k_d),
     })
 
-    return {
+    return cast(ElasticModulusRelateResult, {
         "young":   str(e_d),
         "shear":   str(g_d),
         "poisson": str(nu_d),
         "bulk":    str(k_d),
         "trace":   trace.to_dict(),
-    }
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -203,13 +230,21 @@ def elastic_modulus_relate(
 # ---------------------------------------------------------------------------
 
 
+class TorqueRotationalPowerResult(TracedResult):
+    power: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="torque_rotational_power",
-    description="회전 일률 P = τ · ω (W = N·m × rad/s).",
+    description=(
+        "회전 일률 P = τ·ω (W)를 계산한다. torque 는 N·m, angular_velocity 는 rad/s 이다. "
+        "rpm 을 그대로 넣으면 틀리므로 ω = 2π·rpm/60 으로 먼저 환산해야 한다. 두 값의 부호는 "
+        "그대로 곱해진다. 반올림 없이 50자리 유효숫자."
+    ),
     version="1.0.0",
 )
-def torque_rotational_power(torque: str, angular_velocity: str) -> dict[str, Any]:
+def torque_rotational_power(torque: str, angular_velocity: str) -> TorqueRotationalPowerResult:
     """Compute rotational power P = τ · ω."""
     trace = CalcTrace(
         tool="engineering.torque_rotational_power",
@@ -225,7 +260,7 @@ def torque_rotational_power(torque: str, angular_velocity: str) -> dict[str, Any
     trace.step("power", str(power))
     trace.output(str(power))
 
-    return {"power": str(power), "trace": trace.to_dict()}
+    return cast(TorqueRotationalPowerResult, {"power": str(power), "trace": trace.to_dict()})
 
 
 # ---------------------------------------------------------------------------
@@ -236,13 +271,18 @@ def torque_rotational_power(torque: str, angular_velocity: str) -> dict[str, Any
 _MOI_SHAPES = frozenset({"solid_disk", "thin_ring", "thin_rod_center", "thin_rod_end", "solid_sphere"})
 
 
+class MomentOfInertiaResult(TracedResult):
+    moment_of_inertia: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="moment_of_inertia",
     description=(
-        "표준 형상의 관성 모멘트. shapes: "
-        "solid_disk (½mr²), thin_ring (mr²), thin_rod_center (1/12 mL²), "
-        "thin_rod_end (1/3 mL²), solid_sphere (2/5 mr²)."
+        "표준 형상의 질량 관성모멘트 I (kg·m²)를 계산한다. solid_disk(½mr²), thin_ring(mr²), "
+        "solid_sphere(2/5 mr²)는 radius 가, thin_rod_center(mL²/12)와 thin_rod_end(mL²/3)는 "
+        "length 가 필요하다. mass 와 치수는 0 초과이며 mass 는 kg, 치수는 m. 막대는 중심 또는 "
+        "끝점을 지나는 축 기준이라 다른 축은 평행축 정리를 따로 적용해야 한다. 반올림 없음."
     ),
     version="1.0.0",
 )
@@ -251,7 +291,7 @@ def moment_of_inertia(
     mass:   str,
     radius: str | None = None,
     length: str | None = None,
-) -> dict[str, Any]:
+) -> MomentOfInertiaResult:
     """Compute moment of inertia I for standard shapes.
 
     Shape requirements:
@@ -310,4 +350,4 @@ def moment_of_inertia(
     trace.step("moment_of_inertia", str(moi))
     trace.output(str(moi))
 
-    return {"moment_of_inertia": str(moi), "trace": trace.to_dict()}
+    return cast(MomentOfInertiaResult, {"moment_of_inertia": str(moi), "trace": trace.to_dict()})

@@ -24,7 +24,19 @@ from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.science.periodic_table import ATOMIC_MASS_DECIMAL
+
+
+class MolarMassResult(TracedResult):
+    molar_mass:  str
+    composition: dict[str, int]
+
+
+class StoichiometryResult(TracedResult):
+    moles:            dict[str, str]
+    masses:           dict[str, str]
+    limiting_reagent: str
 
 
 def _parse_formula(formula: str) -> dict[str, int]:
@@ -145,12 +157,14 @@ def _parse_tokens(
     namespace="science",
     name="molar_mass",
     description=(
-        "분자량(몰질량) 계산. 화학식 파싱 후 IUPAC 2021 원자량 적용. "
-        "괄호·수화물(.5H2O) 지원. 미지 원소 시 DomainConstraintError."
+        "화학식으로 몰질량(g/mol)을 계산하고 원소별 원자 수(composition)를 돌려준다. "
+        "원소 기호는 대소문자를 구분하며 괄호 Ca(OH)2, 수화물 CuSO4.5H2O 표기를 지원한다. "
+        "IUPAC 2021 관례값 원자량을 Decimal로 합산하며 반올림하지 않는다. "
+        "H~Pb 사이 일반 원소 27종만 지원하고 그 밖의 원소와 이온 전하 표기는 오류다."
     ),
     version="1.0.0",
 )
-def molar_mass(formula: str) -> dict[str, Any]:
+def molar_mass(formula: str) -> MolarMassResult:
     """Compute the molar mass of a chemical compound.
 
     Args:
@@ -193,8 +207,10 @@ def molar_mass(formula: str) -> dict[str, Any]:
     namespace="science",
     name="stoichiometry",
     description=(
-        "화학양론 계산: 균형 방정식 계수 기반 몰수·질량 계산, 한계 반응물 식별. "
-        "방정식은 사전에 균형이 맞춰진 입력을 요구함."
+        "균형 맞춘 반응식 계수로 한계 반응물을 찾고 각 물질의 몰수(mol)와 질량(g)을 계산한다. "
+        "reactants는 {formula, mass(g) 또는 moles} 목록, products는 {formula} 목록, coefficients는 {화학식: 정수 계수}이며 "
+        "수치는 Decimal 문자열이다. 몰질량은 molar_mass 와 같은 원자량을 쓰고 반올림하지 않는다. "
+        "계수가 균형 상태가 아니면 결과가 틀리며 수율이나 불순물은 반영하지 않는다."
     ),
     version="1.0.0",
 )
@@ -202,7 +218,7 @@ def stoichiometry(
     reactants: list[dict[str, Any]],
     products: list[dict[str, Any]],
     coefficients: dict[str, int],
-) -> dict[str, Any]:
+) -> StoichiometryResult:
     """Compute stoichiometric amounts given a balanced equation.
 
     Args:

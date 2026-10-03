@@ -9,14 +9,13 @@
 """
 from __future__ import annotations
 
-from typing import Any
-
 from sootool.core.audit import CalcTrace
 from sootool.core.calc import calc as _calc
 from sootool.core.cast import decimal_to_float64, float64_to_decimal_str
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _SIG = 12
 
@@ -26,12 +25,17 @@ def _f(expression: str, variable: str, x: float) -> float:
     return float(out["result"])
 
 
+class DiffCentralResult(TracedResult):
+    result: str
+
+
 @REGISTRY.tool(
     namespace="math",
     name="diff_central",
     description=(
-        "중심 차분법 1차 수치 미분: f'(x) ≈ (f(x+h) - f(x-h)) / (2h). "
-        "expression 내 자유 변수는 variable 로 지정."
+        "중심 차분 f'(x) ≈ (f(x+h) - f(x-h)) / (2h) 로 x 에서의 1차 도함수를 수치 근사한다. "
+        "expression 은 core.calc 문법의 수식, variable(기본 x)이 자유 변수, h 는 양수 Decimal 문자열(기본 0.001). float64 계산이며 결과는 유효숫자 12자리다. "
+        "h 를 지나치게 작게 잡으면 상쇄 오차가 커지고, 도함수 식 자체가 필요하면 symbolic.diff 를 쓴다."
     ),
     version="1.0.0",
 )
@@ -40,7 +44,7 @@ def diff_central(
     x:          str,
     h:          str = "0.001",
     variable:   str = "x",
-) -> dict[str, Any]:
+) -> DiffCentralResult:
     trace = CalcTrace(
         tool="math.diff_central",
         formula="f'(x) ≈ (f(x+h) - f(x-h)) / (2h)",
@@ -71,12 +75,17 @@ def diff_central(
     return {"result": result_s, "trace": trace.to_dict()}
 
 
+class DiffFivePointResult(TracedResult):
+    result: str
+
+
 @REGISTRY.tool(
     namespace="math",
     name="diff_five_point",
     description=(
-        "5점 공식 1차 수치 미분: f'(x) ≈ (-f(x+2h) + 8 f(x+h) - 8 f(x-h) + f(x-2h)) / (12 h). "
-        "중심 차분 대비 O(h⁴) 정확도."
+        "5점 공식 f'(x) ≈ (-f(x+2h) + 8 f(x+h) - 8 f(x-h) + f(x-2h)) / (12 h) 로 x 에서의 1차 도함수를 수치 근사한다. "
+        "중심 차분보다 정확도가 높다(O(h⁴)). expression 은 core.calc 문법, h 는 양수(기본 0.001), float64 계산이며 유효숫자 12자리다. "
+        "x±2h 구간에서 정의되지 않는 함수에는 쓸 수 없다."
     ),
     version="1.0.0",
 )
@@ -85,7 +94,7 @@ def diff_five_point(
     x:          str,
     h:          str = "0.001",
     variable:   str = "x",
-) -> dict[str, Any]:
+) -> DiffFivePointResult:
     trace = CalcTrace(
         tool="math.diff_five_point",
         formula="f'(x) ≈ (-f(x+2h) + 8 f(x+h) - 8 f(x-h) + f(x-2h)) / (12 h)",

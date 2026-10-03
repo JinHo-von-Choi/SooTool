@@ -17,6 +17,7 @@ from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.stats.descriptive import _to_float_array
 
 _StatFn = Callable[..., Any]
@@ -24,6 +25,17 @@ _STAT_FNS: dict[str, _StatFn] = {
     "mean":   np.mean,
     "median": np.median,
 }
+
+
+class StatsBootstrapCiResult(TracedResult):
+    statistic:      str
+    n:              int
+    point_estimate: str
+    ci_lower:       str
+    ci_upper:       str
+    confidence:     str
+    n_resamples:    int
+    seed:           int
 
 
 def _fmt(x: float, digits: int = 10) -> str:
@@ -34,8 +46,10 @@ def _fmt(x: float, digits: int = 10) -> str:
     namespace="stats",
     name="bootstrap_ci",
     description=(
-        "평균·중앙값 Bootstrap 신뢰구간 (백분위수법, deterministic). "
-        "seed 고정으로 재현성 보장."
+        "표본 평균 또는 중앙값의 부트스트랩 신뢰구간을 백분위수법으로 구한다. "
+        "values는 Decimal 문자열 2개 이상, statistic은 mean 또는 median, confidence는 0과 1 사이 실수(기본 0.95), "
+        "n_resamples는 100 이상 100,000 이하(기본 1000), seed 기본 42로 같은 입력이면 결과가 재현된다. "
+        "float64 계산 결과를 유효숫자 10자리 문자열로 돌려준다. 표본이 매우 작으면 구간이 불안정하다."
     ),
     version="1.0.0",
 )
@@ -45,7 +59,7 @@ def stats_bootstrap_ci(
     confidence:  float = 0.95,
     n_resamples: int   = 1000,
     seed:        int   = 42,
-) -> dict[str, Any]:
+) -> StatsBootstrapCiResult:
     """Bootstrap CI for mean or median.
 
     Args:

@@ -2,12 +2,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class TzConvertResult(TracedResult):
+    iso_datetime: str
 
 
 def _resolve_tz(tz_name: str) -> ZoneInfo:
@@ -38,14 +42,18 @@ def _parse_iso(iso_datetime: str, from_tz: ZoneInfo) -> datetime:
 @REGISTRY.tool(
     namespace="datetime",
     name="tz_convert",
-    description="IANA 타임존 간 datetime 변환. DST 전환 정확 처리.",
+    description=(
+        "IANA 타임존 사이에서 시각을 변환해 UTC 오프셋이 붙은 ISO 8601 문자열 iso_datetime 으로 돌려준다. "
+        "입력은 초 단위(YYYY-MM-DDTHH:MM:SS, 공백 구분 허용, 소수 초 불가)이며 오프셋이 없으면 from_tz 로 "
+        "해석하고 있으면 from_tz 를 쓰지 않는다. 서머타임 겹침 시각은 앞선 쪽으로 해석한다."
+    ),
     version="1.0.0",
 )
 def tz_convert(
     iso_datetime: str,
     from_tz: str,
     to_tz: str,
-) -> dict[str, Any]:
+) -> TzConvertResult:
     """Convert a datetime from one IANA timezone to another.
 
     Args:

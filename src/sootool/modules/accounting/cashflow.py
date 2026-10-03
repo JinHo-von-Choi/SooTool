@@ -6,19 +6,36 @@ Date: 2026-04-23
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import TypedDict
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class CashflowBreakdown(TypedDict):
+    net_income:      str
+    noncash_add:     str
+    working_capital: str
+    receivables_adj: str
+    inventory_adj:   str
+    payables_adj:    str
+    other_wc_adj:    str
+
+
+class AccountingCashflowOperatingResult(TracedResult):
+    cfo:       str
+    breakdown: CashflowBreakdown
 
 
 @REGISTRY.tool(
     namespace="accounting",
     name="cashflow_operating",
     description=(
-        "간접법 영업활동현금흐름(CFO) 산출. "
-        "당기순이익에 비현금항목을 가감하고 운전자본 변동을 반영."
+        "간접법 영업활동현금흐름(CFO)을 계산한다. 당기순이익에 감가상각비, 무형자산상각비, 기타 비현금 항목을 더하고 "
+        "매출채권 증가와 재고자산 증가는 빼며 매입채무 증가는 더한다. 금액은 Decimal 문자열이며 반올림하지 않는다. "
+        "증가는 양수로 넣어야 하며 증가분을 음수로 넣으면 부호가 뒤집힌다."
     ),
     version="1.0.0",
 )
@@ -31,7 +48,7 @@ def accounting_cashflow_operating(
     change_in_inventory:       str = "0",
     change_in_payables:        str = "0",
     change_in_other_wc:        str = "0",
-) -> dict[str, Any]:
+) -> AccountingCashflowOperatingResult:
     """Indirect-method CFO.
 
     CFO = NI + 감가상각 + 무형자산상각 + 기타 비현금 항목
@@ -80,7 +97,7 @@ def accounting_cashflow_operating(
 
     cfo: Decimal = ni + noncash_add + wc_adjust
 
-    breakdown = {
+    breakdown: CashflowBreakdown = {
         "net_income":       str(ni),
         "noncash_add":      str(noncash_add),
         "working_capital":  str(wc_adjust),

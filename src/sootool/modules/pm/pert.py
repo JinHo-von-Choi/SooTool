@@ -11,7 +11,6 @@ stdev     = sqrt(variance)
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -20,8 +19,15 @@ from sootool.core.cast import mpmath_to_decimal
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _MPMATH_DPS = 50
+
+
+class PertResult(TracedResult):
+    expected: str
+    variance: str
+    stdev:    str
 
 
 def _parse_decimal(value: str, name: str) -> Decimal:
@@ -35,8 +41,10 @@ def _parse_decimal(value: str, name: str) -> Decimal:
     namespace="pm",
     name="pert",
     description=(
-        "PERT 기법: 기댓값 E=(O+4M+P)/6, 분산 V=((P-O)/6)², 표준편차. "
-        "Decimal 정밀 연산, sqrt는 mpmath."
+        "단일 작업의 PERT 삼점 추정으로 기대 기간, 분산, 표준편차를 계산한다. "
+        "E=(O+4M+P)/6, V=((P-O)/6)², 표준편차는 sqrt(V). 낙관, 최빈, 비관 값은 같은 시간 단위의 Decimal 문자열이며 "
+        "낙관이 비관을 넘으면 오류다. 반올림하지 않고 표준편차만 유효숫자 30자리까지 구한다. "
+        "여러 작업의 합산 일정에는 critical_path 나 monte_carlo_schedule 을 쓴다."
     ),
     version="1.0.0",
 )
@@ -44,7 +52,7 @@ def pert(
     optimistic: str,
     most_likely: str,
     pessimistic: str,
-) -> dict[str, Any]:
+) -> PertResult:
     """Compute PERT expected duration, variance, and standard deviation.
 
     Args:

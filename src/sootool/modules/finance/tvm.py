@@ -13,13 +13,21 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, power
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy, apply
+
+
+class PvResult(TracedResult):
+    pv: str
+
+
+class FvResult(TracedResult):
+    fv: str
 
 
 def _parse_policy(rounding: str) -> RoundingPolicy:
@@ -42,7 +50,11 @@ def _validate_periods(periods: int) -> None:
 @REGISTRY.tool(
     namespace="finance",
     name="pv",
-    description="현재가치(Present Value) 계산. PV = FV / (1+r)^n",
+    description=(
+        "미래 현금흐름의 현재가치를 계산한다. PV = FV / (1+r)^n. future_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 "
+        "Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. "
+        "연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."
+    ),
     version="1.0.0",
 )
 def pv(
@@ -51,7 +63,7 @@ def pv(
     periods: int,
     rounding: str = "HALF_EVEN",
     decimals: int = 2,
-) -> dict[str, Any]:
+) -> PvResult:
     """Compute the present value of a future cash flow.
 
     Args:
@@ -102,7 +114,11 @@ def pv(
 @REGISTRY.tool(
     namespace="finance",
     name="fv",
-    description="미래가치(Future Value) 계산. FV = PV * (1+r)^n",
+    description=(
+        "현재 금액의 미래가치를 계산한다. FV = PV x (1+r)^n, 기간마다 복리. present_value 와 rate(기간당 이율, 0 이상, "
+        "예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. "
+        "연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."
+    ),
     version="1.0.0",
 )
 def fv(
@@ -111,7 +127,7 @@ def fv(
     periods: int,
     rounding: str = "HALF_EVEN",
     decimals: int = 2,
-) -> dict[str, Any]:
+) -> FvResult:
     """Compute the future value of a present cash flow.
 
     Args:

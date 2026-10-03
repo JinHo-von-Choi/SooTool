@@ -16,12 +16,28 @@ from __future__ import annotations
 
 from decimal import Decimal
 from graphlib import CycleError, TopologicalSorter
-from typing import Any
+from typing import Any, TypedDict
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
+
+
+class CriticalPathTaskDetail(TypedDict):
+    id:    str
+    es:    str
+    ef:    str
+    ls:    str
+    lf:    str
+    slack: str
+
+
+class CriticalPathResult(TracedResult):
+    critical_path:  list[str]
+    total_duration: str
+    task_details:   list[CriticalPathTaskDetail]
 
 
 def _parse_decimal(value: str, name: str) -> Decimal:
@@ -35,14 +51,16 @@ def _parse_decimal(value: str, name: str) -> Decimal:
     namespace="pm",
     name="critical_path",
     description=(
-        "주공정법(CPM): ES/EF/LS/LF/slack 계산, 주공정 식별. "
-        "graphlib.TopologicalSorter 사용. 사이클 시 DomainConstraintError."
+        "작업 의존 관계로 주공정법(CPM) 일정을 계산해 각 작업의 ES, EF, LS, LF, 여유(slack)와 총 기간, "
+        "여유가 0인 주공정 작업 목록을 돌려준다. tasks는 {id, duration(Decimal 문자열, 0 이상, 단위 통일), "
+        "predecessors(선행 id 목록)}의 리스트이며 결과는 위상 정렬 순서다. 반올림하지 않는다. "
+        "순환 의존이나 없는 선행 id는 오류이고, 작업 간 지연(lag)과 시작 제약은 지원하지 않는다."
     ),
     version="1.0.0",
 )
 def critical_path(
     tasks: list[dict[str, Any]],
-) -> dict[str, Any]:
+) -> CriticalPathResult:
     """Compute the Critical Path for a project network.
 
     Args:
@@ -142,7 +160,7 @@ def critical_path(
     slack: dict[str, Decimal] = {tid: ls[tid] - es[tid] for tid in task_ids}
     critical_ids = [tid for tid in topo_order if slack[tid] == D("0")]
 
-    task_details = [
+    task_details: list[CriticalPathTaskDetail] = [
         {
             "id":    tid,
             "es":    str(es[tid]),

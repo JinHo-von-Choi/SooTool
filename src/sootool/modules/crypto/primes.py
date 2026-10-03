@@ -2,13 +2,17 @@
 from __future__ import annotations
 
 import random
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.crypto._ints import parse_int
+
+
+class IsPrimeResult(TracedResult):
+    is_prime: bool
 
 
 def _miller_rabin_witness(n: int, a: int) -> bool:
@@ -88,10 +92,14 @@ def _is_prime_miller_rabin(n: int, k: int = 20) -> bool:
 @REGISTRY.tool(
     namespace="crypto",
     name="is_prime",
-    description="Miller-Rabin 소수 판별. n: 정수 문자열, k: 라운드 수(기본 20).",
+    description=(
+        "Miller-Rabin 으로 소수 여부 is_prime(bool)을 판정한다. n 은 정수 문자열(자릿수 한도 2048)이며 "
+        "2 미만과 음수는 False. 약 3.8e18 미만은 고정 증인이라 결정적이고, 그 이상은 무작위 증인 k 회"
+        "(기본 20, 1~256)라 확률적이어서 True 가 소수 증명은 아니다. 소인수분해는 하지 않는다."
+    ),
     version="1.0.0",
 )
-def is_prime(n: str, k: int = 20) -> dict[str, Any]:
+def is_prime(n: str, k: int = 20) -> IsPrimeResult:
     """Test whether n is (probably) prime using Miller-Rabin.
 
     For n below ~3.8 * 10^18, uses deterministic fixed witness sets,

@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.modules.engineering.electrical_ac._common import (
     _ONE,
     _ZERO,
@@ -39,16 +39,24 @@ def _combine_network(
     return div(_ONE, reciprocal_sum)
 
 
+class CombineResult(TracedResult):
+    """합성 결과. total 은 Decimal 문자열."""
+
+    total: str
+
+
 @REGISTRY.tool(
     namespace="engineering",
     name="capacitor_combine",
     description=(
-        "커패시터 직렬/병렬 합성. "
-        "series: 1/C = Σ(1/Cᵢ), parallel: C = ΣCᵢ."
+        "커패시터 여러 개의 합성 정전용량을 구한다. topology='series'면 1/C=Σ(1/Cᵢ), "
+        "'parallel'이면 C=ΣCᵢ. capacitors 는 0 초과 정전용량(F)의 Decimal 문자열 목록이며 "
+        "최소 1개, total 은 입력과 같은 단위. 계산은 유효숫자 50자리 Decimal. "
+        "오용 주의: 저항과 인덕터는 직렬 병렬 공식이 반대다."
     ),
     version="1.0.0",
 )
-def capacitor_combine(capacitors: list[str], topology: str) -> dict[str, Any]:
+def capacitor_combine(capacitors: list[str], topology: str) -> CombineResult:
     """Compute equivalent capacitance."""
     trace = CalcTrace(
         tool="engineering.capacitor_combine",
@@ -74,12 +82,14 @@ def capacitor_combine(capacitors: list[str], topology: str) -> dict[str, Any]:
     namespace="engineering",
     name="inductor_combine",
     description=(
-        "인덕터 직렬/병렬 합성. "
-        "series: L = ΣLᵢ, parallel: 1/L = Σ(1/Lᵢ)."
+        "인덕터 여러 개의 합성 인덕턴스를 구한다. topology='series'면 L=ΣLᵢ, "
+        "'parallel'이면 1/L=Σ(1/Lᵢ). inductors 는 0 초과 인덕턴스(H)의 Decimal 문자열 목록이며 "
+        "최소 1개, total 은 입력과 같은 단위. 상호 인덕턴스는 고려하지 않는다. "
+        "오용 주의: 커패시터는 직렬 병렬 공식이 반대다."
     ),
     version="1.0.0",
 )
-def inductor_combine(inductors: list[str], topology: str) -> dict[str, Any]:
+def inductor_combine(inductors: list[str], topology: str) -> CombineResult:
     """Compute equivalent inductance."""
     trace = CalcTrace(
         tool="engineering.inductor_combine",

@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import cmath
-from typing import Any
+from typing import Any, TypedDict
 
 import numpy as np
 
@@ -20,6 +20,7 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _SIG = 12
 
@@ -33,16 +34,35 @@ def _to_float_array(values: list[str], name: str) -> np.ndarray:
         raise InvalidInputError(f"{name} 요소는 Decimal 문자열이어야 합니다.") from exc
 
 
+class FftBin(TypedDict):
+    """주파수 bin 하나. k 는 인덱스 문자열."""
+
+    k:         str
+    magnitude: str
+    phase_rad: str
+
+
+class IfftComplexSample(TypedDict):
+    real: str
+    imag: str
+
+
+class FftResult(TracedResult):
+    bins: list[FftBin]
+    n:    int
+
+
 @REGISTRY.tool(
     namespace="math",
     name="fft",
     description=(
-        "이산 푸리에 변환 (DFT): 실수 샘플 → 복소수 bin 리스트. "
-        "각 bin은 {magnitude, phase_rad} Decimal 문자열 쌍. numpy.fft 기반."
+        "실수 샘플의 이산 푸리에 변환(DFT)을 numpy.fft 로 계산한다. "
+        "samples 는 2개 이상 65536개 이하의 Decimal 문자열 리스트. 각 bin 은 k, magnitude, phase_rad 를 담으며 float64 계산에 유효숫자 12자리이고 1/N 정규화는 하지 않는다. "
+        "k 는 주파수가 아니라 인덱스이므로 Hz 는 k * 샘플링주파수 / N 으로 직접 계산한다."
     ),
     version="1.0.0",
 )
-def fft(samples: list[str]) -> dict[str, Any]:
+def fft(samples: list[str]) -> FftResult:
     trace = CalcTrace(
         tool="math.fft",
         formula="X_k = Σ_{n=0}^{N-1} x_n * exp(-2πi k n / N)",
@@ -55,7 +75,7 @@ def fft(samples: list[str]) -> dict[str, Any]:
     trace.input("samples_count", arr.size)
 
     spectrum = np.fft.fft(arr)
-    bins: list[dict[str, str]] = []
+    bins: list[FftBin] = []
     for k, c in enumerate(spectrum):
         mag = abs(c)
         phase = cmath.phase(complex(c))
@@ -71,19 +91,23 @@ def fft(samples: list[str]) -> dict[str, Any]:
     return {"bins": bins, "n": arr.size, "trace": trace.to_dict()}
 
 
+class IfftResult(TracedResult):
+    samples: list[str] | list[IfftComplexSample]
+
+
 @REGISTRY.tool(
     namespace="math",
     name="ifft",
     description=(
-        "역 이산 푸리에 변환. 복소수 bin 리스트 ({magnitude, phase_rad}) → 실수/복소수 샘플 복원. "
-        "real_output=true 면 허수부 절대값이 1e-9 미만인 경우 실수만 반환."
+        "fft 결과의 bin 리스트({magnitude, phase_rad})에서 시간 영역 샘플을 복원한다(1/N 정규화 포함). 최대 65536개. real_output 기본 true 는 허수부 절대값이 1e-9 를 넘으면 오류를 내고 문자열 리스트를 반환하며, false 면 {real, imag} 쌍을 반환한다. "
+        "bin 은 N개 전체를 순서대로 넣어야 하며 일부만 넣으면 다른 신호가 복원된다."
     ),
     version="1.0.0",
 )
 def ifft(
     bins:        list[dict[str, str]],
     real_output: bool = True,
-) -> dict[str, Any]:
+) -> IfftResult:
     trace = CalcTrace(
         tool="math.ifft",
         formula="x_n = (1/N) Σ_{k=0}^{N-1} X_k * exp(2πi k n / N)",

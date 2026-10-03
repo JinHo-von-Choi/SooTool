@@ -13,17 +13,24 @@ Source:
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _EDD_DAYS       = 280
 _POST_TERM_DAYS = 294   # 42 weeks
 
 _T1_MAX_DAYS = 97   # up to end of week 13 (91 days + 6 days → 97 days inclusive end)
 _T2_MAX_DAYS = 195  # up to end of week 27 (189 + 6 → 195)
+
+
+class MedicalPregnancyWeeksResult(TracedResult):
+    weeks:     int
+    days:      int
+    trimester: int
+    edd:       str
 
 
 def _parse_date(s: str) -> date:
@@ -49,16 +56,17 @@ def _trimester(total_days: int) -> int:
     namespace="medical",
     name="pregnancy_weeks",
     description=(
-        "임신 주수 및 분만예정일(EDD) 계산. "
-        "LMP 기준 Naegele 법칙: EDD = LMP + 280일. "
-        "최대 42주(ACOG post-term 기준)에서 클램프."
+        "최종 월경일(LMP)로 임신 주수와 분만예정일(EDD)을 계산한다. "
+        "입력은 YYYY-MM-DD 문자열이며 reference_date를 생략하면 서버의 오늘 날짜를 쓴다. "
+        "EDD = LMP + 280일(Naegele 법칙), 주수와 일수는 0~42주로 제한하고 삼분기(1~3)도 함께 반환한다. "
+        "초음파 계측으로 조정한 예정일은 반영하지 않는다."
     ),
     version="1.0.0",
 )
 def medical_pregnancy_weeks(
     lmp_date:       str,
     reference_date: str | None = None,
-) -> dict[str, Any]:
+) -> MedicalPregnancyWeeksResult:
     """Calculate gestational age and EDD.
 
     Args:

@@ -15,11 +15,12 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Any
+from typing import Any, TypedDict
 
 from sootool.core.audit import CalcTrace
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 # ---------------------------------------------------------------------------
 # Korean lunar calendar table (KASI 공인 데이터, 2020-01-01 ~ 2030-12-31)
@@ -113,6 +114,36 @@ _SUPPORTED_MIN = 2020
 _SUPPORTED_MAX = 2030
 
 
+class SolarToLunarResult(TracedResult):
+    lunar_year:  int
+    lunar_month: int
+    lunar_day:   int
+    is_leap:     bool
+
+
+class LunarToSolarResult(TracedResult):
+    solar_date: str
+
+
+class SolarTerm(TypedDict):
+    index: int
+    name:  str
+    date:  str
+
+
+class SolarTermsResult(TracedResult):
+    year:  int
+    terms: list[SolarTerm]
+
+
+class LunarHolidayResult(TracedResult):
+    name:        str
+    year:        int
+    solar_date:  str
+    lunar_month: int
+    lunar_day:   int
+
+
 def _parse_date(s: str) -> date:
     try:
         return date.fromisoformat(s)
@@ -160,12 +191,13 @@ def _logical_index_for(lunar_year_entry: dict[str, Any], month: int, is_leap: bo
     namespace="datetime",
     name="solar_to_lunar",
     description=(
-        "한국 양력 → 음력 변환. 지원 연도 2020-2030 (KASI 데이터 기반). "
-        "is_leap=True 이면 해당 월이 윤달."
+        "양력 날짜를 음력 년·월·일(lunar_year, lunar_month, lunar_day)과 윤달 여부 is_leap 으로 바꾼다. "
+        "입력은 YYYY-MM-DD 이고 내장 조견표의 음력 2020~2030년에 해당하는 2020-01-25~2031-01-22 만 "
+        "지원하며 범위 밖은 오류이다. 그 밖의 연도 음력 계산에는 쓸 수 없다."
     ),
     version="1.0.0",
 )
-def solar_to_lunar(solar_date: str) -> dict[str, Any]:
+def solar_to_lunar(solar_date: str) -> SolarToLunarResult:
     """Convert a solar (Gregorian) date to the Korean lunar date.
 
     Args:
@@ -213,20 +245,24 @@ def solar_to_lunar(solar_date: str) -> dict[str, Any]:
     lunar_day = remaining + 1
     lunar_month, is_leap = _month_label(entry, logical_index)
 
-    result = {
-        "lunar_year":   candidate,
-        "lunar_month":  lunar_month,
-        "lunar_day":    lunar_day,
-        "is_leap":      is_leap,
-    }
     trace.step("lunar_year",  candidate)
     trace.step("lunar_month", lunar_month)
     trace.step("lunar_day",   lunar_day)
     trace.step("is_leap",     is_leap)
-    trace.output(result)
+    trace.output({
+        "lunar_year":   candidate,
+        "lunar_month":  lunar_month,
+        "lunar_day":    lunar_day,
+        "is_leap":      is_leap,
+    })
 
-    result["trace"] = trace.to_dict()
-    return result
+    return {
+        "lunar_year":   candidate,
+        "lunar_month":  lunar_month,
+        "lunar_day":    lunar_day,
+        "is_leap":      is_leap,
+        "trace":        trace.to_dict(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -237,8 +273,9 @@ def solar_to_lunar(solar_date: str) -> dict[str, Any]:
     namespace="datetime",
     name="lunar_to_solar",
     description=(
-        "한국 음력 → 양력 변환. 지원 연도 2020-2030. "
-        "is_leap=True 이면 해당 월을 윤달로 간주한다."
+        "음력 날짜를 양력 solar_date(YYYY-MM-DD)로 바꾼다. lunar_year 는 2020~2030, lunar_month 는 1~12, "
+        "lunar_day 는 1~30 정수이고 윤달이면 is_leap=True 를 준다. 그 해에 없는 윤달이나 달 길이를 넘는 "
+        "일자는 오류이며 범위 밖 연도는 지원하지 않는다."
     ),
     version="1.0.0",
 )
@@ -247,7 +284,7 @@ def lunar_to_solar(
     lunar_month:  int,
     lunar_day:    int,
     is_leap:      bool = False,
-) -> dict[str, Any]:
+) -> LunarToSolarResult:
     """Convert a Korean lunar date to its solar (Gregorian) date."""
     trace = CalcTrace(
         tool="datetime.lunar_to_solar",
@@ -344,12 +381,13 @@ def _solar_term_date(year: int, index: int) -> date:
     namespace="datetime",
     name="solar_terms",
     description=(
-        "24절기 산출. year 기준 24개 절기의 양력 날짜 리스트를 반환한다. "
-        "±1일 오차 허용 (KASI 근사식 기반)."
+        "양력 year 의 24절기 이름과 양력 날짜 24개를 입춘부터의 순서로 반환한다. 연도별 계산이 아닌 "
+        "고정 일자표이므로 모든 연도에 같은 월일이 나오고 실제 절기일과 하루 어긋날 수 있다. "
+        "소한·대한은 같은 해 1월 날짜이며 절기 시각이 필요한 용도에는 쓰지 않는다."
     ),
     version="1.0.0",
 )
-def solar_terms(year: int) -> dict[str, Any]:
+def solar_terms(year: int) -> SolarTermsResult:
     """Return the 24 solar terms for a Gregorian year."""
     trace = CalcTrace(
         tool="datetime.solar_terms",
@@ -359,7 +397,7 @@ def solar_terms(year: int) -> dict[str, Any]:
         raise InvalidInputError(f"year는 양의 정수여야 합니다: {year}")
 
     trace.input("year", year)
-    terms: list[dict[str, Any]] = []
+    terms: list[SolarTerm] = []
     for i, name in enumerate(_SOLAR_TERMS_KO):
         d = _solar_term_date(year, i)
         terms.append({"index": i + 1, "name": name, "date": d.isoformat()})
@@ -389,13 +427,14 @@ _LUNAR_HOLIDAYS: dict[str, tuple[int, int]] = {
     namespace="datetime",
     name="lunar_holiday",
     description=(
-        "한국 주요 음력 명절의 양력 환산. "
-        "name: seollal(설날), jeongwol_daeboreum(정월대보름), buddhas_birthday(부처님오신날), "
-        "dano(단오), chilseok(칠석), chuseok(추석), seotdal_geumum(섣달그믐)."
+        "음력 명절을 양력 solar_date 로 환산한다. name 은 seollal(설날), jeongwol_daeboreum(정월대보름), "
+        "buddhas_birthday(부처님오신날), dano(단오), chilseok(칠석), chuseok(추석), seotdal_geumum(섣달그믐)이고 "
+        "year 는 음력년(2020~2030)이라 섣달그믐은 이듬해 양력 1~2월에 나온다. 윤달은 쓰지 않으며 연휴와 "
+        "대체공휴일은 계산하지 않는다."
     ),
     version="1.0.0",
 )
-def lunar_holiday(name: str, year: int) -> dict[str, Any]:
+def lunar_holiday(name: str, year: int) -> LunarHolidayResult:
     """Return the solar date for a Korean lunar holiday in a given lunar year."""
     trace = CalcTrace(
         tool="datetime.lunar_holiday",

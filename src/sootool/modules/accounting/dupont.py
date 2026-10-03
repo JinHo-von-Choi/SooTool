@@ -6,14 +6,30 @@ Date: 2026-04-23
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
+
+
+class AccountingDupont3Result(TracedResult):
+    net_margin:        str
+    asset_turnover:    str
+    equity_multiplier: str
+    roe:               str
+
+
+class AccountingDupont5Result(TracedResult):
+    tax_burden:        str
+    interest_burden:   str
+    operating_margin:  str
+    asset_turnover:    str
+    equity_multiplier: str
+    roe:               str
 
 
 def _nonzero(value: Decimal, field: str) -> Decimal:
@@ -26,8 +42,9 @@ def _nonzero(value: Decimal, field: str) -> Decimal:
     namespace="accounting",
     name="dupont_3",
     description=(
-        "DuPont 3단계 분해: ROE = 순이익률 × 총자산회전율 × 재무레버리지. "
-        "식별 가능한 원인을 도출."
+        "DuPont 3단계 분해로 ROE = 순이익률 x 총자산회전율 x 자기자본승수(재무레버리지)를 계산한다. "
+        "금액은 Decimal 문자열이며 매출, 총자산, 자기자본은 0 이 아니어야 한다. 각 값은 decimals(기본 6)자리 HALF_EVEN "
+        "반올림이고 음수 자기자본은 막지 않으므로 부호를 확인해야 한다."
     ),
     version="1.0.0",
 )
@@ -37,7 +54,7 @@ def accounting_dupont_3(
     total_assets:  str,
     total_equity:  str,
     decimals:      int = 6,
-) -> dict[str, Any]:
+) -> AccountingDupont3Result:
     """3-step DuPont: ROE = NM * TAT * EM.
 
     Returns:
@@ -77,15 +94,22 @@ def accounting_dupont_3(
         "roe":               r(roe),
     }
     trace.output(out)
-    return {**out, "trace": trace.to_dict()}
+    return {
+        "net_margin": out["net_margin"],
+        "asset_turnover": out["asset_turnover"],
+        "equity_multiplier": out["equity_multiplier"],
+        "roe": out["roe"],
+        "trace": trace.to_dict(),
+    }
 
 
 @REGISTRY.tool(
     namespace="accounting",
     name="dupont_5",
     description=(
-        "DuPont 5단계 분해: ROE = 세부담비율 × 이자부담비율 × "
-        "영업이익률 × 총자산회전율 × 재무레버리지."
+        "DuPont 5단계 분해로 ROE = 세부담비율(순이익/세전이익) x 이자부담비율(세전이익/EBIT) x 영업이익률 x "
+        "총자산회전율 x 재무레버리지를 계산한다. 금액은 Decimal 문자열이며 세전이익, EBIT, 매출, 총자산, 자기자본은 "
+        "0 이 아니어야 한다. 각 값은 decimals(기본 6)자리 HALF_EVEN 반올림이다."
     ),
     version="1.0.0",
 )
@@ -97,7 +121,7 @@ def accounting_dupont_5(
     total_assets:  str,
     total_equity:  str,
     decimals:      int = 6,
-) -> dict[str, Any]:
+) -> AccountingDupont5Result:
     """5-step DuPont.
 
     ROE = (NI/EBT) * (EBT/EBIT) * (EBIT/Rev) * (Rev/TA) * (TA/TE)
@@ -148,4 +172,12 @@ def accounting_dupont_5(
         "roe":               r(roe),
     }
     trace.output(out)
-    return {**out, "trace": trace.to_dict()}
+    return {
+        "tax_burden": out["tax_burden"],
+        "interest_burden": out["interest_burden"],
+        "operating_margin": out["operating_margin"],
+        "asset_turnover": out["asset_turnover"],
+        "equity_multiplier": out["equity_multiplier"],
+        "roe": out["roe"],
+        "trace": trace.to_dict(),
+    }

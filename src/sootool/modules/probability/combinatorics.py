@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import math
 from decimal import Decimal
-from typing import Any
 
 import mpmath
 
@@ -20,8 +19,15 @@ from sootool.core.audit import CalcTrace
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 
 _MPMATH_FACTORIAL_THRESHOLD = 1000
+
+
+class CombinatoricsResult(TracedResult):
+    """조합론 결과. 자릿수 제한 없는 정수 문자열."""
+
+    result: str
 
 
 def _validate_non_negative_int(value: int, name: str) -> None:
@@ -57,10 +63,10 @@ def _factorial_int(n: int) -> int:
 @REGISTRY.tool(
     namespace="probability",
     name="factorial",
-    description="n! 계산. n<1000은 math.factorial, 그 이상은 mpmath 고정밀 연산.",
+    description="n!을 정확한 정수 문자열로 반환한다. n 은 0 이상 정수이며 상한은 20000(환경변수 SOOTOOL_LIMIT_COMBINATORICS_N 으로 조정), 1000 미만은 math.factorial, 이상은 mpmath 로 계산하며 반올림은 없다. 결과 자릿수가 매우 커서 float 로 변환하면 정밀도를 잃는다.",
     version="1.0.0",
 )
-def factorial(n: int) -> dict[str, Any]:
+def factorial(n: int) -> CombinatoricsResult:
     """Compute n! (factorial).
 
     Args:
@@ -87,10 +93,10 @@ def factorial(n: int) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="nCr",
-    description="이항계수 C(n, r) = n! / (r! * (n-r)!). math.comb 사용.",
+    description="이항계수 C(n, r) = n!/(r!(n-r)!)을 정확한 정수 문자열로 반환한다. n, r 은 0 이상 정수(r ≤ n, n 상한 20000)이며 반올림은 없다. 순서를 구분하는 선택에 쓰면 r! 배 작게 나오므로 그 경우는 nPr 을 쓴다.",
     version="1.0.0",
 )
-def nCr(n: int, r: int) -> dict[str, Any]:
+def nCr(n: int, r: int) -> CombinatoricsResult:
     """Compute the binomial coefficient C(n, r).
 
     Args:
@@ -122,10 +128,10 @@ def nCr(n: int, r: int) -> dict[str, Any]:
 @REGISTRY.tool(
     namespace="probability",
     name="nPr",
-    description="순열 P(n, r) = n! / (n-r)!. math.perm 사용.",
+    description="순열 P(n, r) = n!/(n-r)!을 정확한 정수 문자열로 반환한다. n, r 은 0 이상 정수(r ≤ n, n 상한 20000)이며 반올림은 없다. 순서를 구분하지 않는 선택에 쓰면 r! 배 크게 나오므로 그 경우는 nCr 을 쓴다.",
     version="1.0.0",
 )
-def nPr(n: int, r: int) -> dict[str, Any]:
+def nPr(n: int, r: int) -> CombinatoricsResult:
     """Compute the permutation P(n, r).
 
     Args:

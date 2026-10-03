@@ -1,26 +1,34 @@
 """Physical unit conversion tool backed by pint with Decimal magnitude."""
 from __future__ import annotations
 
-from typing import Any
-
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.units import _UREG
+
+
+class ConvertResult(TracedResult):
+    magnitude: str
+    unit:      str
 
 
 @REGISTRY.tool(
     namespace="units",
     name="convert",
-    description="Physical unit conversion using pint (Decimal precision). E.g. meter → feet.",
+    description=(
+        "pint 로 물리 단위를 변환한다. magnitude 는 Decimal 문자열, from_unit 과 to_unit 은 pint 단위 이름"
+        "(meter, foot, km 등)이고 차원이 다르거나 모르는 단위는 오류이다. 결과 magnitude 는 문자열이며 "
+        "1E+3 같은 지수 표기가 나올 수 있다. 섭씨·화씨는 끝자리 오차가 생기므로 units.temperature 를 쓴다."
+    ),
     version="1.0.0",
 )
 def convert(
     magnitude: str,
     from_unit: str,
     to_unit: str,
-) -> dict[str, Any]:
+) -> ConvertResult:
     """Convert a physical quantity from one unit to another.
 
     Uses the shared pint UnitRegistry (_UREG) with Decimal non-int type for

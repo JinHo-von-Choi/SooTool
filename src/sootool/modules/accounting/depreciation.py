@@ -2,13 +2,47 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import TypedDict
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, div, mul, sub
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy, apply
+
+
+class StraightLineRow(TypedDict):
+    year:           int
+    depreciation:   str
+    book_value_end: str
+
+
+class DecliningBalanceRow(TypedDict):
+    year:             int
+    book_value_start: str
+    depreciation:     str
+    book_value_end:   str
+
+
+class UnitsOfProductionRow(TypedDict):
+    period:         int
+    units:          int
+    depreciation:   str
+    book_value_end: str
+
+
+class DepreciationStraightLineResult(TracedResult):
+    annual_expense: str
+    schedule:       list[StraightLineRow]
+
+
+class DepreciationDecliningBalanceResult(TracedResult):
+    schedule: list[DecliningBalanceRow]
+
+
+class DepreciationUnitsOfProductionResult(TracedResult):
+    schedule: list[UnitsOfProductionRow]
 
 
 def _parse_policy(rounding: str) -> RoundingPolicy:
@@ -22,8 +56,9 @@ def _parse_policy(rounding: str) -> RoundingPolicy:
     namespace="accounting",
     name="depreciation_straight_line",
     description=(
-        "정액법 감가상각 스케줄. 연 감가비 = (취득원가 - 잔존가치) / 내용연수. "
-        "연도별 감가상각비와 기말 장부가를 반환한다."
+        "정액법 감가상각 스케줄을 계산한다. 연 감가비 = (취득원가 - 잔존가치) / 내용연수(life_years, 1 이상 정수), "
+        "금액은 Decimal 문자열. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리하고 마지막 해는 장부가가 잔존가치에 "
+        "맞도록 잔액을 상각한다. 월할이나 기중 취득 안분은 지원하지 않는다."
     ),
     version="1.0.0",
 )
@@ -33,7 +68,7 @@ def depreciation_straight_line(
     life_years: int,
     decimals: int = 0,
     rounding: str = "HALF_EVEN",
-) -> dict[str, Any]:
+) -> DepreciationStraightLineResult:
     """Straight-line depreciation schedule.
 
     Formula: annual_expense = (cost - salvage) / life_years
@@ -76,7 +111,7 @@ def depreciation_straight_line(
     trace.step("annual_raw",       str(annual_raw))
     trace.step("annual_expense",   str(annual))
 
-    schedule: list[dict[str, Any]] = []
+    schedule: list[StraightLineRow] = []
     book_value = cost_d
     for year in range(1, life_years + 1):
         remaining = sub(book_value, salvage_d)
@@ -104,7 +139,11 @@ def depreciation_straight_line(
 @REGISTRY.tool(
     namespace="accounting",
     name="depreciation_declining_balance",
-    description="정률법 감가상각 스케줄 계산. 마지막 연도에 잔존가치 이하로 내려가지 않도록 조정.",
+    description=(
+        "정률법 감가상각 스케줄을 계산한다. 연도별 감가비 = 기초 장부가 x 감가율(rate, 0 초과 1 미만 Decimal 문자열)이며 "
+        "장부가는 잔존가치 아래로 내려가지 않고 도달하면 이후 연도 감가비는 0 이다. decimals(기본 0)자리로 "
+        "rounding(기본 HALF_EVEN) 처리한다. 감가율은 입력값 그대로 쓰며 내용연수로 역산하지 않는다."
+    ),
     version="1.0.0",
 )
 def depreciation_declining_balance(
@@ -114,7 +153,7 @@ def depreciation_declining_balance(
     life_years: int,
     decimals: int = 0,
     rounding: str = "HALF_EVEN",
-) -> dict[str, Any]:
+) -> DepreciationDecliningBalanceResult:
     """Declining balance depreciation schedule.
 
     Formula: dep_year = book_value_beginning * rate
@@ -155,7 +194,7 @@ def depreciation_declining_balance(
     trace.input("decimals",   decimals)
     trace.input("rounding",   rounding)
 
-    schedule: list[dict[str, Any]] = []
+    schedule: list[DecliningBalanceRow] = []
     book_value = cost_d
 
     for year in range(1, life_years + 1):
@@ -202,8 +241,9 @@ def depreciation_declining_balance(
     namespace="accounting",
     name="depreciation_units_of_production",
     description=(
-        "생산량비례법 감가상각 스케줄. 기간 감가비 = (취득원가 - 잔존가치) / 총생산량 * 기간 생산량. "
-        "기간별 감가상각비와 기말 장부가를 반환한다."
+        "생산량비례법 감가상각 스케줄을 계산한다. 기간 감가비 = (취득원가 - 잔존가치) / 총생산량 x 기간 생산량. "
+        "total_units 는 1 이상 정수, period_units 는 기간별 생산량 정수 목록이며 금액은 Decimal 문자열. decimals(기본 0)자리로 "
+        "rounding(기본 HALF_EVEN) 처리한다. 누적 생산량이 총생산량을 넘어도 오류 없이 장부가가 잔존가치에서 멈춘다."
     ),
     version="1.0.0",
 )
@@ -214,7 +254,7 @@ def depreciation_units_of_production(
     period_units: list[int],
     decimals: int = 0,
     rounding: str = "HALF_EVEN",
-) -> dict[str, Any]:
+) -> DepreciationUnitsOfProductionResult:
     """Units-of-production depreciation schedule.
 
     Formula: dep_period = (cost - salvage) / total_units * period_units
@@ -257,7 +297,7 @@ def depreciation_units_of_production(
     trace.step("depreciable_base", str(depreciable))
     trace.step("rate_per_unit",    str(rate_per_unit))
 
-    schedule: list[dict[str, Any]] = []
+    schedule: list[UnitsOfProductionRow] = []
     book_value = cost_d
 
     for i, units in enumerate(period_units):
