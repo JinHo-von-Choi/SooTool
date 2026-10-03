@@ -74,6 +74,23 @@ class TestKrIncome:
         assert "effective_date" in pv
         assert "notice_no" in pv
 
+    def test_kr_income_150M_boundary(self):
+        """소득세법 제55조제1항: 1억5천만원 이하 구간 끝 = 1,536만 + 6,200만 x 35% = 3,706만원."""
+        result = call_kr_income(taxable_income="150000000", year=2026)
+        assert result["tax"] == "37060000"
+        assert result["marginal_rate"] == "0.35"
+
+    def test_kr_income_1B_boundary(self):
+        """10억원 이하 구간 끝 = 1억7,406만 + 5억 x 42% = 3억8,406만원 (10억원 초과 구간의 누진 기본액)."""
+        result = call_kr_income(taxable_income="1000000000", year=2026)
+        assert result["tax"] == "384060000"
+        assert result["marginal_rate"] == "0.42"
+
+    def test_kr_income_citations(self):
+        result = call_kr_income(taxable_income="50000000", year=2026)
+        articles = [c.get("article") for c in result["policy_citations"]]
+        assert "제55조제1항" in articles
+
     def test_kr_income_high_income_top_bracket(self):
         """1,100,000,000원 → 최고 구간 45% 적용."""
         result = call_kr_income(taxable_income="1100000000", year=2026)

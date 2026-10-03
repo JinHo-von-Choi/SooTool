@@ -1,15 +1,50 @@
-sha256: "c2a3094d78441ed87b0a50bc550430b2d6864bde2034e967942cb080d1fda684"
+sha256: "3a9c0f5a597f2f9796bb0bb5cbd04a550d6ea625fe7862524d25c35dc60035ff"
 effective_date: "2026-01-01"
-notice_no: "종합부동산세법 제8조~제9조"
-source_url: "https://www.law.go.kr/법령/종합부동산세법"
+status: enacted
+notice_no: "종합부동산세법 제8조~제10조, 같은 법 시행령 제2조의4·제4조의3·제5조, 농어촌특별세법 제5조제1항제8호 (2026년 귀속)"
+source_url: "https://www.law.go.kr/법령/종합부동산세법/제9조"
+citations:
+  - law: "종합부동산세법"
+    article: "제8조제1항"
+    url: "https://www.law.go.kr/법령/종합부동산세법/제8조"
+    note: "기본공제 1세대 1주택자 12억원, 제9조제2항제3호 세율 적용 법인 0원, 그 외 9억원. 공정시장가액비율 60~100% 범위 위임"
+  - law: "종합부동산세법 시행령"
+    article: "제2조의4제1항"
+    url: "https://www.law.go.kr/법령/종합부동산세법시행령/제2조의4"
+    note: "주택분 공정시장가액비율 100분의 60"
+  - law: "종합부동산세법"
+    article: "제9조제1항·제2항"
+    url: "https://www.law.go.kr/법령/종합부동산세법/제9조"
+    note: "2주택 이하 0.5~2.7%, 3주택 이상 0.5~5.0% 누진. 법인(제2항제3호) 2주택 이하 2.7%, 3주택 이상 5.0%"
+  - law: "종합부동산세법"
+    article: "제9조제3항, 시행령 제4조의3제1항"
+    url: "https://www.law.go.kr/법령/종합부동산세법시행령/제4조의3"
+    note: "공제 재산세액 = 부과 재산세 합계 × (종부세 과세표준 × 재산세 공정시장가액비율 × 0.4%) / 주택을 합산하여 표준세율로 계산한 재산세 상당액"
+  - law: "종합부동산세법"
+    article: "제9조제5항~제9항"
+    url: "https://www.law.go.kr/법령/종합부동산세법/제9조"
+    note: "1세대 1주택자 연령 공제 20/30/40%, 보유기간 공제 20/40/50%, 합계 80% 한도"
+  - law: "종합부동산세법"
+    article: "제10조, 시행령 제5조"
+    url: "https://www.law.go.kr/법령/종합부동산세법/제10조"
+    note: "재산세액과 종부세액 합계가 직전 연도 총세액상당액의 150%를 넘는 부분은 없는 것으로 봄. 제9조제2항제3호 세율 적용 법인 제외"
+  - law: "지방세법 시행령"
+    article: "제109조제1항제2호"
+    url: "https://www.law.go.kr/법령/지방세법시행령/제109조"
+    note: "재산세 공정시장가액비율 60%, 2026년도 1세대 1주택 43/44/45%"
+  - law: "농어촌특별세법"
+    article: "제5조제1항제8호"
+    url: "https://www.law.go.kr/법령/농어촌특별세법/제5조"
+    note: "납부할 종합부동산세액의 100분의 20"
 data:
-  # 공정시장가액비율 (종부세법 시행령)
+  # 공정시장가액비율 (종부세법 시행령 제2조의4제1항)
   fair_market_ratio: "0.60"
-  # 기본 공제 (종부세법 제8조)
+  # 기본 공제 (종부세법 제8조제1항)
   base_deduction:
-    one_house: 1200000000        # 1세대 1주택: 12억
-    multi_house: 900000000        # 다주택: 9억
-  # 1세대1주택 누진세율 (종부세법 제9조 제1항)
+    one_house: 1200000000        # 1세대 1주택자: 12억
+    multi_house: 900000000       # 그 외: 9억
+    corporate: 0                 # 제9조제2항제3호 세율 적용 법인
+  # 2주택 이하 누진세율 (종부세법 제9조제1항제1호). 키 이름은 호환을 위해 유지
   one_house_brackets:
     - upper: 300000000
       rate: 0.005
@@ -25,7 +60,7 @@ data:
       rate: 0.020
     - upper: null
       rate: 0.027
-  # 다주택(3주택 이상) 누진세율
+  # 3주택 이상 누진세율 (종부세법 제9조제1항제2호)
   multi_house_brackets:
     - upper: 300000000
       rate: 0.005
@@ -41,5 +76,50 @@ data:
       rate: 0.040
     - upper: null
       rate: 0.050
+  # 이 주택 수 이상이면 multi_house_brackets 적용
+  multi_bracket_min_house_count: 3
+  # 법인 단일세율 (종부세법 제9조제2항제3호)
+  corporate_rates:
+    two_or_fewer: "0.027"
+    three_plus: "0.050"
+  # 재산세 상당액 공제 (종부세법 제9조제3항, 시행령 제4조의3)
+  property_tax_credit:
+    standard_rate: "0.004"
+    fair_market_ratio: "0.60"
+    one_house_fair_market_ratio:
+      - upper: 300000000
+        ratio: "0.43"
+      - upper: 600000000
+        ratio: "0.44"
+      - upper: null
+        ratio: "0.45"
+    brackets:
+      - upper: 60000000
+        rate: 0.001
+      - upper: 150000000
+        rate: 0.0015
+      - upper: 300000000
+        rate: 0.0025
+      - upper: null
+        rate: 0.004
+  # 1세대 1주택자 세액공제 (종부세법 제9조제5항~제9항)
+  one_house_credit:
+    max_total_rate: "0.80"
+    age:
+      - min: 60
+        rate: "0.20"
+      - min: 65
+        rate: "0.30"
+      - min: 70
+        rate: "0.40"
+    holding:
+      - min: 5
+        rate: "0.20"
+      - min: 10
+        rate: "0.40"
+      - min: 15
+        rate: "0.50"
+  # 세부담상한 (종부세법 제10조)
+  burden_cap_ratio: "1.50"
   # 농어촌특별세: 종부세의 20%
   rural_special_rate: "0.20"

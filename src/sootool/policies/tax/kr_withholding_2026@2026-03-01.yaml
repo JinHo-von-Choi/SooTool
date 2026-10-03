@@ -1,14 +1,13 @@
-sha256: "70db85092999f5aea89b4dde3b7ff493e00401e7c14348808b4e272648e11254"
-effective_date: "2026-01-01"
-effective_to: "2026-02-28"
-status: superseded
-notice_no: "소득세법 시행령 [별표 2] 근로소득 간이세액표 (대통령령 제34265호, 2024.2.29. 개정, 2024.3.1. 이후 원천징수분부터. 2026.2.28.까지 적용)"
-source_url: "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=163139965&bylClsCd=110201"
+sha256: "591e0de14e1c0d168463ba839f99bb64b4d5d7e11229e3aaafe8e4c2d51b4f6e"
+effective_date: "2026-03-01"
+status: enacted
+notice_no: "소득세법 시행령 [별표 2] 근로소득 간이세액표 (대통령령 제36129호, 2026.2.27. 개정, 2026.3.1. 이후 원천징수분부터)"
+source_url: "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=169798151&bylClsCd=110201"
 citations:
   - law: "소득세법 시행령"
     article: "별표 2 (근로소득 간이세액표)"
-    url: "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=163139965&bylClsCd=110201"
-    note: "대통령령 제34265호 2024.2.29. 개정, 부칙 제14조: 2024.3.1. 이후 원천징수분부터. 제3호 자녀 차감 12,500원/29,160원/+25,000원. 대통령령 제36129호 부칙 제15조에 따라 2026.3.1. 원천징수분부터 개정 별표로 바뀜"
+    url: "https://www.law.go.kr/LSW/flDownload.do?gubun=&flSeq=169798151&bylClsCd=110201"
+    note: "대통령령 제36129호 2026.2.27. 개정, 부칙 제1조제3호(별표 2 시행 2026.3.1.)와 제15조(2026.3.1. 이후 원천징수분부터). 제3호 자녀 차감 20,830원/45,830원/+33,330원. 제6호 본표는 2024.2.29. 개정본과 같다"
   - law: "소득세법 시행령"
     article: "제189조제1항, 제194조제1항"
     url: "https://www.law.go.kr/법령/소득세법시행령/제194조"
@@ -742,6 +741,6 @@ data:
   child_reduction_monthly:
     age_min: 8
     age_max: 20
-    one: 12500
-    two: 29160
-    per_child_over_two: 25000
+    one: 20830
+    two: 45830
+    per_child_over_two: 33330

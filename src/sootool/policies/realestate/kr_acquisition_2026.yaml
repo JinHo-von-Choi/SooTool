@@ -1,24 +1,68 @@
-sha256: "39e015ea410eaf7b02a6633c3dbc86cf5ba015a2c872a22e812845faef962948"
+sha256: "e0d544d2b47a4570865f57546c90253c6af7a80860c47f441a1aa1c0f905bf9f"
 effective_date: "2026-01-01"
-notice_no: "행정안전부 지방세법 제11조"
-source_url: "https://www.law.go.kr/"
+status: enacted
+notice_no: "지방세법 제11조제1항제8호·제13조의2·제151조제1항제1호, 농어촌특별세법 제5조제1항제6호"
+source_url: "https://www.law.go.kr/법령/지방세법/제11조"
+citations:
+  - law: "지방세법"
+    article: "제11조제1항제8호"
+    url: "https://www.law.go.kr/법령/지방세법/제11조"
+    note: "주택 유상취득: 6억 이하 1천분의 10, 6억 초과 9억 이하 (취득당시가액×2/3억원-3)×1/100(소수점 이하 다섯째자리에서 반올림), 9억 초과 1천분의 30. 2026-01-01 시행본(법률 제21308호)"
+  - law: "지방세법"
+    article: "제6조제19호"
+    url: "https://www.law.go.kr/법령/지방세법/제6조"
+    note: "중과기준세율 1천분의 20"
+  - law: "지방세법"
+    article: "제13조의2제1항"
+    url: "https://www.law.go.kr/법령/지방세법/제13조의2"
+    note: "표준세율 4%에 중과기준세율의 200%(8%) 또는 400%(12%)를 합한 세율이 제11조제1항제8호를 대체. 조정 2주택·비조정 3주택 8%, 조정 3주택 이상·비조정 4주택 이상·법인 12%"
+  - law: "지방세법 시행령"
+    article: "제28조의2·제28조의5"
+    url: "https://www.law.go.kr/법령/지방세법시행령/제28조의5"
+    note: "중과 제외 주택, 일시적 2주택(조정대상지역 내 종전·신규주택은 처분기한 2년, 2026-10-01 시행 대통령령 제36736호)"
+  - law: "지방세법"
+    article: "제151조제1항제1호"
+    url: "https://www.law.go.kr/법령/지방세법/제151조"
+    note: "주택 유상취득 지방교육세 = 취득세율×50%×20%(취득세율의 10%), 제13조의2 적용 시 (4%-2%)×20% = 0.4%"
+  - law: "농어촌특별세법"
+    article: "제5조제1항제6호, 제4조제11호"
+    url: "https://www.law.go.kr/법령/농어촌특별세법/제5조"
+    note: "표준세율을 2%로 적용하여 산출한 취득세액의 10%. 중과 시 (2%+4%)×10% = 0.6%, (2%+8%)×10% = 1.0%. 국민주택규모(85㎡) 이하 비과세"
 data:
   house:
-    # 주택 취득세율 (지방세법 제11조 제1항)
-    # 6억원 이하 1%, 6억~9억 2% (단계비례), 9억 초과 3%
+    # 주택 유상취득 표준세율 (지방세법 제11조제1항제8호), 구간 상한 포함
     brackets:
       - upper: 600000000
         rate: 0.01
       - upper: 900000000
-        rate: 0.02
+        rate: null
+        # (취득당시가액 × 2 / 3억원 - 3) × 1/100, 소수점 이하 넷째자리까지 반올림
+        rate_formula:
+          slope_numerator: 2
+          slope_denominator: 300000000
+          intercept_pct: -3
+          round_decimals: 4
       - upper: null
         rate: 0.03
-    # 다주택자 중과세율 (2024~2025년 완화 후 기준)
+    # 중과세율 (지방세법 제13조의2제1항). 표준세율을 대체하는 총 세율이며
+    # null 은 중과 없음(표준세율 적용)을 뜻한다. 주택 수는 취득 후 1세대 기준.
     multi_house_surcharge:
-      two_houses_non_regulated: 0.00
+      two_houses_non_regulated: null
       two_houses_regulated: 0.08
+      three_houses_non_regulated: 0.08
       three_plus: 0.12
-  # 부가세
+      four_plus_non_regulated: 0.12
+      corporate: 0.12
   surcharges:
+    # 농어촌특별세: 표준세율 2% 적용분의 10% (전용 85㎡ 초과)
     rural_special: 0.002
-    local_edu: 0.001
+    # 지방교육세: 표준세율의 10%
+    local_edu_ratio_of_rate: 0.10
+    # 중과세율별 농어촌특별세·지방교육세
+    heavy:
+      - rate: 0.08
+        rural_special: 0.006
+        local_edu: 0.004
+      - rate: 0.12
+        rural_special: 0.010
+        local_edu: 0.004

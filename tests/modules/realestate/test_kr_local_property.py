@@ -32,8 +32,8 @@ class TestLocalPropertyAcquisition:
         assert Decimal(r["surcharges"]["rural_special"]) == Decimal("0")
         assert Decimal(r["total_tax"]) == Decimal("5500000")
 
-    def test_sejong_half_reduction(self):
-        """세종시는 취득세 50% 감면 → 5억 × 1% × 0.5 = 250만."""
+    def test_sejong_standard_rate(self):
+        """세종특별자치시 시세 조례 제4조 삭제(2015-07-30) → 표준세율. 5억 × 1% = 500만."""
         r = call(
             region="sejong",
             mode="acquisition",
@@ -41,12 +41,25 @@ class TestLocalPropertyAcquisition:
             year=2026,
             area_m2="60",
         )
-        assert Decimal(r["coefficient"]) == Decimal("0.50")
-        assert Decimal(r["base_tax"]) == Decimal("2500000")
-        # 지방교육세 0.1%는 base 기준이 아닌 price 기준 → 50만
+        assert Decimal(r["coefficient"]) == Decimal("1.00")
+        assert Decimal(r["base_tax"]) == Decimal("5000000")
+        # 지방교육세 = 1% × 10% = 0.1% → 50만
         assert Decimal(r["surcharges"]["local_edu"]) == Decimal("500000")
-        assert Decimal(r["total_tax"]) == Decimal("3000000")
+        assert Decimal(r["total_tax"]) == Decimal("5500000")
         assert r["region"] == "sejong"
+
+    def test_seoul_7억_산식_세율(self):
+        """7억: 표준세율 0.0167(지방세법 제11조제1항제8호나목) → 1,169만, 지방교육세 116.9만."""
+        r = call(
+            region="seoul",
+            mode="acquisition",
+            price="700000000",
+            year=2026,
+            area_m2="60",
+        )
+        assert Decimal(r["base_tax"]) == Decimal("11690000")
+        assert Decimal(r["surcharges"]["local_edu"]) == Decimal("1169000")
+        assert Decimal(r["total_tax"]) == Decimal("12859000")
 
     def test_gyeonggi_rural_special_large_area(self):
         """경기 6억 85m² 초과 → 농특세 0.2% 부과."""
@@ -103,8 +116,8 @@ class TestLocalPropertyProperty:
         assert Decimal(r["surcharges"]["urban_area"]) == Decimal("420000")
         assert Decimal(r["total_tax"]) == Decimal("1104000")
 
-    def test_sejong_no_urban_area(self):
-        """세종시는 도시지역분 미적용 → urban=0."""
+    def test_sejong_urban_area(self):
+        """세종특별자치시 시세 조례 제20조: 도시지역분 합산 부과 → 3억 × 0.14% = 42만."""
         r = call(
             region="sejong",
             mode="property",
@@ -112,12 +125,29 @@ class TestLocalPropertyProperty:
             year=2026,
             include_urban=True,
         )
-        assert Decimal(r["surcharges"]["urban_area"]) == Decimal("0")
-        # base_tax는 동일
+        assert Decimal(r["surcharges"]["urban_area"]) == Decimal("420000")
         assert Decimal(r["base_tax"]) == Decimal("570000")
         assert Decimal(r["surcharges"]["local_edu"]) == Decimal("114000")
-        assert Decimal(r["total_tax"]) == Decimal("684000")
+        assert Decimal(r["total_tax"]) == Decimal("1104000")
         assert r["region"] == "sejong"
+
+    def test_seoul_one_house_property_tax(self):
+        """1세대 1주택 5억: 공정시장가액비율 44% → 과표 2.2억, 특례세율 26만,
+        지방교육세 5.2만, 도시지역분 30.8만, 합계 62만.
+        """
+        r = call(
+            region="seoul",
+            mode="property",
+            price="500000000",
+            year=2026,
+            is_one_house=True,
+        )
+        assert Decimal(r["taxable_base"]) == Decimal("220000000")
+        assert r["special_rate_applied"] is True
+        assert Decimal(r["base_tax"]) == Decimal("260000")
+        assert Decimal(r["surcharges"]["local_edu"]) == Decimal("52000")
+        assert Decimal(r["surcharges"]["urban_area"]) == Decimal("308000")
+        assert Decimal(r["total_tax"]) == Decimal("620000")
 
     def test_include_urban_false_skips_urban(self):
         """include_urban=False 시 도시지역분 0."""

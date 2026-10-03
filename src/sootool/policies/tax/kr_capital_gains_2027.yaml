@@ -1,45 +1,25 @@
-sha256: "6ff2f7538de43ddda244f1d821a71cf42d0394070ceb1dd360146f093adbff76"
-effective_date: "2026-01-01"
-status: enacted
-notice_no: "소득세법 제89조·제95조·제103조·제104조 (2026.10.3. 기준 시행본) 및 같은 법 시행령 제154조·제159조의4·제160조·제167조의3·제167조의10 (대통령령 제36737호, 2026.10.1. 시행본)"
-source_url: "https://www.law.go.kr/법령/소득세법/제104조"
+sha256: "caa153c6863f8e12fb92cfba7b62d10a6adc7b0bf02f5c407041631625344779"
+effective_date: "2027-01-01"
+status: proposed
+notice_no: "2026년 세제개편안 소득세법 일부개정법률안 (재정경제부 2026.8.3. 발표, 2026.9.1. 국무회의 의결, 국회 제출). 미입법"
+source_url: "https://mofe.go.kr/nw/nes/detailNesDtaView.do?searchBbsId1=MOSFBBS_000000000028&searchNttId1=MOSF_000000000078809&menuNo=4010100"
 citations:
+  - law: "소득세법 일부개정법률안(정부)"
+    article: "제103조 단서 신설"
+    url: "https://mofe.go.kr/com/cmm/fms/FileDown.do?atchFileId=ATCH_000000000032335&fileSn=5"
+    note: "10년 이상 거주한 양도가액 30억원 이하 1세대 1주택 양도 시 기본공제 연 2,500만원(250만원 초과분은 해당 1주택 양도분에서만 공제, 특수관계인 간 양도와 비거주자 제외). 2027.1.1. 이후 양도분"
+  - law: "소득세법 일부개정법률안(정부)"
+    article: "제104조제7항 단서 신설"
+    url: "https://mofe.go.kr/com/cmm/fms/FileDown.do?atchFileId=ATCH_000000000032335&fileSn=5"
+    note: "보유기간 2년 이상 조정대상지역 주택 중과세율 한시 완화: 2027.1.1.~2027.12.31. 양도분 2주택 +5%p, 3주택 이상 +10%p"
+  - law: "재정경제부 보도자료"
+    article: "2026년 세제개편안 정부안 확정 (2026.9.1.)"
+    url: "https://www.korea.kr/briefing/pressReleaseView.do?newsId=156776418"
+    note: "국무회의 수정사항에 양도소득세 항목 변경 없음. 9.3.까지 국회 제출"
   - law: "소득세법"
-    article: "제95조제1항·제2항 표 1·표 2"
-    url: "https://www.law.go.kr/법령/소득세법/제95조"
-    note: "양도소득금액 = 양도차익 - 장기보유 특별공제액. 일반 3년 6%~15년 이상 30%. 1세대1주택 보유 3년 12%~10년 이상 40% + 거주 2년 8%(보유 3년 이상 한정)~10년 이상 40%. 미등기양도자산과 제104조제7항 각 호의 주택은 공제 제외"
-  - law: "소득세법 시행령"
-    article: "제159조의4"
-    url: "https://www.law.go.kr/법령/소득세법시행령/제159조의4"
-    note: "표 2 적용 1세대1주택은 보유기간 중 거주기간 2년 이상"
-  - law: "소득세법"
-    article: "제89조제1항제3호"
-    url: "https://www.law.go.kr/법령/소득세법/제89조"
-    note: "1세대1주택 비과세. 양도 당시 실지거래가액 12억원 초과 고가주택 제외"
-  - law: "소득세법 시행령"
-    article: "제154조제1항"
-    url: "https://www.law.go.kr/법령/소득세법시행령/제154조"
-    note: "비과세 요건: 보유기간 2년 이상. 취득 당시 조정대상지역 주택은 보유기간 중 거주기간 2년 이상"
-  - law: "소득세법 시행령"
-    article: "제160조제1항"
-    url: "https://www.law.go.kr/법령/소득세법시행령/제160조"
-    note: "고가주택 양도차익과 장기보유특별공제액 x (양도가액 - 12억원) / 양도가액"
-  - law: "소득세법"
-    article: "제103조제1항"
-    url: "https://www.law.go.kr/법령/소득세법/제103조"
-    note: "양도소득 기본공제 소득별 연 250만원. 미등기양도자산 제외"
-  - law: "소득세법"
-    article: "제104조제1항·제7항"
+    article: "제89조·제95조·제103조제1항·제104조제1항"
     url: "https://www.law.go.kr/법령/소득세법/제104조"
-    note: "기본세율(분양권 60%). 보유 1년 이상 2년 미만 40%(주택·조합원입주권·분양권 60%), 1년 미만 50%(같은 자산 70%). 비사업용 토지 기본세율+10%p. 미등기 70%. 조정대상지역 1세대 2주택 +20%p, 3주택 이상 +30%p. 둘 이상 해당하면 산출세액 중 큰 것"
-  - law: "소득세법 시행령"
-    article: "제167조의3제1항, 제167조의10제1항제12호의2"
-    url: "https://www.law.go.kr/법령/소득세법시행령/제167조의10"
-    note: "보유기간 2년 이상 주택을 2026.5.9.까지 양도하면 중과 대상에서 제외. 토지거래허가 신청 또는 계약금 수령을 2026.5.9.까지 마친 경과 요건은 원문 참조"
-  - law: "소득세법"
-    article: "제55조제1항"
-    url: "https://www.law.go.kr/법령/소득세법/제55조"
-    note: "제104조제1항제1호가 적용하는 기본세율"
+    note: "개정안에 포함되지 않은 공제율·세율·비과세 기준은 현행 규정과 같다. 장기보유 특별공제 개편은 2028년부터"
 data:
   # 장기보유 특별공제 표 1 (소득세법 제95조제2항): 보유연수별 공제율
   general:
@@ -161,13 +141,19 @@ data:
   presale_right_rate: 0.60
   unregistered_rate: 0.70
   non_business_land_surcharge: 0.10
-  # 법 제104조제7항, 시행령 제167조의3·제167조의10 (2026.5.9.까지 양도하는 보유 2년 이상 주택 제외)
+  # 개정안 제103조 단서: 장기 거주 1세대 1주택 기본공제
+  basic_deduction_long_residence_one_house:
+    amount: 25000000
+    min_residence_years: 10
+    max_sale_price: 3000000000
+  # 법 제104조제7항과 개정안 단서: 보유 2년 이상이면 2027년 양도분 중과 가산세율 완화
   multi_house_surcharge:
     two_houses: 0.20
     three_plus: 0.30
-    exclusion:
+    relief:
       min_holding_years: 2
-      transfer_until: "2026-05-09"
+      two_houses: 0.05
+      three_plus: 0.10
   income_tax_brackets:
     - upper: 14000000
       rate: 0.06

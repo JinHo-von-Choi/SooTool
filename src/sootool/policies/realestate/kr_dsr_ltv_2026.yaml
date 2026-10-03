@@ -1,14 +1,70 @@
-sha256: "bcf37361bc90384550903d0f9e9e5826a8b139a5a3036b6b71f6c79c1a4597c3"
+sha256: "a1925a06948e3c504109b373fe9e48aaf382a005a83e065331b84c073018354e"
 effective_date: "2026-01-01"
-notice_no: "금융위원회 DSR 규제"
-source_url: "https://www.fsc.go.kr/"
+status: enacted
+notice_no: "은행업감독규정 <별표6>(2026-10-02 시행본), 금융위원회 행정지도(2025.6.27·9.7·10.15 대책, 2025.12 및 2026 스트레스 DSR 운용)"
+source_url: "https://www.fsc.go.kr/no010101/85432"
+# LTV 규제지역 40%, 수도권·규제지역 다주택 추가구입 금지, 생애최초 70%, 가격별 주담대 한도는
+# 행정지도로 시행 중이며 은행업감독규정 <별표6> 본문(규제지역 50%, 추가구입 60/30%)에는
+# 반영되지 않았다. 은행 창구에서 적용하는 행정지도 수치를 쓴다.
+citations:
+  - law: "은행업감독규정"
+    article: "<별표6> 2.가·2.바·3.가·4.가·5."
+    url: "https://www.law.go.kr/DRF/lawService.do?OC=test&target=admrul&ID=2100000285624&type=HTML"
+    note: "형식 규정: LTV 70%(규제지역 50%), 생애최초 80% 6억 한도, 추가구입 60%(규제지역 30%), DTI 투기지역·투기과열지구 40%·조정대상지역 50%·그 외 수도권 아파트 60%, DSR 40%. 2026-10-02 시행본"
+  - law: "정책브리핑(2025-06-27) 가계부채 관리 강화 방안"
+    article: "수도권·규제지역 다주택자 주담대 금지, 생애최초 LTV 70%"
+    url: "https://www.korea.kr/news/policyNewsView.do?newsId=148945077"
+    note: "2025-06-28 시행 행정지도"
+  - law: "금융위원회 보도자료(2025-09-07)"
+    article: "규제지역 LTV 50%에서 40%"
+    url: "https://fsc.go.kr/no010101/85253"
+    note: "2025-09-08 시행 행정지도"
+  - law: "금융위원회 보도자료(2025-10-15)"
+    article: "주택시장 안정화 대책 대출수요 관리"
+    url: "https://fsc.go.kr/no010101/85432"
+    note: "수도권·규제지역 주택구입 주담대 한도 시가 15억 이하 6억, 15억 초과 25억 이하 4억, 25억 초과 2억. 수도권·규제지역 주담대 스트레스 금리 하한 3%, 2025-10-16 시행"
+  - law: "금융위원회 보도자료(2025-05-20)"
+    article: "3단계 스트레스 DSR 시행방안"
+    url: "https://www.fsc.go.kr/no010101/84617"
+    note: "스트레스 금리 하한 1.5%, 2025-07-01 시행"
+  - law: "금융위원회 보도자료"
+    article: "지방 주택담보대출 2단계 스트레스 DSR 유지"
+    url: "https://www.fsc.go.kr/no010101/85824"
+    note: "지방 주담대 2026-01-01~06-30 2단계(0.75%)"
+  - law: "은행연합회 스트레스금리 공시"
+    article: "지방 주담대 스트레스 금리"
+    url: "https://portal.kfb.or.kr/compare/stress_loan.php"
+    note: "수도권·규제지역 제외 주담대 0.75%를 2026-12-31까지 적용"
+  - law: "금융위원회 보도자료(2026-08-13)"
+    article: "부동산 시장 안정을 위한 금융 종합대책"
+    url: "https://www.fsc.go.kr/no010101/87517"
+    note: "LTV 규제지역 40%·비규제지역 70%, DSR 은행권 40%·2금융권 50%, 주택가격별 주담대 한도 6/4/2억 재확인"
 data:
-  dsr_cap: 0.40
+  dsr_cap: 0.40              # 은행권
+  dsr_cap_nonbank: 0.50      # 2금융권
+  # 스트레스 금리 하한 (DSR 산정 시 대출금리에 가산)
+  stress_dsr:
+    floor_rate: 0.015
+    capital_or_regulated_mortgage_floor: 0.030
+    non_capital_mortgage_floor: 0.0075
   ltv:
-    regulated_first_house: 0.50
+    regulated_first_house: 0.40
     regulated_multi_house: 0.00
     non_regulated_first_house: 0.70
-    non_regulated_multi_house: 0.60
+    non_regulated_multi_house: 0.60              # 수도권 외 비규제지역
+    capital_non_regulated_multi_house: 0.00      # 수도권 비규제지역 추가구입 금지
+    first_time_buyer_capital_or_regulated: 0.70
+    first_time_buyer_other: 0.80
+    first_time_buyer_loan_cap: 600000000
+  # 수도권·규제지역 주택구입 주담대 한도 (시가 기준, 상한 포함)
+  mortgage_amount_cap_capital_or_regulated:
+    - upper: 1500000000
+      cap: 600000000
+    - upper: 2500000000
+      cap: 400000000
+    - upper: null
+      cap: 200000000
   dti:
-    regulated: 0.40
-    non_regulated: 0.60
+    regulated: 0.40          # 투기지역·투기과열지구(현행 규제지역 전부)
+    non_regulated: 0.60      # 규제지역 외 수도권 아파트 담보대출
+    non_capital: null        # 수도권 외 비규제지역: DTI 한도 없음

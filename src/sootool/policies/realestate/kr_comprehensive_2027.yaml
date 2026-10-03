@@ -1,0 +1,127 @@
+sha256: "12f00fa123b9531745895033315938fba6948f662440603ee74a445eeac91a78"
+effective_date: "2027-01-01"
+status: proposed
+version: "정부안 의안 제2221046호"
+notice_no: "종합부동산세법 일부개정법률안(정부, 의안번호 제2221046호, 2026-09-03 국회 제출, 2026-09-04 재정경제기획위원회 회부). 부칙 제1조 2027-01-01 시행, 제2조 시행 후 성립 납세의무부터 적용"
+source_url: "https://opinion.lawmaking.go.kr/gcom/nsmLmSts/out/2221046/detailRP"
+citations:
+  - law: "종합부동산세법 일부개정법률안(정부)"
+    article: "안 제7조제1항"
+    url: "https://opinion.lawmaking.go.kr/gcom/nsmLmSts/out/2221046/detailRP"
+    note: "납세의무: 공시가격 합계가 1세대 1주택자 14억원, 법인 0원, 그 외 9억원 초과"
+  - law: "종합부동산세법 일부개정법률안(정부)"
+    article: "안 제8조제1항"
+    url: "https://opinion.lawmaking.go.kr/gcom/nsmLmSts/out/2221046/detailRP"
+    note: "공정시장가액비율 하한 100분의 70. 기본공제 1세대 1주택자 거주 14억원·비거주 12억원, 법인(제9조제2항제3호) 0원, 그 외 4억원 + 5억원 × 거주주택 가액 / 주택가액 합계액"
+  - law: "2026년 세제개편안 상세본(재정경제부, 2026-08-03)"
+    article: "종부령 제2조의4"
+    url: "https://mofe.go.kr/nw/nes/detailNesDtaView.do?searchBbsId1=MOSFBBS_000000000028&searchNttId1=MOSF_000000000078809&menuNo=4010100"
+    note: "주택분 공정시장가액비율 2027년 70%"
+  - law: "종합부동산세법 일부개정법률안(정부)"
+    article: "안 제9조제1항제1호·제2항제3호가목"
+    url: "https://opinion.lawmaking.go.kr/gcom/nsmLmSts/out/2221046/detailRP"
+    note: "2027년 성립분: 2주택 이하 0.5/0.7/1.3/1.5/2.0/2.7/3.5%, 3주택 이상 현행 누진표와 같은 세율, 법인 2주택 이하 3.5%·3주택 이상 5.0%"
+  - law: "종합부동산세법 일부개정법률안(정부)"
+    article: "안 제9조제5항·제8항·제9항"
+    url: "https://opinion.lawmaking.go.kr/gcom/nsmLmSts/out/2221046/detailRP"
+    note: "2027년: 거주기간 공제 20/40/50%와 보유기간 공제 10/20/25% 중 큰 금액, 연령 공제 유지, 합계 80% 한도, 공제액 800만원 한도"
+  - law: "종합부동산세법"
+    article: "제9조제3항, 제10조"
+    url: "https://www.law.go.kr/법령/종합부동산세법/제10조"
+    note: "재산세 상당액 공제, 세부담상한 150%(개정안에 개정 사항 없음)"
+  - law: "지방세법 시행령"
+    article: "제109조제1항제2호"
+    url: "https://www.law.go.kr/법령/지방세법시행령/제109조"
+    note: "재산세 공정시장가액비율 본문 60%. 1세대 1주택 구간별 비율 단서는 2026년도분에 한정"
+data:
+  fair_market_ratio: "0.70"
+  # 납세의무 기준 (안 제7조제1항)
+  taxpayer_threshold:
+    one_house: 1400000000
+    multi_house: 900000000
+    corporate: 0
+  # 기본 공제 (안 제8조제1항)
+  base_deduction:
+    one_house_resident: 1400000000
+    one_house: 1200000000
+    multi_house_base: 400000000
+    multi_house_resident_share: 500000000
+    corporate: 0
+  # 2027년 2주택 이하 누진세율 (안 제9조제1항제1호가목)
+  one_house_brackets:
+    - upper: 300000000
+      rate: 0.005
+    - upper: 600000000
+      rate: 0.007
+    - upper: 1200000000
+      rate: 0.013
+    - upper: 2500000000
+      rate: 0.015
+    - upper: 5000000000
+      rate: 0.020
+    - upper: 9400000000
+      rate: 0.027
+    - upper: null
+      rate: 0.035
+  # 2027년 3주택 이상 누진세율 (안 제9조제1항제1호나목, 현행 3주택 이상 표와 같은 세율)
+  multi_house_brackets:
+    - upper: 300000000
+      rate: 0.005
+    - upper: 600000000
+      rate: 0.007
+    - upper: 1200000000
+      rate: 0.010
+    - upper: 2500000000
+      rate: 0.020
+    - upper: 5000000000
+      rate: 0.030
+    - upper: 9400000000
+      rate: 0.040
+    - upper: null
+      rate: 0.050
+  multi_bracket_min_house_count: 3
+  # 법인 단일세율 (안 제9조제2항제3호가목)
+  corporate_rates:
+    two_or_fewer: "0.035"
+    three_plus: "0.050"
+  # 재산세 상당액 공제 (종부세법 제9조제3항, 시행령 제4조의3). 2027년도 재산세 1세대 1주택
+  # 공정시장가액비율은 공포되지 않아 시행령 본문 비율을 쓴다.
+  property_tax_credit:
+    standard_rate: "0.004"
+    fair_market_ratio: "0.60"
+    brackets:
+      - upper: 60000000
+        rate: 0.001
+      - upper: 150000000
+        rate: 0.0015
+      - upper: 300000000
+        rate: 0.0025
+      - upper: null
+        rate: 0.004
+  # 1세대 1주택자 세액공제 (안 제9조제5항·제6항·제8항·제9항)
+  one_house_credit:
+    max_total_rate: "0.80"
+    max_amount: 8000000
+    age:
+      - min: 60
+        rate: "0.20"
+      - min: 65
+        rate: "0.30"
+      - min: 70
+        rate: "0.40"
+    residence:
+      - min: 5
+        rate: "0.20"
+      - min: 10
+        rate: "0.40"
+      - min: 15
+        rate: "0.50"
+    holding:
+      - min: 5
+        rate: "0.10"
+      - min: 10
+        rate: "0.20"
+      - min: 15
+        rate: "0.25"
+  burden_cap_ratio: "1.50"
+  rural_special_rate: "0.20"

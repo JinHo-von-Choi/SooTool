@@ -1,34 +1,72 @@
-sha256: "8f567643e622d2be8e5c83a156f8a3df1a208470bfb5752334fe14310360e1f7"
+sha256: "d9d7cd26481bc35ad6a6507c2a9d8f9a850bc92cde54e4b0d252a26178d873f3"
 meta:
   domain: realestate
   name:   kr_local_property
   year:   2026
 effective_date: "2026-01-01"
-notice_no: "지방세법 제11조·제111조 + 각 광역자치단체 시·도세 조례 (2026년 적용)"
-source_url: "https://www.law.go.kr/"
-# 2026-04-24 조사:
-#   - 지방세법 제11조 주택 취득세 기본요율(1%/2%/3%)은 전국 동일 (국세법률)
-#   - 단, 각 광역자치단체 시·도세 조례로 감면·중과 조정 가능 (지방세특례제한법)
-#   - 재산세 기본요율(지방세법 제111조)도 전국 동일이지만 각 광역은 조례로
-#     표준세율 ±50% 범위 내 가감 가능 (지방세법 제6조)
-#   - 본 YAML은 2026년 시행 조례 기준 "표준 여부 + 감면 계수" 구조로 반영.
-#     실제 감면은 매년 조례 개정. 각 광역 조례번호는 placeholder로 표기하고,
-#     서울특별시·경기도 조례는 공개 확인된 2026 기준 추정치 사용.
+status: enacted
+notice_no: "지방세법 제11조·제14조·제111조·제111조의2·제112조, 각 시·도세 조례 (2026년 적용)"
+source_url: "https://www.law.go.kr/법령/지방세법/제14조"
+# 지방세법 표준세율은 전국 동일하다. 지방자치단체의 장은 조례로 표준세율을 100분의 50 범위에서
+# 가감할 수 있다(취득세 제14조, 재산세 제111조제3항, 재산세 가감세율은 해당 연도에만 적용).
+# 재산세는 특별시·광역시에서는 자치구세, 도에서는 시·군세이므로 재산세 가감과 도시지역분 고시는
+# 자치구·시·군 조례 사항이다(세종특별자치시는 단층제). 아래 광역 단위 재산세 계수와
+# 도시지역분 여부는 서울·세종 외에는 광역 조례로 확인할 수 없는 값이다.
+citations:
+  - law: "지방세법"
+    article: "제11조제1항제8호"
+    url: "https://www.law.go.kr/법령/지방세법/제11조"
+    note: "주택 유상취득 1%, 6억 초과 9억 이하 (가액×2/3억원-3)×1/100, 9억 초과 3%"
+  - law: "지방세법"
+    article: "제14조"
+    url: "https://www.law.go.kr/법령/지방세법/제14조"
+    note: "취득세 조례에 의한 표준세율 100분의 50 범위 가감"
+  - law: "지방세법"
+    article: "제111조제3항, 제111조의2"
+    url: "https://www.law.go.kr/법령/지방세법/제111조"
+    note: "재산세 조례 가감(해당 연도 한정), 1세대 1주택 특례세율(시가표준액 9억 이하, 가감세율 세액이 더 적으면 특례 미적용)"
+  - law: "지방세법"
+    article: "제112조"
+    url: "https://www.law.go.kr/법령/지방세법/제112조"
+    note: "도시지역분 과세표준의 1천분의 1.4, 의회 의결 후 고시된 지역"
+  - law: "지방세법"
+    article: "제151조제1항제1호·제6호"
+    url: "https://www.law.go.kr/법령/지방세법/제151조"
+    note: "취득세 지방교육세 = 조례 세율 포함 취득세율×10%, 재산세 지방교육세 = 재산세액의 20%"
+  - law: "지방세법 시행령"
+    article: "제109조제1항제2호"
+    url: "https://www.law.go.kr/법령/지방세법시행령/제109조"
+    note: "주택 60%, 2026년도 1세대 1주택 43/44/45%"
+  - law: "서울특별시 시세 조례"
+    article: "제4조·제28조"
+    url: "https://www.law.go.kr/DRF/lawService.do?OC=test&target=ordin&type=HTML&MST=1703487"
+    note: "취득세 표준세율 적용, 재산세 도시지역분 대상지역 고시"
+  - law: "세종특별자치시 시세 조례"
+    article: "제4조(2015-07-30 삭제)·제20조"
+    url: "https://www.law.go.kr/DRF/lawService.do?OC=test&target=ordin&type=HTML&MST=2086681"
+    note: "취득세 세율 조항 삭제로 표준세율 적용, 재산세 도시지역분 합산 부과"
+  - law: "경기도·부산광역시·인천광역시·대구광역시·대전광역시·울산광역시 시·도세 조례"
+    article: "취득세 세율 조항"
+    url: "https://www.law.go.kr/DRF/lawService.do?OC=test&target=ordin&type=HTML&MST=1742201"
+    note: "법 제11조 표준세율 적용(경기 1742201, 부산 1932479, 인천 2150239, 대구 1713671, 대전 1771299, 울산 1752755)"
+  - law: "농어촌특별세법"
+    article: "제5조제1항제6호"
+    url: "https://www.law.go.kr/법령/농어촌특별세법/제5조"
+    note: "표준세율 2% 적용분의 10%, 국민주택규모 이하 비과세"
 data:
-  # 광역별 취득세 계수 (표준 요율 대비)
-  # coefficient = 1.0 → 표준세율 100%, 0.95 → 5% 감면
+  # 광역별 취득세 계수 (표준세율 대비, 지방세법 제14조)
   acquisition_coefficient:
-    seoul:     "1.00"    # 서울특별시 (표준)
-    gyeonggi:  "1.00"    # 경기도 (표준)
-    busan:     "1.00"    # 부산광역시 (표준)
-    incheon:   "1.00"    # 인천광역시 (표준)
-    daegu:     "1.00"    # 대구광역시 (표준)
-    daejeon:   "1.00"    # 대전광역시 (표준)
-    gwangju:   "1.00"    # 광주광역시 (표준)
-    ulsan:     "1.00"    # 울산광역시 (표준)
-    sejong:    "0.50"    # 세종특별자치시: 조례로 50% 감면 (지방세특례제한법 §60 유사)
+    seoul:     "1.00"    # 서울특별시 시세 조례 제4조
+    gyeonggi:  "1.00"    # 경기도 도세 조례 제5조
+    busan:     "1.00"    # 부산광역시 시세 조례 제3조
+    incheon:   "1.00"    # 인천광역시 시세 조례 제4조
+    daegu:     "1.00"    # 대구광역시 시세 조례 제4조
+    daejeon:   "1.00"    # 대전광역시 시세 조례 제2조
+    gwangju:   "1.00"    # 광주광역시: 조례 미확인, 표준세율 가정
+    ulsan:     "1.00"    # 울산광역시 시세 조례 제4조
+    sejong:    "1.00"    # 세종특별자치시 시세 조례 제4조 삭제(2015-07-30), 표준세율
 
-  # 광역별 재산세 계수 (지방세법 §6 탄력세율 ±50%)
+  # 광역별 재산세 계수 (지방세법 제111조제3항, 서울·세종 외 미확인)
   property_coefficient:
     seoul:     "1.00"
     gyeonggi:  "1.00"
@@ -40,9 +78,9 @@ data:
     ulsan:     "1.00"
     sejong:    "1.00"
 
-  # 광역별 도시지역분 부과 여부 (지방세법 §112)
+  # 광역별 도시지역분 부과 여부 (지방세법 제112조, 서울·세종 외 미확인)
   urban_area_applicable:
-    seoul:     true
+    seoul:     true      # 서울특별시 시세 조례 제28조
     gyeonggi:  true
     busan:     true
     incheon:   true
@@ -50,18 +88,23 @@ data:
     daejeon:   true
     gwangju:   true
     ulsan:     true
-    sejong:    false   # 세종시는 도시지역분 미적용
+    sejong:    true      # 세종특별자치시 시세 조례 제20조
 
-  # 기본 취득세 브래킷 (kr_acquisition_2026과 동일)
+  # 주택 유상취득 표준세율 (kr_acquisition_2026과 동일)
   acquisition_brackets:
     - upper: 600000000
       rate:  0.01
     - upper: 900000000
-      rate:  0.02
+      rate:  null
+      rate_formula:
+        slope_numerator:   2
+        slope_denominator: 300000000
+        intercept_pct:     -3
+        round_decimals:    4
     - upper: null
       rate:  0.03
 
-  # 기본 재산세 브래킷 (kr_property_tax_2026과 동일)
+  # 재산세 표준세율 (kr_property_tax_2026과 동일)
   property_brackets:
     - upper: 60000000
       rate:  0.001
@@ -73,9 +116,27 @@ data:
       rate:  0.004
 
   fair_market_ratio: "0.60"
+  one_house_fair_market_ratio:
+    - upper: 300000000
+      ratio: "0.43"
+    - upper: 600000000
+      ratio: "0.44"
+    - upper: null
+      ratio: "0.45"
+  one_house_special:
+    max_published_price: 900000000
+    brackets:
+      - upper: 60000000
+        rate: 0.0005
+      - upper: 150000000
+        rate: 0.001
+      - upper: 300000000
+        rate: 0.002
+      - upper: null
+        rate: 0.0035
 
   surcharges:
-    local_edu_rate:  "0.20"
-    urban_area_rate: "0.0014"
-    rural_special:   "0.002"
-    acq_local_edu:   "0.001"
+    local_edu_rate:              "0.20"
+    urban_area_rate:             "0.0014"
+    rural_special:               "0.002"
+    acq_local_edu_ratio_of_rate: "0.10"

@@ -1,9 +1,13 @@
-sha256: "6219425d8ca94ea95ddddef39d3747a056ba33ed9b9810a5a558260ff035548e"
+sha256: "f4e72b12978d52625bc9f0b4dd214beedc25e199e38f7439cbd48b675fe9b449"
 effective_date: "2026-01-01"
-notice_no: "소득세법 제55조 (법률 제21065호, 2025.10.1. 타법개정, 시행 2026.1.2.)"
-source_url: "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1019372661&chrClsCd=010202&ancYnChk="
-# 2026-04-23 verified: 소득세법 제55조(세율) 8구간 누진세 구조는
-# 법률 제21065호로 현행 유지. 구간·세율 변경 없음.
+status: enacted
+notice_no: "소득세법 제55조제1항 (법률 제21221호 2025.12.23. 일부개정, 2026.1.1. 시행. 제55조 최종 개정 2022.12.31.)"
+source_url: "https://www.law.go.kr/법령/소득세법/제55조"
+citations:
+  - law: "소득세법"
+    article: "제55조제1항"
+    url: "https://www.law.go.kr/법령/소득세법/제55조"
+    note: "종합소득 기본세율 8구간: 1,400만/5,000만/8,800만/1억5천만/3억/5억/10억원 경계, 6~45%. 2026 과세기간 중 개정 없음(법률 제21548호 2026.4.21., 제21221호 2026.7.1. 시행분 포함)"
 data:
   brackets:
     - upper: 14000000
