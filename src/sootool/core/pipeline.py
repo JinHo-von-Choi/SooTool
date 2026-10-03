@@ -9,11 +9,13 @@ from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass
 from graphlib import CycleError, TopologicalSorter
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
+from sootool.core.batch import ExecutionError
 from sootool.core.errors import DomainConstraintError, SooToolError
 from sootool.core.registry import ToolRegistry
 from sootool.core.request_context import submit_with_context
+from sootool.core.result_types import ToolResult
 
 # Non-recursive linear scanner — single finditer, no nested quantifiers.
 REF_PATTERN = re.compile(
@@ -32,6 +34,30 @@ class CircularDependencyError(SooToolError):
 
 class UnresolvedReferenceError(SooToolError):
     pass
+
+
+class PipelineStepResult(TypedDict):
+    """파이프라인 단계 하나의 실행 결과.
+
+    ``result`` 는 ok 단계, ``error`` 는 error, timeout, skipped 단계에 있다. ``reused`` 는 재개 시
+    이전 실행의 결과를 다시 쓴 단계에만 있다.
+    """
+
+    id:         str
+    tool:       str
+    status:     str
+    result:     NotRequired[dict[str, Any]]
+    error:      NotRequired[ExecutionError]
+    elapsed_ms: NotRequired[int]
+    reused:     NotRequired[bool]
+
+
+class PipelineResult(ToolResult):
+    status:        str
+    steps:         dict[str, PipelineStepResult]
+    total_time_ms: int
+    order:         list[str]
+    pipeline_id:   str
 
 
 # ---------------------------------------------------------------------------
@@ -126,7 +152,7 @@ class PipelineExecutor:
     step_timeout_s: float = 2.0
     pipeline_timeout_s: float = 30.0
 
-    def run(self, steps: list[dict[str, Any]]) -> dict[str, Any]:
+    def run(self, steps: list[dict[str, Any]]) -> PipelineResult:
         if len(steps) > self.max_steps:
             raise DomainConstraintError(
                 f"파이프라인 step 수 {len(steps)} > max_steps {self.max_steps}"
@@ -168,9 +194,9 @@ class PipelineExecutor:
         order: list[str],
         seed_completed: dict[str, dict[str, Any]] | None = None,
         from_step: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> PipelineResult:
         started = time.monotonic()
-        step_results: dict[str, dict[str, Any]] = {}
+        step_results: dict[str, PipelineStepResult] = {}
         completed: dict[str, dict[str, Any]] = dict(seed_completed or {})
 
         # Determine which steps to skip (already completed via resume)
@@ -231,7 +257,7 @@ class PipelineExecutor:
 
                 deps_failed = [
                     d for d in graph[step_id]
-                    if step_results.get(d, {}).get("status") not in ("ok",) and d not in skip_ids
+                    if (step_results[d]["status"] if d in step_results else None) != "ok" and d not in skip_ids
                 ]
                 if deps_failed:
                     step_results[step_id] = {
@@ -322,7 +348,7 @@ def resume_pipeline(
     pipeline_id: str,
     from_step: str,
     registry: ToolRegistry,
-) -> dict[str, Any]:
+) -> PipelineResult:
     snap = get_pipeline_snapshot(pipeline_id)
     if snap is None:
         raise KeyError(f"파이프라인 스냅샷 없음: {pipeline_id}")

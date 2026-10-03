@@ -16,17 +16,58 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.kr_withholding import lookup_simple_tax
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
+
+
+class SalaryInsurances(TypedDict):
+    """근로자 부담 4대보험료(원 문자열)."""
+
+    national_pension:     str
+    health_insurance:     str
+    long_term_care:       str
+    employment_insurance: str
+    industrial_accident:  str
+    total:                str
+
+
+class SalaryTaxes(TypedDict):
+    """월 원천징수 소득세와 지방소득세(원 문자열)."""
+
+    income_tax:       str
+    local_income_tax: str
+    total:            str
+
+
+class IncomeTaxLookup(TypedDict):
+    """간이세액표 조회 내역. ``row`` 는 조회한 행 또는 산식 구간이며 method 에 따라 모양이 다르다."""
+
+    method:                str
+    salary_k:              str
+    row:                   dict[str, Any] | None
+    table_tax:             str
+    child_reduction:       str
+    policy_effective_date: str
+
+
+class KrSalaryResult(PolicyResult):
+    gross:             str
+    non_taxable:       str
+    taxable:           str
+    insurances:        SalaryInsurances
+    taxes:             SalaryTaxes
+    income_tax_lookup: IncomeTaxLookup
+    net:               str
 
 
 def _round_krw(value: Decimal) -> Decimal:
@@ -51,8 +92,9 @@ def _truncate_to_unit(value: Decimal, unit: Decimal) -> Decimal:
     namespace="payroll",
     name="kr_salary",
     description=(
-        "한국 월급 → 실수령액 계산. 4대보험(국민연금·건강보험·장기요양·고용보험) "
-        "근로자 부담, 비과세 식대, 근로소득 간이세액표 소득세와 지방소득세 공제."
+        "세전 월급(원, 문자열)에서 한국 실수령액을 구한다. 비과세 식대 한도를 뺀 과세급여로 4대보험 근로자 부담분"
+        "(국민연금 상·하한, 건강보험, 장기요양, 고용보험)과 근로소득 간이세액표 소득세, 지방소득세(소득세의 10%)를 "
+        "공제하며 보험료와 지방소득세는 원 미만 버림이다. 시행일별 정책을 as_of 로 고른다. 연봉을 월급 자리에 넣으면 안 된다."
     ),
     version="2.0.0",
     policy=True,
@@ -63,7 +105,7 @@ def payroll_kr_salary(
     meal_allowance:     str = "0",
     num_dependents:     int = 1,
     children_8_20:      int = 0,
-) -> dict[str, Any]:
+) -> KrSalaryResult:
     """Calculate monthly net pay from gross monthly salary.
 
     Args:
@@ -74,7 +116,7 @@ def payroll_kr_salary(
         children_8_20:  공제대상가족 중 8세 이상 20세 이하 자녀 수(기본 0)
 
     Returns:
-        {gross, non_taxable, taxable, insurances, taxes, net, policy_version, trace}
+        {gross, non_taxable, taxable, insurances, taxes, income_tax_lookup, net, policy_version, trace}
     """
     trace = CalcTrace(
         tool="payroll.kr_salary",
@@ -213,4 +255,4 @@ def payroll_kr_salary(
         "policy_version":    pv,
         "trace":             trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(KrSalaryResult, enrich_response(resp, policy_doc))

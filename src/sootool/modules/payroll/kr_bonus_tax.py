@@ -17,12 +17,13 @@ base_annual_tax, combined_annual_tax 는 각 월 간이세액의 12배(연 환�
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.kr_withholding import monthly_withholding_tax
@@ -32,12 +33,25 @@ from sootool.policy_mgmt.trace_ext import enrich_response
 _VALID_METHODS = {"simple", "averaging"}
 
 
+class KrBonusTaxResult(PolicyResult):
+    bonus:                 str
+    monthly_salary:        str
+    method:                str
+    payment_period_months: int
+    base_monthly_tax:      str
+    combined_monthly_tax:  str
+    base_annual_tax:       str
+    combined_annual_tax:   str
+    bonus_tax:             str
+
+
 @REGISTRY.tool(
     namespace="payroll",
     name="kr_bonus_tax",
     description=(
-        "한국 상여 원천징수세액 계산. 근로소득 간이세액표 기준 averaging(소득세법 제136조, "
-        "지급대상기간 월수 안분) 또는 simple(1개월분 합산) 선택."
+        "상여금 원천징수세액을 근로소득 간이세액표로 구한다. method=averaging(기본, 소득세법 제136조제1항제1호)은 "
+        "상여를 지급대상기간 월수(1~12, 기본 12)로 안분해 월급여에 더한 간이세액에서 월급여 간이세액을 빼고 월수를 곱하며, "
+        "simple 은 1개월분으로 본다. 금액은 원 문자열이고 세액은 원 미만 버림이다. 비과세 상여는 빼고 넣어야 한다."
     ),
     version="2.0.0",
     policy=True,
@@ -50,7 +64,7 @@ def payroll_kr_bonus_tax(
     method:                str = "averaging",
     payment_period_months: int = 12,
     children_8_20:         int = 0,
-) -> dict[str, Any]:
+) -> KrBonusTaxResult:
     """Calculate withholding tax on a Korean bonus payment.
 
     Args:
@@ -142,4 +156,4 @@ def payroll_kr_bonus_tax(
         "policy_version":        pv,
         "trace":                 trace.to_dict(),
     }
-    return enrich_response(resp, wh_doc)
+    return cast(KrBonusTaxResult, enrich_response(resp, wh_doc))

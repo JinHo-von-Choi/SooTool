@@ -1,0 +1,47 @@
+sha256: "eaeebd129fb06e9e057ae61e49fd3cf5eec1381bd3799f867ea7c06659f84635"
+meta:
+  domain: payroll
+  name:   kr_minimum_wage
+  year:   2026
+effective_date: "2026-01-01"
+effective_to:   "2026-12-31"
+status: enacted
+notice_no: "2026년 적용 최저임금 고시 (고용노동부고시 제2025-47호, 2025.8.5.), 최저임금법 제5조·제6조 (법률 제17326호, 2020.5.26. 시행판), 같은 법 시행령 제3조·제5조·제5조의2, 시행규칙 제2조"
+source_url: "https://www.law.go.kr/admRulLsInfoP.do?admRulSeq=2100000262710"
+citations:
+  - law: "2026년 적용 최저임금 고시(고용노동부고시 제2025-47호)"
+    article: "1. 최저임금액, 3. 최저임금 적용 기간"
+    url: "https://www.law.go.kr/admRulLsInfoP.do?admRulSeq=2100000262710"
+    note: "모든 산업 시간급 10,320원. 월 환산액 2,156,880원(주 소정근로 40시간, 월 환산 기준시간 수 209시간, 주당 유급주휴 8시간 포함). 적용 기간 2026.1.1.~2026.12.31."
+  - law: "고용노동부 보도자료"
+    article: "2026년 적용 최저임금 시간급 10,320원(2025.8.5.)"
+    url: "https://www.moel.go.kr/news/enews/report/enewsView.do?news_seq=18144"
+  - law: "최저임금법"
+    article: "제5조제2항, 같은 법 시행령 제3조"
+    url: "https://www.law.go.kr/법령/최저임금법/제5조"
+    note: "1년 이상 근로계약을 맺고 수습 시작일부터 3개월 이내인 수습 근로자는 시간급 최저임금액에서 100분의 10을 뺀 금액. 단순노무업무로 고시한 직종 종사자는 제외."
+  - law: "최저임금법"
+    article: "제6조제4항 각 호"
+    url: "https://www.law.go.kr/법령/최저임금법/제6조"
+    note: "매월 1회 이상 정기 지급 임금을 산입하되, 소정근로 외 임금(시행규칙 제2조제1항), 상여금 등의 월 지급액 중 월 환산액의 일정 비율 부분, 통화 이외로 지급하는 복리후생 임금과 통화로 지급하는 복리후생 임금의 월 지급액 중 월 환산액의 일정 비율 부분은 산입하지 않는다."
+  - law: "최저임금법 부칙"
+    article: "<법률 제15666호, 2018.6.12.> 제2조제1항제5호, 제2항제5호"
+    url: "https://www.law.go.kr/법령/최저임금법"
+    note: "2024년부터 상여금 등과 통화 복리후생비의 산입 제외 비율은 모두 100분의 0."
+  - law: "최저임금법 시행령"
+    article: "제5조제1항·제3항(임금의 환산), 제5조의2(월 환산액)"
+    url: "https://www.law.go.kr/법령/최저임금법시행령/제5조"
+    note: "월급은 1개월의 최저임금 적용기준 시간 수(1주 소정근로시간과 근로기준법 제55조제1항의 유급 처리 시간의 합에 1년 평균 주의 수를 곱해 12로 나눈 시간)로 나눈다. 월 환산액은 시간급 최저임금액에 그 시간 수를 곱한다."
+  - law: "최저임금법 시행규칙"
+    article: "제2조(최저임금의 범위)"
+    url: "https://www.law.go.kr/법령/최저임금법시행규칙/제2조"
+    note: "산입 제외 임금: 연장·휴일근로 임금과 연장·야간·휴일 가산임금, 연차 미사용수당, 주휴일 외 유급휴일 임금. 상여금 등: 1개월 초과 기간 사유로 산정하는 상여금·장려가급·능률수당·근속수당, 1개월 초과 출근성적에 따른 정근수당. 개정 2018.12.31."
+data:
+  hourly_minimum_wage:   10320
+  notice_monthly_hours:  209
+  notice_monthly_amount: 2156880
+  probation:
+    reduction_rate:      "0.10"
+  inclusion:
+    bonus_exclusion_rate:        "0"
+    welfare_cash_exclusion_rate: "0"

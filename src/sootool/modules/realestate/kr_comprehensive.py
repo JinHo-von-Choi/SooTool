@@ -16,20 +16,44 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, NotRequired, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.realestate._kr_local_tax import lookup_upper_table
-from sootool.modules.tax.progressive import _calc_progressive
+from sootool.modules.tax.progressive import BracketBreakdown, _calc_progressive
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
 _ZERO = Decimal("0")
+
+
+class CorporateBreakdownItem(TypedDict):
+    """법인 단일세율 적용 내역."""
+
+    corporate_rate: str
+    tax:            str
+
+
+class RealestateKrComprehensiveResult(PolicyResult):
+    published_price:      str
+    deduction:            str
+    taxable_base:         str
+    base_tax:             str
+    property_tax_credit:  str
+    one_house_credit:     str
+    burden_cap_reduction: str
+    comprehensive_tax:    str
+    rural_tax:            str
+    total_tax:            str
+    breakdown:            list[BracketBreakdown | CorporateBreakdownItem]
+    rate_table:           NotRequired[str]
+    property_tax_levied:  NotRequired[str]
 
 
 def _floor_won(value: Decimal) -> Decimal:
@@ -132,9 +156,10 @@ def _optional_amount(name: str, value: str | None) -> Decimal | None:
     namespace="realestate",
     name="kr_comprehensive",
     description=(
-        "주택분 종합부동산세 계산 (종부세법 §8~§10). 기본공제 후 공정시장가액비율 적용, "
-        "2주택 이하/3주택 이상 누진세율 또는 법인 단일세율, 재산세 상당액 공제, "
-        "1세대 1주택자 연령·보유 세액공제, 세부담상한(직전 연도 세액 입력 시), 농어촌특별세 20% 합산."
+        "주택분 종합부동산세와 농어촌특별세(종부세의 20%)를 계산한다. 공시가격 합계(원)에서 기본공제 후 "
+        "공정시장가액비율을 곱한 과세표준에 2주택 이하·3주택 이상 누진세율 또는 법인 단일세율을 적용하고, "
+        "재산세 상당액 공제, 1세대 1주택 연령·보유 세액공제, 세부담상한(직전 연도 총세액 입력 시)을 반영한다. "
+        "policy_status 로 확정 전 개정안 여부를 확인. 오용 예: 토지분에 사용."
     ),
     version="1.1.0",
     policy=True,
@@ -150,7 +175,7 @@ def realestate_kr_comprehensive(
     resident_house_price:  str | None = None,
     property_tax_levied:   str | None = None,
     prior_year_total_tax:  str | None = None,
-) -> dict[str, Any]:
+) -> RealestateKrComprehensiveResult:
     """Calculate comprehensive real-estate tax (종부세, 주택분).
 
     Args:
@@ -169,7 +194,8 @@ def realestate_kr_comprehensive(
     Returns:
         {published_price, deduction, taxable_base, base_tax, property_tax_credit,
          one_house_credit, burden_cap_reduction, comprehensive_tax, rural_tax, total_tax,
-         breakdown, policy_version, trace}
+         breakdown, policy_version, trace}. 납세의무 기준 이하이거나 기본공제 후 과세표준이
+         없으면 세액이 모두 0이고 rate_table, property_tax_levied 는 없다.
     """
     trace = CalcTrace(
         tool="realestate.kr_comprehensive",
@@ -238,18 +264,18 @@ def realestate_kr_comprehensive(
             "policy_version":       pv,
             "trace":                trace.to_dict(),
         }
-        return enrich_response(resp, policy_doc)
+        return cast(RealestateKrComprehensiveResult, enrich_response(resp, policy_doc))
 
     fmr_ratio = D(str(data["fair_market_ratio"]))
     taxable   = after_deduct * fmr_ratio
 
     multi_min = int(data.get("multi_bracket_min_house_count", 3))
-    breakdown: list[dict[str, Any]]
+    breakdown: list[BracketBreakdown] | list[CorporateBreakdownItem]
     if is_corporate:
         rates     = data["corporate_rates"]
         corp_rate = D(str(rates["three_plus"] if house_count >= multi_min else rates["two_or_fewer"]))
         base_tax  = round_apply(taxable * corp_rate, 0, RoundingPolicy.HALF_UP)
-        breakdown = [{"corporate_rate": str(corp_rate), "tax": str(base_tax)}]
+        breakdown = [CorporateBreakdownItem(corporate_rate=str(corp_rate), tax=str(base_tax))]
         rate_table = "corporate"
     else:
         rate_table = "three_plus" if house_count >= multi_min else "two_or_fewer"
@@ -312,4 +338,4 @@ def realestate_kr_comprehensive(
         "policy_version":       pv,
         "trace":                trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(RealestateKrComprehensiveResult, enrich_response(resp, policy_doc))

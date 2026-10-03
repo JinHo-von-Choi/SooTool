@@ -16,17 +16,31 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.progressive import _calc_progressive
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
+
+
+class KrSeverancePayResult(PolicyResult):
+    severance:           str
+    non_taxable:         str
+    taxable_severance:   str
+    service_years:       str
+    service_deduction:   str
+    converted_salary:    str
+    converted_deduction: str
+    converted_tax_base:  str
+    converted_tax:       str
+    tax:                 str
 
 
 def _service_deduction(years: Decimal, brackets: list[dict[str, Any]]) -> Decimal:
@@ -68,8 +82,9 @@ def _converted_salary_deduction(
     namespace="payroll",
     name="kr_severance_pay",
     description=(
-        "한국 퇴직소득세 계산 (소득세법 제48조·제55조). "
-        "근속연수공제 + 환산급여공제 + 기본세율 누진구조 반영."
+        "퇴직소득세(소득세법 제48조·제55조)를 구한다. 퇴직급여총액, 근속연수(년, 소수 가능), 비과세액(원 문자열)에서 "
+        "근속연수공제, 환산급여(12배 후 근속연수로 나눔)공제, 기본세율 누진을 적용하고 근속연수 비율로 환원해 원 단위 "
+        "반올림한다. 1년 미만 끝수는 1년으로 올려 쓰며 지방소득세는 포함하지 않는다. 근속연수를 개월 수로 넣으면 안 된다."
     ),
     version="1.0.0",
     policy=True,
@@ -79,7 +94,7 @@ def payroll_kr_severance_pay(
     service_years:       str,
     year:                int,
     non_taxable:         str = "0",
-) -> dict[str, Any]:
+) -> KrSeverancePayResult:
     """Calculate Korean severance tax (퇴직소득세).
 
     Args:
@@ -181,4 +196,4 @@ def payroll_kr_severance_pay(
         "policy_version":       pv,
         "trace":                trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(KrSeverancePayResult, enrich_response(resp, policy_doc))

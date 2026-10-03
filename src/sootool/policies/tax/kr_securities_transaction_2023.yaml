@@ -1,0 +1,60 @@
+sha256: "797151eae4f9eb5489f077246b89684aa4d51166115a534db23bfbf591b29994"
+meta:
+  domain: tax
+  name:   kr_securities_transaction
+  year:   2023
+effective_date: "2023-01-01"
+effective_to:   "2023-12-31"
+status: enacted
+notice_no: "증권거래세법 시행령 제5조 (대통령령 제33209호, 2022-12-31 개정, 2023-01-01 시행, 2023년 적용분) / 증권거래세법 제8조 / 농어촌특별세법 제5조제1항제5호, 같은 법 시행령 제5조제1항"
+source_url: "https://www.law.go.kr/법령/증권거래세법시행령/(33209,20221231)"
+citations:
+  - law: "증권거래세법"
+    article: "제8조"
+    url: "https://www.law.go.kr/법령/증권거래세법/제8조"
+    note: "기본세율 1만분의 35(제1항, 2021-01-01부터 2022-12-31까지는 1만분의 43). 증권시장에서 거래되는 주권은 대통령령으로 낮추거나 영으로 할 수 있음(제2항)"
+  - law: "증권거래세법 시행령"
+    article: "제5조"
+    url: "https://www.law.go.kr/법령/증권거래세법시행령/(33209,20221231)"
+    note: "대통령령 제33209호 2022-12-31 개정, 시행 2023-01-01. 2023-01-01부터 2023-12-31까지: 유가증권시장 1만분의 5, 코넥스시장 1만분의 10, 코스닥시장과 금융투자협회를 통한 장외 양도(K-OTC) 1만분의 20. 대통령령 제36001호(2026-01-01 시행)로 개정되기 전 조문"
+  - law: "증권거래세법 시행령"
+    article: "제2조제1호"
+    url: "https://www.law.go.kr/법령/증권거래세법시행령/제2조"
+    note: "증권시장에서 거래된 주권의 양도 시기는 양도가액이 결제되는 때"
+  - law: "농어촌특별세법"
+    article: "제5조제1항제5호"
+    url: "https://www.law.go.kr/법령/농어촌특별세법/(19192,20221231)"
+    note: "대통령령으로 정하는 증권시장에서 거래된 증권의 양도가액 x 1만분의 15. 법률 제19192호(시행 2023-01-01)와 법률 제21611호(시행 2026-05-12)에서 같음"
+  - law: "농어촌특별세법 시행령"
+    article: "제5조제1항"
+    url: "https://www.law.go.kr/법령/농어촌특별세법시행령/제5조"
+    note: "농어촌특별세 과세 증권시장은 유가증권시장"
+  - law: "농어촌특별세법"
+    article: "제4조제7호"
+    url: "https://www.law.go.kr/법령/농어촌특별세법/제4조"
+    note: "증권거래세 비과세 또는 영의 세율이면 농어촌특별세 비과세. 다만 유가증권시장 양도분에 영의 세율이 적용되는 경우는 과세"
+data:
+  # 기본세율 (증권거래세법 제8조제1항)
+  statutory_rate: "0.0035"
+  # 시장별 세율 (증권거래세법 시행령 제5조, 농어촌특별세법 제5조제1항제5호)
+  markets:
+    kospi:
+      securities_tax_rate:    "0.0005"   # 유가증권시장 (시행령 제5조제1호 단서)
+      rural_special_tax_rate: "0.0015"   # 농어촌특별세 (유가증권시장만)
+      rate_basis:             "elastic"
+    kosdaq:
+      securities_tax_rate:    "0.0020"   # 코스닥시장 (시행령 제5조제3호가목)
+      rural_special_tax_rate: "0"
+      rate_basis:             "elastic"
+    konex:
+      securities_tax_rate:    "0.0010"   # 코넥스시장 (시행령 제5조제2호)
+      rural_special_tax_rate: "0"
+      rate_basis:             "elastic"
+    k_otc:
+      securities_tax_rate:    "0.0020"   # 금융투자협회를 통한 장외 양도 (시행령 제5조제3호나목)
+      rural_special_tax_rate: "0"
+      rate_basis:             "elastic"
+    other:
+      securities_tax_rate:    "0.0035"   # 그 밖의 장외 양도, 비상장 주권 (법 제8조제1항)
+      rural_special_tax_rate: "0"
+      rate_basis:             "statutory"

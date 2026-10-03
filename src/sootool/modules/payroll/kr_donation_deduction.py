@@ -18,18 +18,33 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
 _ZERO = Decimal("0")
+
+
+class KrDonationDeductionResult(PolicyResult):
+    earned_income:          str
+    legal_limit:            str
+    legal_qualifying:       str
+    legal_credit:           str
+    designated_limit:       str
+    designated_qualifying:  str
+    designated_credit:      str
+    political_qualifying:   str
+    political_small_credit: str
+    political_credit:       str
+    total_credit:           str
 
 
 def _tiered_credit(
@@ -50,9 +65,10 @@ def _tiered_credit(
     namespace="payroll",
     name="kr_donation_deduction",
     description=(
-        "한국 기부금 세액공제(소득세법 §59의4④, 조특법 §76) 계산. "
-        "특례·일반기부금 합계 1천만원 이하 15%·초과 30%, 일반기부금 소득금액 30% 한도"
-        "(종교단체 기부 시 10%+20%), 정치자금 10만원 이하 100/110·초과분 15%(3천만원 초과 25%)."
+        "기부금 세액공제(소득세법 제59조의4제4항, 조세특례제한법 제76조)를 구한다. 근로소득금액(원 문자열) 기준 한도 안에서 "
+        "특례·일반기부금 합계 1천만원 이하 15%, 초과 30%(특례 먼저), 정치자금 10만원까지 110분의 100과 초과분 15%"
+        "(3천만원 초과분 25%)를 적용하고 원 미만 버린다. 고향사랑·우리사주 기부금은 한도 순서에만 반영하며 공제액은 "
+        "계산하지 않는다. 종교단체 기부는 religious_donation 에 따로 넣어야 한다."
     ),
     version="1.1.0",
     policy=True,
@@ -67,7 +83,7 @@ def payroll_kr_donation_deduction(
     carryover_loss:      str = "0",
     hometown_donation:   str = "0",
     esop_donation:       str = "0",
-) -> dict[str, Any]:
+) -> KrDonationDeductionResult:
     """Calculate donation tax credit.
 
     Args:
@@ -215,4 +231,4 @@ def payroll_kr_donation_deduction(
         "policy_version":         pv,
         "trace":                  trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(KrDonationDeductionResult, enrich_response(resp, policy_doc))

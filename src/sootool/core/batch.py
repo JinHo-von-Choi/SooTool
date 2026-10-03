@@ -4,15 +4,44 @@ import time
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from concurrent.futures import TimeoutError as FuturesTimeout
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
 from sootool.core.errors import SooToolError
 from sootool.core.registry import ToolRegistry
 from sootool.core.request_context import submit_with_context
+from sootool.core.result_types import ToolResult
 
 
 class BatchLimitError(SooToolError):
     pass
+
+
+class ExecutionError(TypedDict):
+    """항목 또는 단계 하나의 실패 원인. ``type`` 은 예외 클래스 이름이다."""
+
+    type:    str
+    message: str
+
+
+class BatchItemResult(TypedDict):
+    """배치 항목 하나의 실행 결과. ok 이면 ``result``, error 와 timeout 이면 ``error`` 가 있다."""
+
+    id:         str
+    status:     str
+    result:     NotRequired[dict[str, Any]]
+    error:      NotRequired[ExecutionError]
+    elapsed_ms: int
+
+
+class BatchResult(ToolResult):
+    status:            str
+    results:           list[BatchItemResult]
+    count_ok:          int
+    count_error:       int
+    count_timeout:     int
+    total_time_ms:     int
+    parallelism:       int
+    non_deterministic: NotRequired[bool]
 
 
 @dataclass
@@ -24,7 +53,7 @@ class BatchExecutor:
     max_workers: int = 16
     deterministic: bool = True
 
-    def run(self, items: list[dict[str, Any]]) -> dict[str, Any]:
+    def run(self, items: list[dict[str, Any]]) -> BatchResult:
         if len(items) > self.max_items:
             raise BatchLimitError(f"배치 항목 수 {len(items)} > 한도 {self.max_items}")
         ids = [it["id"] for it in items]
@@ -33,7 +62,7 @@ class BatchExecutor:
 
         started = time.monotonic()
         workers = min(self.max_workers, max(1, len(items)))
-        results: dict[str, dict[str, Any]] = {}
+        results: dict[str, BatchItemResult] = {}
         item_started_at: dict[str, float] = {}
 
         # wait=False + cancel_futures=True: 타임아웃 처리 완료 후 실행 중 worker 를 분리하여
@@ -157,7 +186,7 @@ class BatchExecutor:
         else:
             status = "partial"
 
-        response: dict[str, Any] = {
+        response: BatchResult = {
             "status":         status,
             "results":        ordered,
             "count_ok":       count_ok,

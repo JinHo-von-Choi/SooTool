@@ -15,12 +15,13 @@ Policy reference: kr_acquisition_{year}.yaml
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.realestate._kr_local_tax import acquisition_standard_rate
@@ -28,6 +29,24 @@ from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
 _NATIONAL_HOUSING_AREA_M2 = Decimal("85")
+
+
+class AcquisitionSurcharges(TypedDict):
+    """취득세 본세 외 부가분. 모두 원 단위 문자열."""
+
+    multi_house_surcharge: str
+    rural_special:         str
+    local_edu:             str
+
+
+class RealestateKrAcquisitionTaxResult(PolicyResult):
+    standard_rate:   str
+    applied_rate:    str
+    heavy_applied:   bool
+    acquisition_tax: str
+    base_tax:        str
+    surcharges:      AcquisitionSurcharges
+    total_tax:       str
 
 
 def _optional_rate(surcharge_data: dict[str, Any], key: str, fallback: str | None = None) -> Decimal | None:
@@ -79,9 +98,10 @@ def _heavy_row(heavy_rate: Decimal, surcharge_info: dict[str, Any]) -> dict[str,
     namespace="realestate",
     name="kr_acquisition_tax",
     description=(
-        "한국 주택 유상취득 취득세 계산. "
-        "지방세법 제11조제1항제8호 표준세율(6~9억 산식 세율), 제13조의2 중과세율(대체 적용), "
-        "농어촌특별세 및 지방교육세 포함."
+        "한국 주택 유상취득 취득세와 농어촌특별세·지방교육세를 계산한다. 표준세율은 6억 이하 1%, "
+        "6억 초과 9억 이하 산식 세율, 9억 초과 3%이고, 조정 2주택·비조정 3주택 8%, 조정 3주택 이상·"
+        "비조정 4주택 이상·법인 12% 중과세율이 표준세율을 대체한다. 금액은 원 단위 문자열, 세목별 "
+        "원 미만 절사. 농어촌특별세는 전용 85㎡ 초과만 과세. 오용 예: house_count 에 취득 전 주택 수 입력."
     ),
     version="1.1.0",
     policy=True,
@@ -94,7 +114,7 @@ def realestate_kr_acquisition_tax(
     year:              int,
     is_corporate:      bool = False,
     is_heavy_excluded: bool = False,
-) -> dict[str, Any]:
+) -> RealestateKrAcquisitionTaxResult:
     """Calculate Korean housing acquisition tax.
 
     Args:
@@ -107,8 +127,8 @@ def realestate_kr_acquisition_tax(
         is_heavy_excluded: 중과 제외 주택(일시적 2주택, 지방세법 시행령 제28조의2 주택 등) 여부
 
     Returns:
-        {applied_rate, standard_rate, acquisition_tax, base_tax, surcharges, total_tax,
-         policy_version, trace}. base_tax 는 표준세율분, surcharges.multi_house_surcharge 는
+        {standard_rate, applied_rate, heavy_applied, acquisition_tax, base_tax, surcharges,
+         total_tax, policy_version, trace}. base_tax 는 표준세율분, surcharges.multi_house_surcharge 는
          중과세율로 늘어난 몫이며 둘의 합이 취득세 본세다.
     """
     trace = CalcTrace(
@@ -189,7 +209,7 @@ def realestate_kr_acquisition_tax(
     trace.step("surcharges",      str(surcharges))
     trace.output(str(total_tax))
 
-    resp = {
+    resp: dict[str, Any] = {
         "standard_rate":   str(standard_rate),
         "applied_rate":    str(applied_rate),
         "heavy_applied":   heavy_rate is not None,
@@ -200,4 +220,4 @@ def realestate_kr_acquisition_tax(
         "policy_version":  pv,
         "trace":           trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(RealestateKrAcquisitionTaxResult, enrich_response(resp, policy_doc))

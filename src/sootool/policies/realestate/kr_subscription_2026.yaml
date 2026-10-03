@@ -1,0 +1,86 @@
+sha256: "58b83a1957dc872fd5f747537110df04d5961cf0bbf772e1b5e56e11bbcd8920"
+meta:
+  domain: realestate
+  name:   kr_subscription
+  year:   2026
+effective_date: "2026-01-01"
+status: enacted
+notice_no: "주택공급에 관한 규칙 제2조제8호·제28조제6항·별표 1 (국토교통부령 제1592호, 2026-06-15 시행본. 별표 1 최종 개정 2024-12-18)"
+source_url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=286965&efYd=20260615"
+citations:
+  - law: "주택공급에 관한 규칙"
+    article: "제2조제8호"
+    url: "https://www.law.go.kr/법령/주택공급에관한규칙/제2조"
+    note: "가점제는 별표 1의 기준을 적용하여 산정한 가점제 점수가 높은 순으로 입주자를 선정하는 것"
+  - law: "주택공급에 관한 규칙"
+    article: "별표 1 제1호"
+    url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=286965&efYd=20260615"
+    note: "무주택기간은 신청자와 배우자 기준, 만 30세가 되는 날(30세 전 혼인 시 혼인신고일)부터 계속 무주택인 기간, 주택 소유 사실이 있으면 최근 무주택자가 된 날부터. 부양가족은 같은 세대별 주민등록표 등재 세대원(직계존속 3년, 30세 이상 직계비속 1년 계속 등재 요건). 주택청약종합저축 가입기간은 최초 가입일 기준"
+  - law: "주택공급에 관한 규칙"
+    article: "별표 1 제2호나목"
+    url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=286965&efYd=20260615"
+    note: "무주택기간 상한 32점(1년 미만 2점, 1년마다 2점 가산, 15년 이상 32점). 부양가족 수 상한 35점(0명 5점, 1명마다 5점, 6명 이상 35점). 주택청약종합저축 가입기간 상한 17점(6개월 미만 1점, 6개월 이상 1년 미만 2점, 1년 이상 2년 미만 3점, 1년마다 1점 가산, 15년 이상 17점)"
+  - law: "주택공급에 관한 규칙"
+    article: "별표 1 비고 제2호"
+    url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=286965&efYd=20260615"
+    note: "배우자가 주택청약종합저축에 가입하고 있으면 특별공급을 제외하고 배우자 가입기간의 50퍼센트 기간에 대한 제2호나목 점수(3점 한도)를 합산. 합산 결과 17점 초과 시 17점"
+  - law: "주택공급에 관한 규칙"
+    article: "제28조제6항"
+    url: "https://www.law.go.kr/법령/주택공급에관한규칙/제28조"
+    note: "1주택 소유 세대에 속한 자와 과거 2년 이내 가점제 당첨자 세대에 속한 자는 제1순위 가점제 적용 대상에서 제외(같은 항 단서 예외 있음)"
+  - law: "청약홈 청약가점계산 (한국부동산원)"
+    url: "https://www.applyhome.co.kr/ap/apg/selectAddpntCalculatorView.do"
+    note: "주택을 소유한 세대(분양권등 포함)와 만 30세 미만 미혼 무주택자의 무주택기간 점수는 0점으로 산정하는 운영 기준"
+data:
+  # 무주택기간 점수 (별표 1 제2호나목 ①). below_months 미만이면 해당 점수, null 은 상한 없음
+  homeless_period:
+    max_points: 32
+    brackets:
+      - {below_months: 12,   points: 2}
+      - {below_months: 24,   points: 4}
+      - {below_months: 36,   points: 6}
+      - {below_months: 48,   points: 8}
+      - {below_months: 60,   points: 10}
+      - {below_months: 72,   points: 12}
+      - {below_months: 84,   points: 14}
+      - {below_months: 96,   points: 16}
+      - {below_months: 108,  points: 18}
+      - {below_months: 120,  points: 20}
+      - {below_months: 132,  points: 22}
+      - {below_months: 144,  points: 24}
+      - {below_months: 156,  points: 26}
+      - {below_months: 168,  points: 28}
+      - {below_months: 180,  points: 30}
+      - {below_months: null, points: 32}
+    # 무주택기간이 기산되지 않은 경우(주택 소유 세대, 만 30세 미만 미혼) 점수 (청약홈 운영 기준)
+    not_applicable_points: 0
+  # 부양가족 수 점수 (별표 1 제2호나목 ②). 목록의 마지막 값은 그 인원 이상에 적용
+  dependents:
+    max_points: 35
+    points_by_count: [5, 10, 15, 20, 25, 30, 35]
+  # 주택청약종합저축 가입기간 점수 (별표 1 제2호나목 ③)
+  savings_period:
+    max_points: 17
+    brackets:
+      - {below_months: 6,    points: 1}
+      - {below_months: 12,   points: 2}
+      - {below_months: 24,   points: 3}
+      - {below_months: 36,   points: 4}
+      - {below_months: 48,   points: 5}
+      - {below_months: 60,   points: 6}
+      - {below_months: 72,   points: 7}
+      - {below_months: 84,   points: 8}
+      - {below_months: 96,   points: 9}
+      - {below_months: 108,  points: 10}
+      - {below_months: 120,  points: 11}
+      - {below_months: 132,  points: 12}
+      - {below_months: 144,  points: 13}
+      - {below_months: 156,  points: 14}
+      - {below_months: 168,  points: 15}
+      - {below_months: 180,  points: 16}
+      - {below_months: null, points: 17}
+  # 배우자 가입기간 합산 (별표 1 비고 제2호)
+  spouse_savings:
+    period_ratio: "0.5"
+    max_points:   3
+  max_total_points: 84

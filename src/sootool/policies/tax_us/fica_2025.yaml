@@ -1,0 +1,66 @@
+sha256: "e6a1f9397c9e9b525c507c61e044060b5db6991d1e4c11e8ab2f4c601c91cee1"
+effective_date: "2025-01-01"
+effective_to: "2025-12-31"
+status: enacted
+notice_no: "SSA Cost-of-Living Increase and Other Determinations for 2025 (89 FR 85276) + IRC 3101, 3111, 3102(f), 1401, 1402 + IRS Pub. 15 (2025) sec. 9"
+source_url: "https://www.federalregister.gov/documents/2024/10/25/2024-24871/cost-of-living-increase-and-other-determinations-for-2025"
+citations:
+  - law: "Social Security Act"
+    article: "230(b)"
+    url: "https://www.federalregister.gov/documents/2024/10/25/2024-24871/cost-of-living-increase-and-other-determinations-for-2025"
+    note: "SSA 고시 89 FR 85276 (2024-10-25). OASDI contribution and benefit base 176,100 달러, 2025년 지급 임금과 2025년에 개시하는 과세연도의 자영업 소득에 적용"
+  - law: "Internal Revenue Code"
+    article: "3101(a), 3101(b)(1), 3101(b)(2)"
+    url: "https://www.law.cornell.edu/uscode/text/26/3101"
+    note: "근로자 OASDI 6.2%, HI 1.45%. 추가 Medicare 0.9% 는 공동 신고 250,000, 부부 개별 신고 125,000, 그 밖 200,000 달러 초과 임금에 부과(2012-12-31 이후 개시 과세연도)"
+  - law: "Internal Revenue Code"
+    article: "3111(a), 3111(b)"
+    url: "https://www.law.cornell.edu/uscode/text/26/3111"
+    note: "고용주 OASDI 6.2%, HI 1.45%. 추가 Medicare 의 고용주 부담분은 없음"
+  - law: "Internal Revenue Code"
+    article: "3102(f)(1), 3121(a)(1)"
+    url: "https://www.law.cornell.edu/uscode/text/26/3102"
+    note: "고용주는 해당 고용주가 지급한 임금 중 200,000 달러 초과분에 대해서만 추가 Medicare 를 원천징수하며 배우자 임금은 고려하지 않음. OASDI 과세 임금은 고용주별로 연간 기준액까지"
+  - law: "Internal Revenue Code"
+    article: "1401(a), 1401(b)(1), 1401(b)(2)"
+    url: "https://www.law.cornell.edu/uscode/text/26/1401"
+    note: "자영업 OASDI 12.4%, HI 2.9%, 추가 Medicare 0.9%. 추가 Medicare 임계값은 FICA 임금만큼 줄되 0 미만으로 줄지 않음(1401(b)(2)(B))"
+  - law: "Internal Revenue Code"
+    article: "1402(a)(12), 1402(b)(1), 1402(b)(2)"
+    url: "https://www.law.cornell.edu/uscode/text/26/1402"
+    note: "순수익에서 (1401(a)+1401(b)(1) 세율의 절반) 만큼 공제(92.35% 적용). OASDI 과세 자영업 소득은 기준액에서 같은 해 임금을 뺀 금액이 한도. 순자영업소득 400 달러 미만이면 자영업 소득 없음"
+  - law: "IRS Publication 15 (2025), Employer's Tax Guide"
+    article: "sec. 9 Social security and Medicare taxes"
+    url: "https://www.irs.gov/pub/irs-prior/p15--2025.pdf"
+    note: "2025년 사회보장세율 근로자·고용주 각 6.2%, 임금 기준액 176,100 달러, Medicare 각 1.45% 한도 없음, 추가 Medicare 원천징수 기준 200,000 달러"
+  - law: "Instructions for Form 8959 (2025)"
+    article: "Threshold Amounts for Additional Medicare Tax"
+    url: "https://www.irs.gov/instructions/i8959"
+    note: "신고 임계값 공동 250,000, 부부 개별 125,000, 단독·세대주·생존 배우자 200,000 달러. 물가연동 없음"
+  - law: "Schedule SE (Form 1040) 2025"
+    article: "lines 4a, 4c, 7-13"
+    url: "https://www.irs.gov/pub/irs-pdf/f1040sse.pdf"
+    note: "순이익 x 92.35%, 400 달러 미만이면 납부 없음, 기준액 176,100 에서 W-2 사회보장 임금을 뺀 금액까지 12.4%, 전액 2.9%, 자영업세의 50% 소득공제"
+# 2026-10-03: 2025 과세연도 미국 FICA(근로자·고용주)와 SECA(자영업) 세율 및 기준액.
+# 추가 Medicare 원천징수 기준(200,000)과 신고 시 임계값(신고 유형별)은 서로 다른 값이다.
+data:
+  social_security:
+    wage_base:            176100
+    employee_rate:        0.062
+    employer_rate:        0.062
+    self_employment_rate: 0.124
+  medicare:
+    employee_rate:        0.0145
+    employer_rate:        0.0145
+    self_employment_rate: 0.029
+  additional_medicare:
+    rate:                  0.009
+    withholding_threshold: 200000
+    filing_thresholds:
+      single:                      200000
+      married_joint:               250000
+      married_separate:            125000
+      head_of_household:           200000
+      qualifying_surviving_spouse: 200000
+  self_employment:
+    minimum_net_earnings: 400

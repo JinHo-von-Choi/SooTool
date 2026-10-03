@@ -12,12 +12,13 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.realestate._kr_local_tax import (
@@ -25,18 +26,38 @@ from sootool.modules.realestate._kr_local_tax import (
     property_special_brackets,
     property_tax_base,
 )
-from sootool.modules.tax.progressive import _calc_progressive
+from sootool.modules.tax.progressive import BracketBreakdown, _calc_progressive
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
+
+
+class PropertyTaxSurcharges(TypedDict):
+    """재산세 부가분. 원 단위 문자열."""
+
+    local_edu:  str
+    urban_area: str
+
+
+class RealestateKrPropertyTaxResult(PolicyResult):
+    published_price:      str
+    fair_market_ratio:    str
+    taxable_base:         str
+    tax_base_cap:         str | None
+    special_rate_applied: bool
+    property_tax:         str
+    surcharges:           PropertyTaxSurcharges
+    total_tax:            str
+    breakdown:            list[BracketBreakdown]
 
 
 @REGISTRY.tool(
     namespace="realestate",
     name="kr_property_tax",
     description=(
-        "한국 주택 재산세(지방세법 §110~§111의2) 계산. 공시가격 × 공정시장가액비율"
-        "(일반 60%, 1세대 1주택 구간별) → 과세표준상한 → 누진세율(1세대 1주택 9억 이하 특례세율) "
-        "후 지방교육세·도시지역분 합산."
+        "한국 주택 재산세(지방세법 §110~§111의2)와 지방교육세·도시지역분을 계산한다. 공시가격(원)에 "
+        "공정시장가액비율(일반 60%, 1세대 1주택은 시가표준액 구간별)을 곱해 과세표준을 구하고, 직전 연도 "
+        "공시가격을 주면 과세표준상한을 적용한다. 누진세율, 9억 이하 1세대 1주택은 특례세율. 재산세는 원 "
+        "미만 반올림, 부가분은 절사. 오용 예: 토지·건축물에 사용."
     ),
     version="1.1.0",
     policy=True,
@@ -47,7 +68,7 @@ def realestate_kr_property_tax(
     include_urban:              bool       = True,
     is_one_house:               bool       = False,
     prior_year_published_price: str | None = None,
-) -> dict[str, Any]:
+) -> RealestateKrPropertyTaxResult:
     """Calculate Korean property tax.
 
     Args:
@@ -122,7 +143,7 @@ def realestate_kr_property_tax(
     trace.step("surcharges",           surcharges)
     trace.output(str(total))
 
-    resp = {
+    resp: dict[str, Any] = {
         "published_price":      str(pp),
         "fair_market_ratio":    str(fmr_ratio),
         "taxable_base":         str(taxable),
@@ -135,4 +156,4 @@ def realestate_kr_property_tax(
         "policy_version":       pv,
         "trace":                trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(RealestateKrPropertyTaxResult, enrich_response(resp, policy_doc))

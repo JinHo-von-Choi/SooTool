@@ -13,19 +13,44 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.progressive import (
+    BracketBreakdown,
     _calc_progressive,
     _parse_rounding,
 )
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
+
+
+class InheritanceDeductions(TypedDict):
+    """상속공제 구성. 모두 원 단위 Decimal 문자열이다."""
+
+    general:   str
+    personal:  str
+    spouse:    str
+    requested: str
+    limit:     str
+    total:     str
+
+
+class TaxKrInheritanceResult(PolicyResult):
+    gross_estate:            str
+    deductions:              InheritanceDeductions
+    taxable_base:            str
+    tax:                     str
+    filing_credit:           str
+    tax_after_filing_credit: str
+    effective_rate:          str
+    marginal_rate:           str
+    breakdown:               list[BracketBreakdown]
 
 
 def _non_negative(name: str, value: str) -> Decimal:
@@ -78,9 +103,10 @@ def _personal_deduction(
     namespace="tax",
     name="kr_inheritance",
     description=(
-        "한국 상속세 계산 (상속세및증여세법 제18조~제21조·제24조·제26조·제69조). "
-        "기초·인적공제와 일괄공제 중 큰 금액, 배우자공제(법정상속분·30억 한도, 최소 5억), "
-        "공제 종합한도 적용 후 누진세율 산출, 신고세액공제 3%."
+        "한국 상속세를 계산한다(상속세및증여세법 제18조~제21조·제24조·제26조·제69조). 금액은 원 단위 Decimal 문자열이다. "
+        "기초·인적공제와 일괄공제 5억 중 큰 금액, 배우자공제(법정상속분 한도와 30억 중 작은 값, 최소 5억), 공제 종합한도를 적용한 뒤 "
+        "10~50% 누진세율로 산출하고 기한 내 신고세액공제 3%를 따로 보여 준다. gross_estate 는 사전증여 가산 후 과세가액이다. "
+        "배우자가 있으나 상속받지 않았으면 has_spouse=true 를 지정해야 5억이 공제된다."
     ),
     version="1.0.0",
     policy=True,
@@ -103,7 +129,7 @@ def tax_kr_inheritance(
     renounced_inheritance:     str         = "0",
     pre_gift_added:            str         = "0",
     timely_filing:             bool        = True,
-) -> dict[str, Any]:
+) -> TaxKrInheritanceResult:
     """Calculate Korean inheritance tax.
 
     Args:
@@ -226,7 +252,7 @@ def tax_kr_inheritance(
         if timely_filing else Decimal("0")
     )
 
-    deduct_detail = {
+    deduct_detail: InheritanceDeductions = {
         "general":   str(general_deduct),
         "personal":  str(personal),
         "spouse":    str(spouse_deduct),
@@ -241,7 +267,7 @@ def tax_kr_inheritance(
     trace.step("filing_credit", str(filing_credit))
     trace.output(str(tax))
 
-    resp = {
+    resp: dict[str, Any] = {
         "gross_estate":            str(gross),
         "deductions":              deduct_detail,
         "taxable_base":            str(taxable),
@@ -254,4 +280,4 @@ def tax_kr_inheritance(
         "policy_version":          pv,
         "trace":                   trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(TaxKrInheritanceResult, enrich_response(resp, policy_doc))

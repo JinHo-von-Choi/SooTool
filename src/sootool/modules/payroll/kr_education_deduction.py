@@ -15,12 +15,13 @@ Date: 2026-04-24
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.policy_mgmt.loader import load as policy_load
@@ -36,12 +37,28 @@ _CATEGORIES: tuple[str, ...] = (
 )
 
 
+class EducationCategoryCredit(TypedDict):
+    """범주별 지출, 인원, 공제 대상액, 세액공제액. 인원은 문자열로 반환된다."""
+
+    expense:    str
+    count:      str
+    qualifying: str
+    credit:     str
+
+
+class KrEducationDeductionResult(PolicyResult):
+    per_category: dict[str, EducationCategoryCredit]
+    total_credit: str
+
+
 @REGISTRY.tool(
     namespace="payroll",
     name="kr_education_deduction",
     description=(
-        "한국 교육비 세액공제(소득세법 §59의4) 계산. "
-        "본인 15%·자녀 초중고 300만원 한도·대학 900만원 한도·장애인 한도없음."
+        "교육비 세액공제(소득세법 제59조의4제3항)를 구한다. expenses 는 self, preschool, elementary, middle_high, "
+        "university, disabled_special 별 지출액(원 문자열), counts 는 범주별 인원이다. 공제율 15%를 정책의 인당 한도"
+        "(영유아·초중고 300만원, 대학 900만원, 본인·장애인 특수교육 무한도)에 인원을 곱한 한도까지 적용해 원 미만 버린다. "
+        "여러 자녀 지출을 한 범주에 합치고 counts 를 생략하면 1명분 한도만 적용된다."
     ),
     version="1.0.0",
     policy=True,
@@ -50,7 +67,7 @@ def payroll_kr_education_deduction(
     expenses:  dict[str, str],
     year:      int,
     counts:    dict[str, int] | None = None,
-) -> dict[str, Any]:
+) -> KrEducationDeductionResult:
     """Calculate education expense tax credit.
 
     Args:
@@ -122,7 +139,7 @@ def payroll_kr_education_deduction(
     trace.input("counts",   parsed_counts)
     trace.input("year",     year)
 
-    per_category: dict[str, dict[str, str]] = {}
+    per_category: dict[str, EducationCategoryCredit] = {}
     total_credit = Decimal("0")
 
     for cat in _CATEGORIES:
@@ -157,4 +174,4 @@ def payroll_kr_education_deduction(
         "policy_version": pv,
         "trace":          trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(KrEducationDeductionResult, enrich_response(resp, policy_doc))

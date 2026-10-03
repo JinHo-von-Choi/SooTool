@@ -1,0 +1,56 @@
+sha256: "59d1a8e74f17766b5aed6f8a77325a44375a95c0d598a57db3e782766494fd88"
+meta:
+  domain: tax
+  name:   kr_registration_license_tax
+  year:   2026
+effective_date: "2026-01-01"
+status: enacted
+notice_no: "지방세법 제23조·제27조·제28조제1항제1호·제150조·제151조 (법률 제21308호, 2026-01-01 시행)"
+source_url: "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=282559&efYd=20260701"
+citations:
+  - law: "지방세법"
+    article: "제23조제1호"
+    url: "https://www.law.go.kr/법령/지방세법/제23조"
+    note: "등록은 재산권 등의 설정, 변경, 소멸을 공부에 등기하거나 등록하는 것. 취득세 과세대상 취득을 원인으로 하는 등기는 제외(광업권 등 취득 등록, 외국인 연부취득, 취득세 부과제척기간 경과 물건, 제17조 면세점 물건은 포함)"
+  - law: "지방세법"
+    article: "제27조"
+    url: "https://www.law.go.kr/법령/지방세법/제27조"
+    note: "과세표준은 등록 당시의 가액(신고가액, 신고가 없거나 시가표준액보다 적으면 시가표준액). 채권금액으로 과세하는데 일정한 채권금액이 없으면 채권의 목적이 된 것의 가액 또는 처분제한 목적 금액(제4항)"
+  - law: "지방세법"
+    article: "제28조제1항제1호"
+    url: "https://www.law.go.kr/법령/지방세법/제28조"
+    note: "부동산 등기 세율. 다목 지상권 부동산 가액 2/1000, 저당권 채권금액 2/1000, 지역권 요역지 가액 2/1000, 전세권 전세금액 2/1000, 임차권 월 임대차금액 2/1000. 라목 경매신청, 가압류, 가처분 채권금액 2/1000, 가등기 부동산 가액 또는 채권금액 2/1000. 마목 그 밖의 등기 건당 6천원"
+  - law: "지방세법"
+    article: "제28조제1항 단서"
+    url: "https://www.law.go.kr/법령/지방세법/제28조"
+    note: "제1호에 따라 산출한 세액이 그 밖의 등기 세율(건당 6천원)보다 적으면 그 밖의 등기 세율을 적용"
+  - law: "지방세법"
+    article: "제28조제6항"
+    url: "https://www.law.go.kr/법령/지방세법/제28조"
+    note: "조례로 제1항제1호 표준세율의 100분의 50 범위에서 가감할 수 있음. 이 정책은 표준세율만 담는다"
+  - law: "지방세법"
+    article: "제150조제2호·제151조제1항제2호"
+    url: "https://www.law.go.kr/법령/지방세법/제151조"
+    note: "등록에 대한 등록면허세(자동차 제외) 납세의무자에게 납부할 등록면허세액의 100분의 20을 지방교육세로 부과"
+  - law: "지방세기본법"
+    article: "제59조"
+    url: "https://www.law.go.kr/법령/지방세기본법/제59조"
+    note: "지방자치단체 징수금의 끝수 계산은 국고금 관리법 제47조 준용: 10원 미만 끝수는 계산하지 아니함"
+data:
+  # 부동산 등기 정률 세율 (법 제28조제1항제1호 다목, 라목). base 는 과세표준의 종류
+  real_estate_rates:
+    superficies:               {rate: "0.002", base: "부동산 가액(구분지상권은 시장, 군수, 구청장이 산정한 토지 가액)"}
+    mortgage:                  {rate: "0.002", base: "채권금액"}
+    servitude:                 {rate: "0.002", base: "요역지 가액"}
+    jeonse:                    {rate: "0.002", base: "전세금액"}
+    lease:                     {rate: "0.002", base: "월 임대차금액"}
+    auction:                   {rate: "0.002", base: "채권금액"}
+    provisional_attachment:    {rate: "0.002", base: "채권금액"}
+    provisional_disposition:   {rate: "0.002", base: "채권금액"}
+    provisional_registration:  {rate: "0.002", base: "부동산 가액 또는 채권금액"}
+  # 그 밖의 등기 건당 세액, 정률 세액의 최저 한도 (법 제28조제1항제1호마목, 같은 항 단서)
+  other_registration_flat: 6000
+  # 지방교육세 (법 제151조제1항제2호)
+  local_education_tax_rate: "0.20"
+  # 끝수 처리 단위 (지방세기본법 제59조, 국고금 관리법 제47조)
+  rounding_unit: 10

@@ -11,12 +11,12 @@ Date: 2026-04-24
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 
@@ -26,12 +26,20 @@ _REDUCED_RATE   = Decimal("0.20")
 _VALID_MODES    = {"base", "reduced"}
 
 
+class TaxKrRuralSpecialTaxResult(TracedResult):
+    amount:            str
+    mode:              str
+    rate:              str
+    rural_special_tax: str
+
+
 @REGISTRY.tool(
     namespace="tax",
     name="kr_rural_special_tax",
     description=(
-        "한국 농어촌특별세 부가 계산 (농어촌특별세법 제5조). "
-        "본세 10% 또는 감면액 20% 중 선택."
+        "한국 농어촌특별세를 계산한다(농어촌특별세법 제5조). mode=base 는 본세액 x 10%, mode=reduced 는 감면세액 x 20%이고 "
+        "amount 는 해당 금액(원, 0 이상 Decimal 문자열)이다. rounding 기본 DOWN, decimals 기본 0이라 원 미만을 버린다. "
+        "과세표준이 아니라 본세 또는 감면액을 넣어야 하며 mode 를 바꾸면 세율이 달라진다."
     ),
     version="1.0.0",
 )
@@ -40,7 +48,7 @@ def tax_kr_rural_special_tax(
     mode:     str = "base",
     rounding: str = "DOWN",
     decimals: int = 0,
-) -> dict[str, Any]:
+) -> TaxKrRuralSpecialTaxResult:
     """Calculate Korean rural special tax (농어촌특별세).
 
     Args:

@@ -13,27 +13,44 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult, PolicyVersion
 from sootool.core.rounding import apply as round_apply
-from sootool.modules.tax.progressive import _parse_rounding
+from sootool.modules.tax.progressive import BracketBreakdown, _parse_rounding
 from sootool.modules.tax_us._brackets import slice_tax
 from sootool.modules.tax_us.federal_income import _validate_filing_status
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
 
+class TaxUsCapitalGainsResult(PolicyResult):
+    tax:                     str
+    ltcg_tax:                str
+    niit:                    str
+    niit_base:               str
+    marginal_rate:           str
+    breakdown:               list[BracketBreakdown]
+    term:                    str
+    method:                  str
+    ordinary_taxable_income: str
+    taxable_income:          str
+    filing_status:           str
+    ordinary_policy_version: PolicyVersion
+
+
 @REGISTRY.tool(
     namespace="tax_us",
     name="capital_gains",
     description=(
-        "미국 자본이득세 계산. Long-term (0%/15%/20%, filing status별 구간, "
-        "ordinary_taxable_income 위에 양도소득을 쌓아 과세) 또는 Short-term "
-        "(일반소득 위 증분에 연방 소득세율). Net Investment Income Tax (NIIT) 3.8% 옵션."
+        "미국 연방 자본이득세를 계산한다. 장기(long)는 0%/15%/20% 구간을 신고 유형별로 적용하며 ordinary_taxable_income 위에 양도소득을 쌓아 과세하고, "
+        "단기(short)는 그 증가분에 일반 소득세율을 쓴다. apply_niit=true 이면 순투자소득세 3.8%를 더한다. "
+        "금액은 USD Decimal 문자열이고 기본은 소수 둘째 자리 HALF_UP이다. "
+        "ordinary_taxable_income 을 생략하면 0으로 보므로 다른 소득이 있으면 반드시 넣어야 한다."
     ),
     version="1.0.0",
     policy=True,
@@ -48,7 +65,7 @@ def tax_us_capital_gains(
     ordinary_taxable_income:  str  | None = None,
     rounding:                 str  = "HALF_UP",
     decimals:                 int  = 2,
-) -> dict[str, Any]:
+) -> TaxUsCapitalGainsResult:
     """Calculate US capital gains tax.
 
     Args:
@@ -177,7 +194,7 @@ def tax_us_capital_gains(
     trace.step("breakdown", breakdown)
     trace.output(str(tax_total))
 
-    resp = {
+    resp: dict[str, Any] = {
         "tax":                     str(tax_total),
         "ltcg_tax":                str(ltcg_tax),
         "niit":                    str(niit_amount),
@@ -193,4 +210,4 @@ def tax_us_capital_gains(
         "ordinary_policy_version": fed_policy_doc["policy_version"],
         "trace":                   trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(TaxUsCapitalGainsResult, enrich_response(resp, policy_doc))

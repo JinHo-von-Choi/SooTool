@@ -10,13 +10,15 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.modules.tax.progressive import (
+    BracketBreakdown,
     _calc_progressive,
     _parse_rounding,
 )
@@ -29,6 +31,16 @@ _VALID_FILING_STATUSES = frozenset({
     "married_separate",
     "head_of_household",
 })
+
+
+class TaxUsFederalIncomeResult(PolicyResult):
+    tax:                            str
+    effective_rate:                 str
+    marginal_rate:                  str
+    breakdown:                      list[BracketBreakdown]
+    standard_deduction:             str
+    taxable_income_after_deduction: str
+    filing_status:                  str
 
 
 _FILING_STATUS_ALIASES: dict[str, str] = {
@@ -57,9 +69,10 @@ def _validate_filing_status(filing_status: str) -> str:
     namespace="tax_us",
     name="federal_income",
     description=(
-        "미국 연방 소득세 계산 (IRS 2025·2026 tax year, 7 progressive brackets × "
-        "4 filing statuses, 생존 배우자는 공동 신고 표). 표준공제 옵션을 켜면 "
-        "taxable_income 을 조정총소득(AGI)으로 보고 표준공제를 뺀다."
+        "미국 연방 소득세(일반 세율)를 계산한다. IRS 2025·2026 tax year, 7개 누진 구간, 4개 신고 유형이며 "
+        "qualifying_surviving_spouse 는 공동 신고 표를 쓴다. 금액은 USD Decimal 문자열이고 기본은 소수 둘째 자리 HALF_UP이다. "
+        "apply_standard_deduction=true 이면 taxable_income 을 AGI 로 보고 표준공제를 뺀다. "
+        "이미 공제를 뺀 과세표준에 true 를 주면 공제가 두 번 빠지고, 장기 양도소득이나 FICA 는 반영하지 않는다."
     ),
     version="1.0.0",
     policy=True,
@@ -71,7 +84,7 @@ def tax_us_federal_income(
     apply_standard_deduction: bool = False,
     rounding:                 str  = "HALF_UP",
     decimals:                 int  = 2,
-) -> dict[str, Any]:
+) -> TaxUsFederalIncomeResult:
     """Calculate US federal income tax using IRS progressive brackets.
 
     Args:
@@ -138,7 +151,7 @@ def tax_us_federal_income(
     trace.step("breakdown", breakdown)
     trace.output(str(tax))
 
-    resp = {
+    resp: dict[str, Any] = {
         "tax":                            str(tax),
         "effective_rate":                 str(eff_rate),
         "marginal_rate":                  str(marginal_rate),
@@ -149,4 +162,4 @@ def tax_us_federal_income(
         "policy_version":                 pv,
         "trace":                          trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(TaxUsFederalIncomeResult, enrich_response(resp, policy_doc))

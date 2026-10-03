@@ -13,12 +13,13 @@ Policy reference: kr_dsr_ltv_{year}.yaml
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.realestate._kr_local_tax import lookup_upper_table
@@ -26,6 +27,27 @@ from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
 _MORTGAGE_REGIONS: set[str] = {"capital_or_regulated", "non_capital"}
+
+
+class RealestateKrDsrResult(PolicyResult):
+    dsr:               str
+    within_cap:        bool
+    cap:               str
+    stress_rate_floor: str | None
+
+
+class RealestateKrLtvResult(PolicyResult):
+    ltv:        str
+    within_cap: bool
+    cap_rate:   str
+    amount_cap: str | None
+    max_loan:   str
+
+
+class RealestateKrDtiResult(PolicyResult):
+    dti:        str
+    within_cap: bool
+    cap:        str | None
 
 
 def _stress_rate_floor(data: dict[str, Any], mortgage_region: str | None) -> Decimal | None:
@@ -45,9 +67,10 @@ def _stress_rate_floor(data: dict[str, Any], mortgage_region: str | None) -> Dec
     namespace="realestate",
     name="kr_dsr",
     description=(
-        "DSR(총부채원리금상환비율) 계산. "
-        "DSR = 연간 원리금 상환액 / 연간 소득. "
-        "은행권 40%, 2금융권 50% 한도. 주담대 지역을 주면 스트레스 금리 하한을 함께 반환."
+        "DSR(총부채원리금상환비율 = 연간 원리금 상환액 / 연간 소득, 원 단위 문자열)을 계산하고 한도 이내인지 "
+        "판정한다. 소수 4자리 HALF_EVEN 반올림, 한도는 은행권 40%, 2금융권(is_nonbank) 50%. "
+        "mortgage_region 을 주면 스트레스 금리 하한을 반환하지만 상환액에 가산해 주지는 않는다. "
+        "오용 예: 월 상환액과 연 소득을 섞어 입력."
     ),
     version="1.1.0",
     policy=True,
@@ -58,7 +81,7 @@ def realestate_kr_dsr(
     year:                int,
     is_nonbank:          bool       = False,
     mortgage_region:     str | None = None,
-) -> dict[str, Any]:
+) -> RealestateKrDsrResult:
     """Calculate DSR ratio.
 
     Args:
@@ -114,7 +137,7 @@ def realestate_kr_dsr(
     trace.step("within_cap",        str(within_cap))
     trace.output(str(dsr))
 
-    resp = {
+    resp: dict[str, Any] = {
         "dsr":               str(dsr),
         "within_cap":        within_cap,
         "cap":               str(cap_rate),
@@ -122,7 +145,7 @@ def realestate_kr_dsr(
         "policy_version":    pv,
         "trace":             trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(RealestateKrDsrResult, enrich_response(resp, policy_doc))
 
 
 def _ltv_cap_rate(
@@ -152,9 +175,10 @@ def _ltv_cap_rate(
     namespace="realestate",
     name="kr_ltv",
     description=(
-        "LTV(주택담보대출비율) 계산 및 주택구입 주담대 한도 산출. "
-        "규제지역·수도권 여부, 주택 수, 생애최초 여부에 따른 LTV와 "
-        "수도권·규제지역 주택가격별 금액 한도(15억 이하 6억, 25억 이하 4억, 초과 2억) 적용."
+        "LTV(대출액 / 주택가액, 원 단위 문자열, 소수 4자리 HALF_EVEN)를 계산하고 한도 이내 여부와 최대 "
+        "대출액을 구한다. 한도 비율은 규제지역·수도권, 주택 수, 생애최초 여부로 정해지며 규제지역·수도권 "
+        "다주택은 추가 구입 0%다. 수도권·규제지역은 시가 15억 이하 6억, 25억 이하 4억, 초과 2억 금액 한도도 "
+        "적용. 오용 예: house_count 에 대출 전 주택 수 입력."
     ),
     version="1.1.0",
     policy=True,
@@ -167,7 +191,7 @@ def realestate_kr_ltv(
     house_count:         int,
     is_capital_area:     bool = False,
     is_first_time_buyer: bool = False,
-) -> dict[str, Any]:
+) -> RealestateKrLtvResult:
     """Calculate LTV ratio and check against policy cap.
 
     Args:
@@ -239,7 +263,7 @@ def realestate_kr_ltv(
     trace.step("within_cap", str(within_cap))
     trace.output(str(ltv))
 
-    resp = {
+    resp: dict[str, Any] = {
         "ltv":            str(ltv),
         "within_cap":     within_cap,
         "cap_rate":       str(cap_rate),
@@ -248,16 +272,16 @@ def realestate_kr_ltv(
         "policy_version": pv,
         "trace":          trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(RealestateKrLtvResult, enrich_response(resp, policy_doc))
 
 
 @REGISTRY.tool(
     namespace="realestate",
     name="kr_dti",
     description=(
-        "DTI(총부채상환비율) 계산. "
-        "DTI = 월 원리금 상환액 / 월 소득. "
-        "규제지역 40%, 규제지역 외 수도권(아파트 담보) 60%, 수도권 외 비규제지역 한도 없음."
+        "DTI(총부채상환비율 = 월 원리금 상환액 / 월 소득, 원 단위 문자열)를 계산하고 한도 이내인지 판정한다. "
+        "소수 4자리 HALF_EVEN 반올림, 규제지역 40%, 규제지역 외 수도권(아파트 담보) 60%, 수도권 외 "
+        "비규제지역은 한도 없음(cap 이 null, within_cap 은 true). 오용 예: 연간 금액을 월 금액 자리에 입력."
     ),
     version="1.1.0",
     policy=True,
@@ -268,7 +292,7 @@ def realestate_kr_dti(
     year:                 int,
     is_regulated:         bool,
     is_capital_area:      bool = False,
-) -> dict[str, Any]:
+) -> RealestateKrDtiResult:
     """Calculate DTI ratio.
 
     Args:
@@ -322,11 +346,11 @@ def realestate_kr_dti(
     trace.step("within_cap", str(within_cap))
     trace.output(str(dti))
 
-    resp = {
+    resp: dict[str, Any] = {
         "dti":            str(dti),
         "within_cap":     within_cap,
         "cap":            str(cap_rate) if cap_rate is not None else None,
         "policy_version": pv,
         "trace":          trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(RealestateKrDtiResult, enrich_response(resp, policy_doc))

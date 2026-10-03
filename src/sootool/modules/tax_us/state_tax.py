@@ -11,15 +11,17 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, NotRequired, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.progressive import (
+    BracketBreakdown,
     _calc_progressive,
     _parse_rounding,
 )
@@ -31,6 +33,47 @@ from sootool.policy_mgmt.trace_ext import enrich_response
 _SUPPORTED_STATES = frozenset({"CA", "NY", "TX"})
 
 _RATIO_DECIMALS = 4
+
+
+class StateRecapture(TypedDict):
+    """세액 환수(recapture) 워크시트 적용 내역. method 에 따라 부가 키가 달라진다.
+
+    method: schedule | flat | first_flat | first_phase_in | step
+    """
+
+    state_agi:           str
+    schedule_tax:        str
+    method:              str
+    rate:                NotRequired[str]
+    flat_tax:            NotRequired[str]
+    ratio:               NotRequired[str]
+    taxable_over:        NotRequired[str]
+    recapture_base:      NotRequired[str]
+    incremental_benefit: NotRequired[str]
+
+
+class StateSurcharge(TypedDict):
+    """주 가산세(CA Behavioral Health Services Tax) 적용 내역."""
+
+    name:   str
+    over:   str
+    rate:   str
+    base:   str
+    amount: str
+
+
+class TaxUsStateTaxResult(PolicyResult):
+    tax:                            str
+    effective_rate:                 str
+    marginal_rate:                  str
+    breakdown:                      list[BracketBreakdown]
+    standard_deduction:             str
+    taxable_income_after_deduction: str
+    state:                          str
+    filing_status:                  str
+    has_income_tax:                 bool
+    recapture:                      NotRequired[StateRecapture]
+    surcharge:                      NotRequired[StateSurcharge]
 
 
 def _validate_state(state: str) -> None:
@@ -126,10 +169,10 @@ def _recapture_tax(
     namespace="tax_us",
     name="state_tax",
     description=(
-        "미국 주 소득세 계산 (CA·NY·TX). "
-        "filing_status·주별 표준공제·누진구간 반영. NY 는 조정총소득(state_agi)이 "
-        "107,650 을 넘으면 세액 환수(recapture) 워크시트를 적용. CA 는 과세표준 "
-        "1,000,000 초과분에 1% Behavioral Health Services Tax 가산."
+        "미국 주 소득세를 계산한다(CA, NY, TX). 신고 유형별 누진 구간과 주별 표준공제를 반영하고 TX 는 소득세가 없어 0이다. "
+        "NY 는 조정총소득(state_agi)이 107,650 을 넘으면 세액 환수(recapture) 워크시트를, CA 는 과세표준 1,000,000 초과분에 1% 가산세를 적용한다. "
+        "금액은 USD Decimal 문자열이고 기본은 소수 둘째 자리 HALF_UP이다. "
+        "연도별 지원 범위가 다르고(CA 2025), 지방세나 FICA 는 포함하지 않는다."
     ),
     version="1.0.0",
     policy=True,
@@ -143,7 +186,7 @@ def tax_us_state_tax(
     rounding:                 str  = "HALF_UP",
     decimals:                 int  = 2,
     state_agi:                str  | None = None,
-) -> dict[str, Any]:
+) -> TaxUsStateTaxResult:
     """Calculate US state income tax.
 
     Args:
@@ -213,7 +256,7 @@ def tax_us_state_tax(
         # TX: no state income tax
         trace.step("has_income_tax", "false")
         trace.output("0")
-        resp0 = {
+        resp0: dict[str, Any] = {
             "tax":                            "0",
             "effective_rate":                 "0",
             "marginal_rate":                  "0",
@@ -226,7 +269,7 @@ def tax_us_state_tax(
             "policy_version":                 pv,
             "trace":                          trace.to_dict(),
         }
-        return enrich_response(resp0, policy_doc)
+        return cast(TaxUsStateTaxResult, enrich_response(resp0, policy_doc))
 
     brackets_map = data["brackets"]
     if schedule not in brackets_map:
@@ -298,7 +341,7 @@ def tax_us_state_tax(
     trace.step("breakdown", breakdown)
     trace.output(str(tax))
 
-    resp = {
+    resp: dict[str, Any] = {
         "tax":                            str(tax),
         "effective_rate":                 str(eff_rate),
         "marginal_rate":                  str(marginal_rate),
@@ -315,4 +358,4 @@ def tax_us_state_tax(
         resp["recapture"] = recapture_info
     if surcharge_info is not None:
         resp["surcharge"] = surcharge_info
-    return enrich_response(resp, policy_doc)
+    return cast(TaxUsStateTaxResult, enrich_response(resp, policy_doc))

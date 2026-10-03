@@ -10,24 +10,29 @@ Date: 2026-04-22
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
+
+
+class RealestateRentalYieldResult(TracedResult):
+    yield_pct: str
 
 
 @REGISTRY.tool(
     namespace="realestate",
     name="rental_yield",
     description=(
-        "임대수익률 계산. "
-        "gross: annual_rent / property_price. "
-        "net: (annual_rent - annual_expenses) / property_price. "
-        "결과: 백분율(%)."
+        "임대수익률을 백분율(%) 문자열로 계산한다. gross 는 연간 임대수입 / 매입가격, net 은 (연간 임대수입 - "
+        "연간 비용) / 매입가격이며 금액은 원 단위 문자열이다. rounding(기본 HALF_EVEN)으로 decimals(기본 2) "
+        "자리까지 반올림하고, 비용이 임대수입보다 크면 net 은 음수다. gross 는 비용을 보지 않는다. "
+        "오용 예: 월 임대료를 연 환산하지 않고 annual_rent 에 입력."
     ),
     version="1.0.0",
 )
@@ -38,7 +43,7 @@ def realestate_rental_yield(
     yield_type:      str       = "gross",
     rounding:        str       = "HALF_EVEN",
     decimals:        int       = 2,
-) -> dict[str, Any]:
+) -> RealestateRentalYieldResult:
     """Calculate rental yield.
 
     Args:
@@ -99,7 +104,8 @@ def realestate_rental_yield(
     trace.step("raw_pct",   str(raw_pct))
     trace.output(str(yield_pct))
 
-    return {
+    resp: dict[str, Any] = {
         "yield_pct": str(yield_pct),
         "trace":     trace.to_dict(),
     }
+    return cast(RealestateRentalYieldResult, resp)

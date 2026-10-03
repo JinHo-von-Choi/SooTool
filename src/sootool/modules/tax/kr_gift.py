@@ -14,14 +14,16 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.progressive import (
+    BracketBreakdown,
     _calc_progressive,
     _parse_rounding,
 )
@@ -40,6 +42,22 @@ _ALLOWED_RELATIONSHIPS = frozenset([
 _ASCENDANT_RELATIONSHIPS = frozenset(["lineal_ascendant", "lineal_ascendant_minor"])
 
 
+class TaxKrGiftResult(PolicyResult):
+    gift_amount:               str
+    deduction:                 str
+    marriage_birth_deduction:  str
+    total_deduction:           str
+    taxable_base:              str
+    computed_tax:              str
+    generation_skip_surcharge: str
+    tax:                       str
+    filing_credit:             str
+    tax_after_filing_credit:   str
+    effective_rate:            str
+    marginal_rate:             str
+    breakdown:                 list[BracketBreakdown]
+
+
 def _non_negative(name: str, value: str) -> Decimal:
     """금액 입력을 Decimal 로 바꾸고 음수를 거부한다."""
     amount = D(value)
@@ -52,9 +70,10 @@ def _non_negative(name: str, value: str) -> Decimal:
     namespace="tax",
     name="kr_gift",
     description=(
-        "한국 증여세 계산 (상속세및증여세법 제53조·제53조의2·제56조·제57조·제69조). "
-        "관계별 증여재산공제(증여 전 10년 이내 기공제액 차감), 혼인·출산 공제, "
-        "누진세율 산출세액, 세대생략 할증, 신고세액공제 3%."
+        "한국 증여세를 계산한다(상속세및증여세법 제53조·제53조의2·제56조·제57조·제69조). 금액은 원 단위 Decimal 문자열이다. "
+        "관계별 증여재산공제에서 10년 내 기공제액을 빼고, marriage_birth_gift=true 이면 직계존속 증여에 혼인·출산 공제 1억을 더하며, "
+        "10~50% 누진세율에 generation_skip=true 일 때 세대생략 할증(30%, 미성년 20억 초과 40%)과 기한 내 신고세액공제 3%를 반영한다. "
+        "tax 는 신고세액공제 전 금액이고 공제 후는 tax_after_filing_credit 이다. 10년 내 기공제액은 prior_deduction_used_10y 로 직접 넣는다."
     ),
     version="1.0.0",
     policy=True,
@@ -70,7 +89,7 @@ def tax_kr_gift(
     prior_marriage_birth_deduction: str  = "0",
     generation_skip:                bool = False,
     timely_filing:                  bool = True,
-) -> dict[str, Any]:
+) -> TaxKrGiftResult:
     """Calculate Korean gift tax.
 
     Args:
@@ -188,7 +207,7 @@ def tax_kr_gift(
     trace.step("filing_credit",             str(filing_credit))
     trace.output(str(tax_total))
 
-    resp = {
+    resp: dict[str, Any] = {
         "gift_amount":               str(amount),
         "deduction":                 str(deduction),
         "marriage_birth_deduction":  str(mb_deduction),
@@ -205,4 +224,4 @@ def tax_kr_gift(
         "policy_version":            pv,
         "trace":                     trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(TaxKrGiftResult, enrich_response(resp, policy_doc))

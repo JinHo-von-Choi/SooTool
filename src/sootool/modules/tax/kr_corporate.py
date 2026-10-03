@@ -12,13 +12,15 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.modules.tax.progressive import (
+    BracketBreakdown,
     _calc_progressive,
     _parse_rounding,
 )
@@ -26,6 +28,17 @@ from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
 _GRADUATION_PERIODS = frozenset(["none", "first_3y", "next_2y"])
+
+
+class TaxKrCorporateResult(PolicyResult):
+    base_tax:               str
+    minimum_tax:            str
+    reductions:             str
+    minimum_tax_adjustment: str
+    tax:                    str
+    effective_rate:         str
+    marginal_rate:          str
+    breakdown:              list[BracketBreakdown]
 
 
 def _calc_minimum_tax(
@@ -69,9 +82,10 @@ def _calc_minimum_tax(
     namespace="tax",
     name="kr_corporate",
     description=(
-        "한국 법인세 계산 (법인세법 제55조, 조특법 제132조). 누진 구간 산출세액과 최저한세. "
-        "tax 는 감면 후 세액이며 최저한세에 미달하는 감면은 배제한다. "
-        "반환은 base_tax, minimum_tax, reductions, minimum_tax_adjustment, tax, breakdown."
+        "한국 법인세를 계산한다(법인세법 제55조, 조세특례제한법 제132조). taxable_income 은 과세표준(원, Decimal 문자열)이고 "
+        "누진 구간 산출세액(base_tax)에서 reductions 를 빼되 최저한세에 미달하는 감면은 배제해 tax 를 정한다. "
+        "is_small_rental_corp 는 제55조제1항제2호 세율, is_small 과 sme_graduation_period 는 최저한세율을 바꾼다. "
+        "감면 전 과세표준이 다르면 pre_deduction_income 을 따로 넣어야 최저한세가 맞는다."
     ),
     version="1.0.0",
     policy=True,
@@ -86,7 +100,7 @@ def tax_kr_corporate(
     sme_graduation_period: str        = "none",
     reductions:            str        = "0",
     pre_deduction_income:  str | None = None,
-) -> dict[str, Any]:
+) -> TaxKrCorporateResult:
     """Calculate Korean corporate income tax with the minimum-tax rule.
 
     Args:
@@ -178,7 +192,7 @@ def tax_kr_corporate(
     trace.step("breakdown",              breakdown)
     trace.output(str(tax_final))
 
-    resp = {
+    resp: dict[str, Any] = {
         "base_tax":               str(base_tax),
         "minimum_tax":            str(min_tax),
         "reductions":             str(relief),
@@ -190,4 +204,4 @@ def tax_kr_corporate(
         "policy_version":         pv,
         "trace":                  trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(TaxKrCorporateResult, enrich_response(resp, policy_doc))

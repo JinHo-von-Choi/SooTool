@@ -18,12 +18,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import date
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.progressive import _calc_progressive
@@ -32,6 +33,27 @@ from sootool.policy_mgmt.trace_ext import enrich_response
 
 _ASSET_TYPES      = ("land_building", "housing", "presale_right")
 _SURCHARGE_LEVELS = ("none", "two_houses", "three_plus")
+
+
+class RateCandidate(TypedDict):
+    """해당하는 세율 경로 하나와 그 산출세액."""
+
+    rate: str
+    tax:  str
+
+
+class TaxCapitalGainsKrResult(PolicyResult):
+    gain:                 str
+    exempt:               bool
+    taxable_portion_gain: str
+    ltct_rate:            str
+    ltct_deduction:       str
+    taxable_gain:         str
+    basic_deduction:      str
+    tax_base:             str
+    applied_rate:         str | None
+    rate_candidates:      list[RateCandidate]
+    tax:                  str
 
 
 def _lookup_ltct_rate(
@@ -125,9 +147,10 @@ def _surcharge_rate(
     namespace="tax",
     name="capital_gains_kr",
     description=(
-        "한국 양도소득세 계산. 1세대1주택 비과세와 고가주택 안분, 장기보유특별공제(표 1, 표 2 보유·거주), "
-        "양도소득 기본공제, 단기보유·분양권·비사업용 토지·미등기·조정대상지역 다주택 중과 세율. "
-        "소득세법 제89조·제95조·제103조·제104조 기준."
+        "한국 양도소득세를 계산한다(소득세법 제89조·제95조·제103조·제104조). 금액은 원 단위 Decimal 문자열, 보유·거주 기간은 만 년 정수다. "
+        "1세대1주택 비과세와 12억 초과 고가주택 안분, 장기보유특별공제(표 1, 보유·거주 표 2), 기본공제 250만원, "
+        "단기보유·분양권·비사업용 토지·미등기·조정대상지역 다주택 중과 세율 중 해당 경로의 큰 세액을 적용한다. "
+        "세액은 decimals(기본 0)자리 HALF_UP 이고 지방소득세는 포함하지 않는다. 보유 2년 이상 다주택 중과 제외 판정에는 transfer_date 가 필요하다."
     ),
     version="2.0.0",
     policy=True,
@@ -147,7 +170,7 @@ def tax_capital_gains_kr(
     multi_house_surcharge:      str = "none",
     transfer_date:              str | None = None,
     apply_basic_deduction:      bool = True,
-) -> dict[str, Any]:
+) -> TaxCapitalGainsKrResult:
     """Calculate Korean capital gains tax.
 
     Args:
@@ -225,9 +248,9 @@ def tax_capital_gains_kr(
     gain = sale - acq
     trace.step("gain", str(gain))
 
-    def _zero(exempt: bool) -> dict[str, Any]:
+    def _zero(exempt: bool) -> TaxCapitalGainsKrResult:
         trace.output("0")
-        resp0 = {
+        resp0: dict[str, Any] = {
             "gain":                 str(gain),
             "exempt":               exempt,
             "taxable_portion_gain": "0",
@@ -242,7 +265,7 @@ def tax_capital_gains_kr(
             "policy_version":       pv,
             "trace":                trace.to_dict(),
         }
-        return enrich_response(resp0, policy_doc)
+        return cast(TaxCapitalGainsKrResult, enrich_response(resp0, policy_doc))
 
     if gain <= Decimal("0"):
         return _zero(False)
@@ -336,7 +359,7 @@ def tax_capital_gains_kr(
     trace.step("applied_rate",    applied_rate)
     trace.output(str(tax))
 
-    resp = {
+    resp: dict[str, Any] = {
         "gain":                 str(gain),
         "exempt":               False,
         "taxable_portion_gain": str(taxable_portion),
@@ -351,4 +374,4 @@ def tax_capital_gains_kr(
         "policy_version":       pv,
         "trace":                trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(TaxCapitalGainsKrResult, enrich_response(resp, policy_doc))

@@ -10,6 +10,7 @@ from __future__ import annotations
 from sootool.modules.tax_us import (
     capital_gains,
     federal_income,
+    fica,
     state_tax,
 )
 
@@ -17,4 +18,5 @@ __all__ = [
     "federal_income",
     "capital_gains",
     "state_tax",
+    "fica",
 ]

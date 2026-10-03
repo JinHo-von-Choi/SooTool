@@ -9,12 +9,12 @@ Date: 2026-04-24
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 
@@ -22,12 +22,20 @@ _VALID_POLICIES = {p.value for p in RoundingPolicy}
 _DEFAULT_RATE = Decimal("0.20")
 
 
+class TaxKrEducationTaxAddResult(TracedResult):
+    base_tax:      str
+    rate:          str
+    education_tax: str
+
+
 @REGISTRY.tool(
     namespace="tax",
     name="kr_education_tax_add",
     description=(
-        "한국 지방교육세 부가 계산 (지방세법 제151조). "
-        "재산세·취득세·등록면허세 등 본세의 20%."
+        "한국 지방교육세를 본세 x 부가세율로 계산한다(지방세법 제151조). "
+        "base_tax 는 재산세·취득세·등록면허세 등 본세액(원, 0 이상 Decimal 문자열), rate 기본 0.20(0 이상 1 이하), "
+        "rounding 기본 DOWN, decimals 기본 0이라 원 미만을 버린다. "
+        "본세마다 세율이 다르므로 rate 를 확인하지 않고 기본값을 쓰면 틀릴 수 있다."
     ),
     version="1.0.0",
 )
@@ -36,7 +44,7 @@ def tax_kr_education_tax_add(
     rate:     str = "0.20",
     rounding: str = "DOWN",
     decimals: int = 0,
-) -> dict[str, Any]:
+) -> TaxKrEducationTaxAddResult:
     """Calculate Korean local education tax surcharge.
 
     Args:

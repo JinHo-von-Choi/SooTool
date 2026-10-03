@@ -21,12 +21,13 @@ mode:
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal, NotRequired, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.realestate._kr_local_tax import (
@@ -34,7 +35,7 @@ from sootool.modules.realestate._kr_local_tax import (
     property_fair_market_ratio,
     property_special_brackets,
 )
-from sootool.modules.tax.progressive import _calc_progressive
+from sootool.modules.tax.progressive import BracketBreakdown, _calc_progressive
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
@@ -53,13 +54,44 @@ _SUPPORTED_REGIONS: set[str] = {
 _VALID_MODES: set[str] = {"acquisition", "property"}
 
 
+class LocalAcquisitionSurcharges(TypedDict):
+    """취득세 모드의 부가분. 원 단위 문자열."""
+
+    rural_special: str
+    local_edu:     str
+
+
+class LocalPropertySurcharges(TypedDict):
+    """재산세 모드의 부가분. 원 단위 문자열."""
+
+    local_edu:  str
+    urban_area: str
+
+
+class RealestateKrLocalPropertyResult(PolicyResult):
+    """mode 에 따라 키가 다르다. acquisition 은 취득세 부가분, property 는 과세표준과 구간 내역을 더한다."""
+
+    region:               str
+    mode:                 Literal["acquisition", "property"]
+    coefficient:          str
+    base_tax:             str
+    surcharges:           LocalAcquisitionSurcharges | LocalPropertySurcharges
+    total_tax:            str
+    fair_market_ratio:    NotRequired[str]
+    special_rate_applied: NotRequired[bool]
+    taxable_base:         NotRequired[str]
+    breakdown:            NotRequired[list[BracketBreakdown]]
+
+
 @REGISTRY.tool(
     namespace="realestate",
     name="kr_local_property",
     description=(
-        "광역자치단체별 취득세·재산세 차등 계산. "
-        "지방세법 제14조(취득세)·제111조제3항(재산세) 조례 가감세율을 광역 계수로 반영. "
-        "지원: seoul/gyeonggi/busan/incheon/daegu/daejeon/gwangju/ulsan/sejong."
+        "광역자치단체(seoul, gyeonggi, busan, incheon, daegu, daejeon, gwangju, ulsan, sejong)별 주택 "
+        "취득세 또는 재산세를 조례 가감 계수로 계산한다. mode 는 acquisition(취득가액) 또는 "
+        "property(공시가격), 금액은 원 단위 문자열. 취득세와 부가분은 원 미만 절사, 재산세는 구간 세액 반올림 후 "
+        "계수를 곱해 절사. 재산세 가감과 도시지역분은 자치구·시·군 조례 사항이라 광역 계수는 대표값이다. "
+        "오용 예: 구·군 단위 세율 확정에 사용."
     ),
     version="1.1.0",
     policy=True,
@@ -72,7 +104,7 @@ def realestate_kr_local_property(
     area_m2:         str   = "0",
     include_urban:   bool  = True,
     is_one_house:    bool  = False,
-) -> dict[str, Any]:
+) -> RealestateKrLocalPropertyResult:
     """Calculate acquisition or property tax with region-specific coefficient.
 
     Args:
@@ -85,7 +117,8 @@ def realestate_kr_local_property(
         is_one_house:  property 모드에서 1세대 1주택 여부.
 
     Returns:
-        {region, mode, coefficient, base_tax, surcharges, total_tax, policy_version, trace}
+        {region, mode, coefficient, base_tax, surcharges, total_tax, policy_version, trace}.
+        property 모드는 fair_market_ratio, special_rate_applied, taxable_base, breakdown 을 더한다.
     """
     trace = CalcTrace(
         tool="realestate.kr_local_property",
@@ -171,7 +204,7 @@ def realestate_kr_local_property(
             "policy_version": pv,
             "trace":          trace.to_dict(),
         }
-        return enrich_response(resp, policy_doc)
+        return cast(RealestateKrLocalPropertyResult, enrich_response(resp, policy_doc))
 
     # mode == "property"
     coef     = D(str(data["property_coefficient"][region]))
@@ -240,4 +273,4 @@ def realestate_kr_local_property(
         "policy_version": pv,
         "trace":          trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(RealestateKrLocalPropertyResult, enrich_response(resp, policy_doc))

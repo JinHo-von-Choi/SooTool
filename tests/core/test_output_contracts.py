@@ -14,11 +14,7 @@ from sootool.core.registry import REGISTRY
 from sootool.core.result_types import declared_result_type
 
 # 정밀 결과 타입으로 전환이 끝나지 않은 네임스페이스. 전환하면 이 목록에서 뺀다.
-_PENDING_NAMESPACES: frozenset[str] = frozenset({
-    "core",
-    "payroll", "realestate", "sootool",
-    "tax", "tax_us",
-})
+_PENDING_NAMESPACES: frozenset[str] = frozenset()
 
 
 @pytest.fixture(scope="module", autouse=True)

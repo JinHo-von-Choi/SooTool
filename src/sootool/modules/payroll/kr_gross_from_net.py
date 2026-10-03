@@ -17,15 +17,26 @@ Date: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError
 from sootool.core.registry import REGISTRY
-from sootool.modules.payroll.kr_salary import payroll_kr_salary
+from sootool.core.result_types import PolicyResult
+from sootool.modules.payroll.kr_salary import KrSalaryResult, payroll_kr_salary
 
 _MAX_ITERATIONS = 1000   # 공제 합계의 월급 대비 증가율은 1 미만이라 실제 반복은 수십 회 이내다.
+
+
+class KrGrossFromNetResult(PolicyResult):
+    net_target:   str
+    gross:        str
+    achieved_net: str
+    residual:     str
+    exact:        bool
+    evaluations:  int
+    salary:       KrSalaryResult
 
 
 def _ceil_int(value: Decimal) -> int:
@@ -36,8 +47,9 @@ def _ceil_int(value: Decimal) -> int:
     namespace="payroll",
     name="kr_gross_from_net",
     description=(
-        "역산: 세후 월급(net_monthly)에서 세전 월급을 구한다. payroll.kr_salary 의 실수령액이 목표 이상이 되는 "
-        "가장 작은 월급(원 단위)을 공제 합계의 고정점 반복으로 찾고, 달성한 실수령액과 차이(residual)를 함께 반환한다."
+        "역산: 세후 월급(net_monthly, 원 문자열)에서 세전 월급을 구한다. payroll.kr_salary 의 실수령액이 목표 이상이 되는 "
+        "가장 작은 정수 월급을 공제 합계의 고정점 반복으로 찾고, 달성한 실수령액과 차이(residual)를 함께 반환한다. "
+        "정확히 같은 실수령액이 불가능한 목표도 있으니 exact 를 확인하고, 연봉이 아닌 월 단위 실수령액을 넣어야 한다."
     ),
     version="2.0.0",
     policy=True,
@@ -48,7 +60,7 @@ def payroll_kr_gross_from_net(
     meal_allowance: str = "0",
     num_dependents: int = 1,
     children_8_20:  int = 0,
-) -> dict[str, Any]:
+) -> KrGrossFromNetResult:
     """Find the gross monthly salary whose net pay equals ``net_monthly``.
 
     Returns:
@@ -67,8 +79,8 @@ def payroll_kr_gross_from_net(
     if target <= 0:
         raise DomainConstraintError("net_monthly 는 0 보다 커야 합니다.")
 
-    def salary_at(gross: int) -> dict[str, Any]:
-        result: dict[str, Any] = payroll_kr_salary(
+    def salary_at(gross: int) -> KrSalaryResult:
+        result: KrSalaryResult = payroll_kr_salary(
             monthly_salary=str(gross), year=year, meal_allowance=meal_allowance,
             num_dependents=num_dependents, children_8_20=children_8_20,
         )
@@ -100,18 +112,18 @@ def payroll_kr_gross_from_net(
     trace.step("evaluations",  evaluations)
     trace.output(gross)
 
-    response = {
+    response: dict[str, Any] = {
         "net_target":   net_monthly,
         "gross":        gross,
         "achieved_net": salary["net"],
         "residual":     str(residual),
         "exact":        residual == 0,
         "evaluations":  evaluations,
-        "salary":       {k: v for k, v in salary.items() if k != "_meta"},
+        "salary":       cast(KrSalaryResult, {k: v for k, v in salary.items() if k != "_meta"}),
         "trace":        trace.to_dict(),
     }
-    for key in ("policy_source", "policy_sha256", "policy_effective_date", "policy_effective_to",
-                "policy_status", "policy_citations", "policy_audit_id"):
+    for key in ("policy_version", "policy_source", "policy_sha256", "policy_effective_date",
+                "policy_effective_to", "policy_status", "policy_citations", "policy_audit_id"):
         if key in salary:
             response[key] = salary[key]
-    return response
+    return cast(KrGrossFromNetResult, response)

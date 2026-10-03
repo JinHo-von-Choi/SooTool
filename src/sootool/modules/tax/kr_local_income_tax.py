@@ -9,12 +9,12 @@ Date: 2026-04-24
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 
@@ -22,12 +22,19 @@ _VALID_POLICIES = {p.value for p in RoundingPolicy}
 _LOCAL_RATE = Decimal("0.10")
 
 
+class TaxKrLocalIncomeTaxResult(TracedResult):
+    income_tax:       str
+    rate:             str
+    local_income_tax: str
+
+
 @REGISTRY.tool(
     namespace="tax",
     name="kr_local_income_tax",
     description=(
-        "한국 지방소득세 계산 (지방세법 제92조). "
-        "본세(소득세) * 10% 고정 비율."
+        "한국 개인 지방소득세를 소득세 본세의 10% 고정 비율로 계산한다(지방세법 제92조). "
+        "income_tax 는 이미 산출된 소득세액(원, 0 이상 Decimal 문자열)이며 rounding 기본 DOWN, decimals 기본 0이라 원 미만을 버린다. "
+        "과세표준이나 소득금액을 넣으면 안 되고 소득세 산출 후 그 세액을 넣어야 한다."
     ),
     version="1.0.0",
 )
@@ -35,7 +42,7 @@ def tax_kr_local_income_tax(
     income_tax: str,
     rounding:   str = "DOWN",
     decimals:   int = 0,
-) -> dict[str, Any]:
+) -> TaxKrLocalIncomeTaxResult:
     """Calculate Korean local income tax (지방소득세).
 
     Args:

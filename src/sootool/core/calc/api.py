@@ -2,7 +2,7 @@
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, NotRequired
 
 from sootool.core.calc._evaluator import (
     _Evaluator,
@@ -19,6 +19,21 @@ from sootool.core.errors import (
     InvalidExpressionError,
 )
 from sootool.core.limits import ensure_max
+from sootool.core.result_types import ToolResult, Trace
+
+
+class CalcExpressionTrace(Trace):
+    """수식 평가 trace. ``parsed_ast_summary`` 는 trace_level=full 응답에만 남는다."""
+
+    parsed_ast_summary: NotRequired[dict[str, int]]
+
+
+class CalcResult(ToolResult):
+    """core.calc 결과. trace_level=none 이거나 응답 크기 한도로 잘리면 trace 가 없다."""
+
+    result:    str
+    trace:     NotRequired[CalcExpressionTrace]
+    truncated: NotRequired[bool]
 
 
 def calc(

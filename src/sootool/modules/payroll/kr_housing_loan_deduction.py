@@ -17,14 +17,22 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
+
+
+class KrHousingLoanDeductionResult(PolicyResult):
+    interest_paid:     str
+    limit_key:         str
+    limit:             str
+    deductible_amount: str
 
 
 def _resolve_limit_key(
@@ -50,8 +58,9 @@ def _resolve_limit_key(
     namespace="payroll",
     name="kr_housing_loan_deduction",
     description=(
-        "한국 장기주택저당차입금 이자상환액 소득공제(소득세법 §52⑤⑥) 계산. "
-        "상환기간·고정금리·비거치식 조건에 따른 한도 적용."
+        "장기주택저당차입금 이자상환액 소득공제(소득세법 제52조제5항·제6항)의 공제 대상액을 구한다. 이자상환액(원 문자열), "
+        "상환기간(년), 고정금리와 비거치식 여부로 한도(15년 이상 고정금리+비거치식 2천만원 등)를 정해 그 이하만 인정하며, "
+        "10년 미만과 10~15년 변동·거치식은 0이다(limit_key 는 빈 문자열). 소득공제액이지 세액이 아니므로 세율을 곱해야 한다."
     ),
     version="1.0.0",
     policy=True,
@@ -62,7 +71,7 @@ def payroll_kr_housing_loan_deduction(
     is_fixed_rate:  bool,
     is_non_grace:   bool,
     year:           int,
-) -> dict[str, Any]:
+) -> KrHousingLoanDeductionResult:
     """Calculate housing mortgage interest deduction.
 
     Args:
@@ -123,4 +132,4 @@ def payroll_kr_housing_loan_deduction(
         "policy_version":     pv,
         "trace":              trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(KrHousingLoanDeductionResult, enrich_response(resp, policy_doc))

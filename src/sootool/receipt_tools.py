@@ -9,7 +9,7 @@
 """
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.catalog import bind_call_arguments, resolve_tool
@@ -21,7 +21,15 @@ from sootool.core.receipts import (
     verify_stamp_signature,
 )
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import Integrity, TracedResult
 from sootool.core.signing import SignatureVerificationError
+
+
+class VerifyReceiptResult(TracedResult):
+    valid:      bool
+    mismatches: list[str]
+    warnings:   list[str]
+    recomputed: Integrity
 
 
 @REGISTRY.tool(
@@ -30,7 +38,8 @@ from sootool.core.signing import SignatureVerificationError
     description=(
         "계산 영수증(_meta.integrity)을 재실행으로 검증한다. tool 과 arguments 로 같은 계산을 "
         "다시 실행해 입력 해시, 결과 해시, 도구 버전, 정책 해시를 대조하고, 서명이 있으면 "
-        "public_key_b64 로 서명을 검증한다. valid 와 mismatches 를 반환한다."
+        "public_key_b64 로 서명을 검증한다. valid 와 mismatches 를 반환한다. "
+        "core.batch, core.pipeline 처럼 실행마다 결과가 달라지는 도구는 대상이 아니다."
     ),
     version="1.0.0",
 )
@@ -40,7 +49,7 @@ def verify_receipt(
     receipt:           dict[str, Any],
     public_key_b64:    str | None = None,
     require_signature: bool       = False,
-) -> dict[str, Any]:
+) -> VerifyReceiptResult:
     """Re-execute ``tool`` with ``arguments`` and compare against ``receipt``."""
     trace = CalcTrace(tool="sootool.verify_receipt", formula="replay(tool, arguments) == receipt")
     if not isinstance(receipt, dict):
@@ -89,6 +98,6 @@ def verify_receipt(
         "valid":      valid,
         "mismatches": mismatches,
         "warnings":   warnings,
-        "recomputed": recomputed,
+        "recomputed": cast(Integrity, recomputed),
         "trace":      trace.to_dict(),
     }

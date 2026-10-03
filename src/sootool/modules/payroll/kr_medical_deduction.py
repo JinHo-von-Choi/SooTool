@@ -17,24 +17,38 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
 
+class KrMedicalDeductionResult(PolicyResult):
+    gross_income:       str
+    threshold:          str
+    total_expense:      str
+    deductible_expense: str
+    general_credit:     str
+    special_credit:     str
+    infertility_credit: str
+    premature_credit:   str
+    total_credit:       str
+
+
 @REGISTRY.tool(
     namespace="payroll",
     name="kr_medical_deduction",
     description=(
-        "한국 의료비 세액공제(소득세법 §59의4) 계산. "
-        "총급여 3% 초과분에 대해 일반 15%·난임 30%·미숙아 20% 공제."
+        "의료비 세액공제(소득세법 제59조의4제2항)를 구한다. 총급여(원 문자열)의 3% 미달분을 일반, 특수, 미숙아, 난임 순으로 "
+        "차감한 뒤 일반 의료비 15%(연 700만원 한도), 본인·6세 이하·65세 이상·장애인 등 특수 15%(한도 없음), 미숙아 20%, "
+        "난임 30%를 적용하고 원 미만 버린다. 본인·65세 이상 의료비를 일반에 넣으면 700만원 한도가 걸린다."
     ),
     version="1.1.0",
     policy=True,
@@ -46,7 +60,7 @@ def payroll_kr_medical_deduction(
     special_medical:  str = "0",
     infertility:      str = "0",
     premature:        str = "0",
-) -> dict[str, Any]:
+) -> KrMedicalDeductionResult:
     """Calculate medical expense tax credit.
 
     Args:
@@ -157,4 +171,4 @@ def payroll_kr_medical_deduction(
         "policy_version":      pv,
         "trace":               trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(KrMedicalDeductionResult, enrich_response(resp, policy_doc))

@@ -6,14 +6,38 @@ Date: 2026-04-22
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
+
+
+class BracketRange(TypedDict):
+    """세율 구간의 경계. 최고 구간의 upper 는 문자열 ``"null"`` 이다."""
+
+    lower: str
+    upper: str
+    rate:  str
+
+
+class BracketBreakdown(TypedDict):
+    """구간별 과세 대상 금액과 세액."""
+
+    bracket:            BracketRange
+    taxable_in_bracket: str
+    tax_in_bracket:     str
+
+
+class TaxProgressiveResult(TracedResult):
+    tax:            str
+    effective_rate: str
+    marginal_rate:  str
+    breakdown:      list[BracketBreakdown]
 
 
 def _parse_rounding(rounding: str) -> RoundingPolicy:
@@ -31,7 +55,7 @@ def _calc_progressive(
     brackets:       list[dict[str, Any]],
     rounding:       RoundingPolicy,
     decimals:       int,
-) -> tuple[Decimal, Decimal, Decimal, list[dict[str, Any]]]:
+) -> tuple[Decimal, Decimal, Decimal, list[BracketBreakdown]]:
     """Core progressive bracket calculation.
 
     Returns (tax, effective_rate, marginal_rate, breakdown).
@@ -40,7 +64,7 @@ def _calc_progressive(
     lower = Decimal("0")
     total_tax   = Decimal("0")
     marginal_rate = Decimal("0")
-    breakdown     = []
+    breakdown: list[BracketBreakdown] = []
 
     for i, bracket in enumerate(brackets):
         upper_raw = bracket["upper"]
@@ -147,8 +171,10 @@ def _validate_brackets(brackets: list[dict[str, Any]]) -> None:
     namespace="tax",
     name="progressive",
     description=(
-        "일반 누진세율 구간 계산기. "
-        "하한 초과 ~ 상한 이하 구간(lower-exclusive, upper-inclusive) 기준."
+        "임의의 누진세율 구간표로 세액을 계산한다. taxable_income 은 0 이상의 Decimal 문자열, "
+        "brackets 는 오름차순 {upper, rate} 목록이며 마지막 upper 는 null, rate 는 0.1 처럼 소수다. "
+        "구간은 하한 초과 상한 이하이고 구간별 세액 합계를 rounding(기본 HALF_UP)으로 decimals(기본 0)자리에 맞춘다. "
+        "법정 세율표를 직접 입력해 쓰면 개정을 반영하지 못하므로 정책을 읽는 kr_income 등을 우선 쓴다."
     ),
     version="1.0.0",
 )
@@ -157,7 +183,7 @@ def tax_progressive(
     brackets:       list[dict[str, Any]],
     rounding:       str = "HALF_UP",
     decimals:       int = 0,
-) -> dict[str, Any]:
+) -> TaxProgressiveResult:
     """Calculate tax using progressive (marginal) brackets.
 
     Args:

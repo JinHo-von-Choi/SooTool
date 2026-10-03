@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -26,6 +26,14 @@ from sootool.policy_mgmt.paths import (
     get_override_policy_dir,
     safe_component,
 )
+from sootool.policy_mgmt.tool_types import (
+    PolicyActivateResult,
+    PolicyDiff,
+    PolicyImportResult,
+    PolicyProposeResult,
+    PolicyRollbackResult,
+    ValidationReport,
+)
 from sootool.policy_mgmt.validators import validate_policy
 
 
@@ -33,8 +41,9 @@ from sootool.policy_mgmt.validators import validate_policy
     namespace="sootool",
     name="policy_propose",
     description=(
-        "[Admin] Create a draft policy. Returns validation report + year-over-year diff. "
-        "Draft is not yet activated."
+        "[관리자] 정책 초안을 만든다. 6단계 검증 보고서와 전년도 대비 변경점을 반환하며 아직 시행되지 않는다. "
+        "관리자 모드(SOOTOOL_ADMIN_MODE=1)가 아니면 error=admin_required 를 반환한다. 초안은 expires_at 에 만료되고 "
+        "반영은 sootool.policy_activate 로 한다."
     ),
     version="1.0.0",
     read_only=False,
@@ -51,11 +60,11 @@ def policy_propose(
     sensitivity_threshold: float | None = None,
     auto_fix_sha256:      bool = False,
     draft_id:             str | None = None,
-) -> dict[str, Any]:
+) -> PolicyProposeResult:
     """Save a policy draft after running the validation pipeline."""
     err = _require_admin()
     if err:
-        return err
+        return cast(PolicyProposeResult, err)
     safe_component(domain, "domain")
     safe_component(name, "name")
 
@@ -105,14 +114,14 @@ def policy_propose(
     if prev_data is not None:
         doc_new = yaml.safe_load(effective_yaml)
         new_data = doc_new.get("data", {}) if isinstance(doc_new, dict) else {}
-        diff_result = diff_policies({"data": prev_data}, {"data": new_data}, year - 1, year)
+        diff_result = cast(PolicyDiff, diff_policies({"data": prev_data}, {"data": new_data}, year - 1, year))
 
     return {
         "draft_id":   meta["draft_id"],
         "domain":     domain,
         "name":       name,
         "year":       year,
-        "validation": report,
+        "validation": cast(ValidationReport, report),
         "diff":       diff_result,
         "expires_at": meta["expires_at"],
     }
@@ -122,18 +131,19 @@ def policy_propose(
     namespace="sootool",
     name="policy_activate",
     description=(
-        "[Admin] Promote a draft to the override store, invalidate cache, and record audit log."
+        "[관리자] 검증을 통과한 초안을 덮어쓰기 저장소에 반영하고 캐시를 비우며 감사 기록을 남긴다. 검증 오류가 있는 초안은 "
+        "validation_failed 로 거부하고, 관리자 모드가 아니면 admin_required 를 반환한다. 반영된 초안은 삭제된다."
     ),
     version="1.0.0",
     read_only=False,
     destructive=True,
     idempotent=False,
 )
-def policy_activate(draft_id: str) -> dict[str, Any]:
+def policy_activate(draft_id: str) -> PolicyActivateResult:
     """Activate a previously proposed draft."""
     err = _require_admin()
     if err:
-        return err
+        return cast(PolicyActivateResult, err)
 
     draft_meta = drafts.load_draft(draft_id)
     if (draft_meta.get("validation") or {}).get("status") == "error":
@@ -193,14 +203,16 @@ def policy_activate(draft_id: str) -> dict[str, Any]:
     namespace="sootool",
     name="policy_rollback",
     description=(
-        "[Admin] Remove the override file for a policy, reverting to the package default."
+        "[관리자] 덮어쓰기 저장소의 정책 버전 파일을 지워 패키지 기본값으로 되돌린다. 같은 연도에 덮어쓴 버전이 여럿이면 "
+        "effective_date(YYYY-MM-DD)로 고르며 지정하지 않으면 ambiguous_version 을 반환한다. 지울 파일이 없으면 "
+        "rolled_back 이 false 다. 관리자 모드가 필요하다."
     ),
     version="1.0.0",
     read_only=False,
     destructive=True,
     idempotent=False,
 )
-def policy_rollback(domain: str, name: str, year: int, effective_date: str = "") -> dict[str, Any]:
+def policy_rollback(domain: str, name: str, year: int, effective_date: str = "") -> PolicyRollbackResult:
     """Remove the override version for domain/name/year, reverting to the package default.
 
     A year may have several override versions (different effective dates). Pass
@@ -209,7 +221,7 @@ def policy_rollback(domain: str, name: str, year: int, effective_date: str = "")
     """
     err = _require_admin()
     if err:
-        return err
+        return cast(PolicyRollbackResult, err)
 
     safe_component(domain, "domain")
     safe_component(name, "name")
@@ -279,8 +291,9 @@ def policy_rollback(domain: str, name: str, year: int, effective_date: str = "")
     namespace="sootool",
     name="policy_import",
     description=(
-        "[Admin] Import an external policy bundle into the override store. "
-        "Optional ed25519 signature verification."
+        "[관리자] sootool.policy_export 가 만든 묶음을 검증한 뒤 덮어쓰기 저장소에 반영한다. require_signature 와 "
+        "public_key_b64 로 ed25519 서명을 검증하며 환경변수 SOOTOOL_POLICY_REQUIRE_SIGNATURE 가 켜져 있으면 서명이 필수다. "
+        "검증 오류는 validation_failed 로 거부하고, 관리자 모드가 필요하다."
     ),
     version="1.0.0",
     read_only=False,
@@ -291,11 +304,11 @@ def policy_import(
     bundle:             dict[str, Any],
     require_signature:  bool = False,
     public_key_b64:     str | None = None,
-) -> dict[str, Any]:
+) -> PolicyImportResult:
     """Import a bundle exported by policy_export."""
     err = _require_admin()
     if err:
-        return err
+        return cast(PolicyImportResult, err)
 
     # Check SOOTOOL_POLICY_REQUIRE_SIGNATURE env
     env_require_sig = os.environ.get("SOOTOOL_POLICY_REQUIRE_SIGNATURE", "").strip() in ("1", "true", "yes")
@@ -334,7 +347,7 @@ def policy_import(
     if report["status"] == "error":
         return {
             "error":      "validation_failed",
-            "validation": report,
+            "validation": cast(ValidationReport, report),
         }
 
     # Write to override. A different effective date makes a new version file.
@@ -368,5 +381,5 @@ def policy_import(
         "year":      year,
         "audit_id":  audit_id,
         "sha256":    sha256_after,
-        "validation": report,
+        "validation": cast(ValidationReport, report),
     }

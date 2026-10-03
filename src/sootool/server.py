@@ -4,7 +4,7 @@ import json
 import os
 from collections.abc import Callable
 from decimal import Decimal
-from typing import Any
+from typing import Any, NotRequired, cast
 
 from mcp.server.caching import CacheableMethod, CacheHint
 from mcp.server.mcpserver import MCPServer
@@ -12,17 +12,34 @@ from mcp.types import ToolAnnotations
 
 from sootool.boundary import SooToolServer, with_error_contract
 from sootool.core.audit import CalcTrace
+from sootool.core.batch import BatchExecutor, BatchResult
+from sootool.core.calc import calc as _calc
+from sootool.core.calc.api import CalcResult
 from sootool.core.decimal_ops import D
 from sootool.core.decimal_ops import add as d_add
 from sootool.core.decimal_ops import div as d_div
 from sootool.core.decimal_ops import mul as d_mul
 from sootool.core.decimal_ops import sub as d_sub
 from sootool.core.engines import engine_of
+from sootool.core.pipeline import PipelineExecutor, PipelineResult, resume_pipeline
 from sootool.core.receipts import sign_stamp
 from sootool.core.registry import REGISTRY, ToolEntry
 from sootool.core.request_context import STATELESS_REQUEST
+from sootool.core.result_types import ToolResult, Trace
 from sootool.skill_guide.hints import generate_hints, inject_meta
 from sootool.skill_guide.session_state import STORE, ToolCall
+
+# ---------------------------------------------------------------------------
+# Result types
+# ---------------------------------------------------------------------------
+
+class ArithmeticResult(ToolResult):
+    """core.add, sub, mul, div 의 결과. trace_level=none 이거나 응답 크기 한도로 잘리면 trace 가 없다."""
+
+    result:    str
+    trace:     NotRequired[Trace]
+    truncated: NotRequired[bool]
+
 
 # ---------------------------------------------------------------------------
 # Request parsing
@@ -99,6 +116,13 @@ def _enforce_payload_limit(response: dict[str, Any]) -> dict[str, Any]:
 
     result["truncated"] = True
     return result
+
+
+def _arithmetic_response(out: Decimal, trace: CalcTrace, trace_level: str) -> ArithmeticResult:
+    """사칙연산 결과를 trace 수준과 응답 크기 한도에 맞춰 응답으로 만든다."""
+    trace.output(out)
+    result = {"result": str(out), "trace": trace.to_dict()}
+    return cast(ArithmeticResult, _enforce_payload_limit(_apply_trace_level(result, trace_level)))
 
 
 # ---------------------------------------------------------------------------
@@ -217,74 +241,57 @@ def _register_core_tools() -> None:
         return
     _CORE_TOOLS_REGISTERED = True
 
-    @REGISTRY.tool(namespace="core", name="add", description="Decimal 정밀 덧셈. operands(숫자 문자열 목록)의 합을 result 문자열로 반환하며 float 로 변환하지 않는다.")
-    def core_add(operands: list[str], trace_level: str = "summary") -> dict[str, Any]:
+    @REGISTRY.tool(namespace="core", name="add", description="Decimal 정밀 덧셈. operands(쉼표, 단위, 공백 없는 숫자 문자열 목록)의 합을 result 문자열로 반환한다. 유효숫자 50자리 안에서 계산하고 별도 반올림은 없다. trace_level 은 summary(기본), full, none. 합계를 직접 암산하지 말고 이 도구로 구한다.")
+    def core_add(operands: list[str], trace_level: str = "summary") -> ArithmeticResult:
         trace = CalcTrace(tool="core.add", formula="sum(operands)")
         decimals = [D(x) for x in operands]
         trace.input("operands", decimals)
-        out = d_add(*decimals)
-        trace.output(out)
-        result = {"result": str(out), "trace": trace.to_dict()}
-        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        return _arithmetic_response(d_add(*decimals), trace, trace_level)
 
-    @REGISTRY.tool(namespace="core", name="sub", description="Decimal 정밀 뺄셈 a - b. a 와 b 는 숫자 문자열.")
-    def core_sub(a: str, b: str, trace_level: str = "summary") -> dict[str, Any]:
+    @REGISTRY.tool(namespace="core", name="sub", description="Decimal 정밀 뺄셈 a - b. a 와 b 는 쉼표, 단위, 공백 없는 숫자 문자열이며 결과는 result 문자열이다. 유효숫자 50자리 안에서 계산하고 별도 반올림은 없다. 순서에 주의한다(a 에서 b 를 뺀다).")
+    def core_sub(a: str, b: str, trace_level: str = "summary") -> ArithmeticResult:
         trace = CalcTrace(tool="core.sub", formula="a-b")
         da, db = D(a), D(b)
         trace.input("a", da)
         trace.input("b", db)
-        out = d_sub(da, db)
-        trace.output(out)
-        result = {"result": str(out), "trace": trace.to_dict()}
-        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        return _arithmetic_response(d_sub(da, db), trace, trace_level)
 
-    @REGISTRY.tool(namespace="core", name="mul", description="Decimal 정밀 곱셈. operands(숫자 문자열 목록)의 곱을 result 문자열로 반환한다.")
-    def core_mul(operands: list[str], trace_level: str = "summary") -> dict[str, Any]:
+    @REGISTRY.tool(namespace="core", name="mul", description="Decimal 정밀 곱셈. operands(쉼표, 단위, 공백 없는 숫자 문자열 목록)의 곱을 result 문자열로 반환한다. 유효숫자 50자리를 넘는 곱은 그 자릿수로 반올림되며 그 밖의 반올림은 없다. 세금이나 이자 계산에는 전용 도구를 쓴다.")
+    def core_mul(operands: list[str], trace_level: str = "summary") -> ArithmeticResult:
         trace = CalcTrace(tool="core.mul", formula="prod(operands)")
         decimals = [D(x) for x in operands]
         trace.input("operands", decimals)
-        out = d_mul(*decimals)
-        trace.output(out)
-        result = {"result": str(out), "trace": trace.to_dict()}
-        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        return _arithmetic_response(d_mul(*decimals), trace, trace_level)
 
-    @REGISTRY.tool(namespace="core", name="div", description="Decimal 정밀 나눗셈 a / b. a 와 b 는 숫자 문자열이며 b 가 0 이면 오류를 반환한다.")
-    def core_div(a: str, b: str, trace_level: str = "summary") -> dict[str, Any]:
+    @REGISTRY.tool(namespace="core", name="div", description="Decimal 정밀 나눗셈 a / b. a 와 b 는 쉼표, 단위, 공백 없는 숫자 문자열이며 b 가 0 이면 오류를 반환한다. 몫은 유효숫자 50자리로 계산되어 나누어떨어지지 않으면 50자리에서 끊긴다. 정수 몫이나 원 단위 절사가 필요하면 결과를 별도로 반올림한다.")
+    def core_div(a: str, b: str, trace_level: str = "summary") -> ArithmeticResult:
         trace = CalcTrace(tool="core.div", formula="a/b")
         da, db = D(a), D(b)
         trace.input("a", da)
         trace.input("b", db)
-        out = d_div(da, db)
-        trace.output(out)
-        result = {"result": str(out), "trace": trace.to_dict()}
-        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        return _arithmetic_response(d_div(da, db), trace, trace_level)
 
-    from sootool.core.batch import BatchExecutor  # noqa: PLC0415
-
-    @REGISTRY.tool(namespace="core", name="batch", description="서로 독립인 도구 호출 N개를 병렬 실행한다. 결과는 입력 id 순서로 정렬되며 item_timeout_s 와 batch_timeout_s 가 적용된다.")
-    def core_batch(items: list[dict[str, Any]], max_workers: int = 16, item_timeout_s: float = 10.0, batch_timeout_s: float = 60.0, deterministic: bool = True) -> dict[str, Any]:
+    @REGISTRY.tool(namespace="core", name="batch", description="서로 독립인 도구 호출 N개를 병렬 실행한다. items 는 id, tool, args 를 가진 객체 목록(최대 500개, id 중복 불가)이고 읽기 전용 도구만 실행된다. 결과는 입력 id 순서이며 항목별 status(ok, error, timeout)와 item_timeout_s, batch_timeout_s 가 적용된다. 앞 결과를 뒤 입력에 쓰려면 core.pipeline 을 쓴다.")
+    def core_batch(items: list[dict[str, Any]], max_workers: int = 16, item_timeout_s: float = 10.0, batch_timeout_s: float = 60.0, deterministic: bool = True) -> BatchResult:
         ex = BatchExecutor(registry=REGISTRY, max_workers=max_workers, item_timeout_s=item_timeout_s, batch_timeout_s=batch_timeout_s, deterministic=deterministic)
         return ex.run(items=items)
 
-    from sootool.core.pipeline import PipelineExecutor, resume_pipeline
-
-    @REGISTRY.tool(namespace="core", name="pipeline", description="의존 관계(DAG)를 가진 도구 호출을 순서대로 실행하고 앞 단계 결과를 뒤 단계 입력으로 전달한다. step_timeout_s 와 pipeline_timeout_s 가 적용된다.")
-    def core_pipeline(steps: list[dict[str, Any]], step_timeout_s: float = 2.0, pipeline_timeout_s: float = 30.0) -> dict[str, Any]:
+    @REGISTRY.tool(namespace="core", name="pipeline", description="의존 관계(DAG)를 가진 도구 호출을 순서대로 실행하고 앞 단계 결과를 뒤 단계 입력으로 전달한다. steps 는 id, tool, args 목록(최대 50단계, 깊이 10)이며 args 에서 ${단계id.result.필드} 로 앞 결과를 참조한다. 실패한 단계의 하류는 skipped 가 되고 pipeline_id 로 재개할 수 있다. 서로 독립인 호출은 core.batch 를 쓴다.")
+    def core_pipeline(steps: list[dict[str, Any]], step_timeout_s: float = 2.0, pipeline_timeout_s: float = 30.0) -> PipelineResult:
         ex = PipelineExecutor(registry=REGISTRY, step_timeout_s=step_timeout_s, pipeline_timeout_s=pipeline_timeout_s)
         return ex.run(steps=steps)
 
-    @REGISTRY.tool(namespace="core", name="pipeline_resume", description="이전 core.pipeline 실행을 pipeline_id 로 지정하고 from_step 단계부터 다시 실행한다.")
-    def core_pipeline_resume(pipeline_id: str, from_step: str) -> dict[str, Any]:
+    @REGISTRY.tool(namespace="core", name="pipeline_resume", description="이전 core.pipeline 실행을 pipeline_id 로 지정하고 from_step 단계부터 다시 실행한다. from_step 앞쪽의 성공 단계는 결과를 재사용(reused)한다. 실행 기록은 약 10분 동안만 보관되어 만료되면 오류가 난다. 입력을 바꿔 다시 계산하려면 새로 core.pipeline 을 호출한다.")
+    def core_pipeline_resume(pipeline_id: str, from_step: str) -> PipelineResult:
         return resume_pipeline(pipeline_id, from_step, REGISTRY)
-
-    from sootool.core.calc import calc as _calc  # noqa: PLC0415
 
     @REGISTRY.tool(
         namespace   = "core",
         name        = "calc",
         description = (
-            "AST 기반 안전 수식 평가기. Decimal 결과 + mpmath 초월 함수. "
-            "변수 바인딩 Decimal 문자열 전용."
+            "AST 기반 안전 수식 평가기. expression 은 사칙, %, //, **, 괄호, 함수(sqrt, abs, floor, ceil, round, log, ln, exp, 삼각함수 등), "
+            "상수(pi, e, tau)를 쓸 수 있고 variables 는 Decimal 문자열 전용이다. 결과는 precision(기본 50)자리 십진 문자열이다. "
+            "비교, 조건식, 속성 접근은 거부한다. 세금, 금융 공식은 전용 도구를 쓴다."
         ),
         version     = "1.0.0",
     )
@@ -293,14 +300,14 @@ def _register_core_tools() -> None:
         variables:   dict[str, str] | None = None,
         precision:   int                   = 50,
         trace_level: str                   = "summary",
-    ) -> dict[str, Any]:
+    ) -> CalcResult:
         result = _calc(
             expression  = expression,
             variables   = variables,
             precision   = precision,
             trace_level = trace_level,
         )
-        return _enforce_payload_limit(_apply_trace_level(result, trace_level))
+        return cast(CalcResult, _enforce_payload_limit(_apply_trace_level(result, trace_level)))
 
 
 

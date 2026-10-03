@@ -19,16 +19,38 @@ import bisect
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any
+from typing import Any, NotRequired, TypedDict, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError, PolicyFormatError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
+
+
+class WithholdingLookupRow(TypedDict):
+    """조회한 간이세액표 행(천원) 또는 10,000천원 초과 산식 구간."""
+
+    lower_k: NotRequired[int]
+    over_k:  NotRequired[int]
+    upper_k: int | None
+
+
+class WithholdingLookup(TypedDict):
+    method:   str
+    salary_k: str
+    row:      WithholdingLookupRow | None
+
+
+class TaxKrWithholdingSimpleResult(PolicyResult):
+    withheld_tax:    str
+    table_tax:       str
+    child_reduction: str
+    lookup:          WithholdingLookup
 
 
 def _calc_labor_income_deduction(
@@ -225,8 +247,9 @@ def monthly_withholding_tax(
     namespace="tax",
     name="kr_withholding_simple",
     description=(
-        "근로소득 월 원천징수세액 계산. 소득세법 시행령 별표 2 근로소득 간이세액표 조회 "
-        "(10,000천원 초과 산식, 공제대상가족 11명 초과 규정, 8세 이상 20세 이하 자녀 차감 포함)."
+        "근로소득 월 원천징수세액을 소득세법 시행령 별표 2 간이세액표로 구한다. monthly_salary 는 비과세·학자금을 뺀 월급여액(원, Decimal 문자열)이며 "
+        "천원 미만을 버려 [이상, 미만) 행을 찾고, 10,000천원 초과 산식, 공제대상가족 11명 초과 규정, 8세 이상 20세 이하 자녀 차감을 적용한다. "
+        "세액은 원 단위이며 지방소득세 10%는 포함하지 않는다. dependents 는 본인 포함 인원이고 연간 정산(연말정산)에는 쓰지 않는다."
     ),
     version="2.0.0",
     policy=True,
@@ -236,7 +259,7 @@ def tax_kr_withholding_simple(
     dependents:     int,
     year:           int,
     children_8_20:  int = 0,
-) -> dict[str, Any]:
+) -> TaxKrWithholdingSimpleResult:
     """Calculate monthly withholding tax from the statutory 간이세액표.
 
     Args:
@@ -275,7 +298,7 @@ def tax_kr_withholding_simple(
         trace.step(label, value)
     trace.output(str(result.tax))
 
-    resp = {
+    resp: dict[str, Any] = {
         "withheld_tax":    str(result.tax),
         "table_tax":       str(result.table_tax),
         "child_reduction": str(result.child_reduction),
@@ -287,4 +310,4 @@ def tax_kr_withholding_simple(
         "policy_version":  pv,
         "trace":           trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(TaxKrWithholdingSimpleResult, enrich_response(resp, policy_doc))

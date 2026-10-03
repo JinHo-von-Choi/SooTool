@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 from decimal import Decimal
-from typing import Any
+from typing import Any, TypedDict
 
 from sootool.core.audit import CalcTrace
 from sootool.core.catalog import bind_call_arguments, resolve_tool
@@ -21,6 +21,7 @@ from sootool.core.errors import InvalidInputError
 from sootool.core.limits import ensure_max
 from sootool.core.receipts import NON_REPLAYABLE_TOOLS
 from sootool.core.registry import REGISTRY, ToolEntry
+from sootool.core.result_types import Citation, TracedResult
 from sootool.core.solver import bisect
 
 _ANALYSIS_TOOLS = frozenset({"core.solve_for", "core.compare", "core.explain"})
@@ -77,13 +78,30 @@ def _plain(value: Decimal) -> str:
 # core.solve_for
 # ---------------------------------------------------------------------------
 
+class SolveBracket(TypedDict):
+    lower: str
+    upper: str
+
+
+class SolveForResult(TracedResult):
+    solution:    str
+    achieved:    str
+    residual:    str
+    converged:   bool
+    iterations:  int
+    evaluations: int
+    bracket:     SolveBracket
+    at_solution: dict[str, Any]
+
+
 @REGISTRY.tool(
     namespace="core",
     name="solve_for",
     description=(
         "역산: 읽기 전용 도구 tool 의 결과 필드 target_field 가 target 이 되도록 숫자 문자열 입력 variable 을 "
         "[lower, upper] 에서 이분법(Decimal)으로 찾는다. 예: 세후 월급에서 세전 월급 구하기. "
-        "구간 양 끝의 함수값 부호가 달라야 하며 단계별 함수는 가장 가까운 해와 residual 을 반환한다."
+        "구간 양 끝의 함수값 부호가 달라야 하며 단계별 함수는 가장 가까운 해와 residual 을 반환한다. "
+        "잔차가 tolerance(기본 0.5) 이내면 converged 가 true 이고 max_iter(기본 100)는 최대 200이다."
     ),
     version="1.0.0",
 )
@@ -98,7 +116,7 @@ def solve_for(
     tolerance:    str  = "0.5",
     max_iter:     int  = 100,
     integer:      bool = False,
-) -> dict[str, Any]:
+) -> SolveForResult:
     trace = CalcTrace(
         tool="core.solve_for",
         formula="find x in [lower, upper] such that tool(variable=x)[target_field] = target (bisection)",
@@ -151,13 +169,26 @@ def solve_for(
 # core.compare
 # ---------------------------------------------------------------------------
 
+class CompareRow(TypedDict):
+    name:              str
+    arguments:         dict[str, Any]
+    values:            dict[str, Any]
+    delta_vs_baseline: dict[str, str | None]
+
+
+class CompareResult(TracedResult):
+    tool:      str
+    baseline:  dict[str, Any]
+    scenarios: list[CompareRow]
+
+
 @REGISTRY.tool(
     namespace="core",
     name="compare",
     description=(
         "시나리오 비교: 읽기 전용 도구 tool 을 base_arguments 로 실행한 기준안과, 각 시나리오의 arguments 로 덮어쓴 "
         "실행을 비교한다. fields 는 결과에서 비교할 필드 경로 목록(예: tax, breakdown.0.rate). 숫자 필드는 기준안 대비 "
-        "차이(delta)를 함께 반환한다."
+        "차이(delta_vs_baseline)를, 숫자가 아닌 필드는 null 을 반환한다. 시나리오는 이름이 겹치지 않게 최대 50개까지 받는다."
     ),
     version="1.0.0",
 )
@@ -166,7 +197,7 @@ def compare(
     base_arguments: dict[str, Any],
     scenarios:      list[dict[str, Any]],
     fields:         list[str],
-) -> dict[str, Any]:
+) -> CompareResult:
     trace = CalcTrace(tool="core.compare", formula="values(scenario) and values(scenario) - values(baseline)")
     entry = _target_entry(tool)
     ensure_max("SCENARIOS", len(scenarios), "scenarios")
@@ -181,7 +212,7 @@ def compare(
 
     baseline = values_of(base_arguments)
 
-    rows: list[dict[str, Any]] = []
+    rows: list[CompareRow] = []
     names: set[str] = set()
     for index, scenario in enumerate(scenarios):
         if not isinstance(scenario, dict) or not isinstance(scenario.get("name"), str) or not scenario["name"]:
@@ -233,7 +264,21 @@ def _preview(value: Any) -> str:
     return text if len(text) <= _VALUE_PREVIEW_CHARS else text[: _VALUE_PREVIEW_CHARS - 1] + "…"
 
 
-def render_explanation(tool: str, response: dict[str, Any], engine: str, lang: str) -> dict[str, Any]:
+class Explanation(TypedDict):
+    summary:   str
+    lines:     list[str]
+    citations: list[Citation]
+
+
+class ExplainResult(TracedResult):
+    summary:   str
+    lines:     list[str]
+    citations: list[Citation]
+    result:    dict[str, Any]
+    lang:      str
+
+
+def render_explanation(tool: str, response: dict[str, Any], engine: str, lang: str) -> Explanation:
     """응답의 trace 와 정책 메타데이터를 평문 설명으로 직렬화한다. 수치는 바꾸지 않는다."""
     text      = _LABELS[lang]
     raw_trace = response.get("trace")
@@ -253,7 +298,7 @@ def render_explanation(tool: str, response: dict[str, Any], engine: str, lang: s
     if "output" in trace:
         lines.append(f"{text['output']}: {_preview(trace['output'])}")
 
-    citations: list[dict[str, Any]] = []
+    citations: list[Citation] = []
     status = response.get("policy_status")
     if status:
         end = response.get("policy_effective_to") or text["current"]
@@ -276,11 +321,12 @@ def render_explanation(tool: str, response: dict[str, Any], engine: str, lang: s
     name="explain",
     description=(
         "설명 모드: 읽기 전용 도구 tool 을 arguments 로 실행하고, 수식, 입력, 계산 단계, 결과, 적용 정책(상태, 시행 기간)과 "
-        "근거 조문을 평문(lang: ko 또는 en)으로 풀어 반환한다. 수치는 도구 결과 그대로이며 설명은 trace 를 서술할 뿐이다."
+        "근거 조문을 평문(lang: ko 또는 en)으로 풀어 반환한다. 수치는 도구 결과 그대로이며 설명은 trace 를 서술할 뿐이다. "
+        "긴 값은 300자에서 줄여 보이고 원본은 result 에 있다."
     ),
     version="1.0.0",
 )
-def explain(tool: str, arguments: dict[str, Any], lang: str = "ko") -> dict[str, Any]:
+def explain(tool: str, arguments: dict[str, Any], lang: str = "ko") -> ExplainResult:
     trace = CalcTrace(tool="core.explain", formula="render(trace(tool(arguments)))")
     if lang not in _LABELS:
         raise InvalidInputError(f"lang 은 {sorted(_LABELS)} 중 하나여야 합니다: {lang!r}")
@@ -291,4 +337,11 @@ def explain(tool: str, arguments: dict[str, Any], lang: str = "ko") -> dict[str,
     trace.input("tool", entry.full_name)
     trace.input("lang", lang)
     trace.output(rendered["summary"])
-    return {**rendered, "result": response, "lang": lang, "trace": trace.to_dict()}
+    return {
+        "summary":   rendered["summary"],
+        "lines":     rendered["lines"],
+        "citations": rendered["citations"],
+        "result":    response,
+        "lang":      lang,
+        "trace":     trace.to_dict(),
+    }

@@ -27,18 +27,33 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
 
 _RESTRICTED_BUSINESS_TYPES = frozenset(["real_estate_rental"])
+
+
+class TaxKrSimplifiedVatResult(PolicyResult):
+    supply_value:         str
+    business_type:        str
+    value_added_rate:     str
+    vat_payable:          str
+    input_credit:         str
+    card_sales_credit:    str
+    net_payable:          str
+    threshold_exceeded:   bool
+    threshold_basis:      str
+    applicable_threshold: str
+    nonpayment_exempt:    bool
 
 
 def _non_negative(name: str, value: str) -> Decimal:
@@ -53,10 +68,10 @@ def _non_negative(name: str, value: str) -> Decimal:
     namespace="tax",
     name="kr_simplified_vat",
     description=(
-        "한국 간이과세자 부가가치세 계산 (부가세법 §46·§61·§63·§69). "
-        "업종별 부가가치율 × 10%를 공급대가에 적용. "
-        "세금계산서등 수취 공급대가 × 0.5% 공제, 신용카드 등 매출세액공제, "
-        "4,800만원 미만 납부 면제 처리."
+        "한국 간이과세자 부가가치세를 계산한다(부가가치세법 제46조·제61조·제63조·제69조). 금액은 원 단위 Decimal 문자열이다. "
+        "공급대가 x 업종별 부가가치율 x 10%에서 세금계산서등 수취분 0.5%와 신용카드 등 매출세액공제를 빼며, "
+        "공급대가가 4,800만원 미만이면 납부 면제로 0을 돌려준다. 모든 금액은 원 미만을 버리고 일반과세자 계산에는 쓸 수 없다. "
+        "간이과세 기준(1억4백만원) 초과여도 계산은 하며 threshold_exceeded 로만 표시하고, prior_year_supply 를 생략하면 당해 공급대가로 판정한다."
     ),
     version="1.0.0",
     policy=True,
@@ -69,7 +84,7 @@ def tax_kr_simplified_vat(
     card_sales_amount:   str        = "0",
     prior_year_supply:   str | None = None,
     restricted_business: bool       = False,
-) -> dict[str, Any]:
+) -> TaxKrSimplifiedVatResult:
     """Calculate simplified-taxpayer VAT.
 
     Args:
@@ -177,4 +192,4 @@ def tax_kr_simplified_vat(
         "policy_version":       pv,
         "trace":                trace.to_dict(),
     }
-    return enrich_response(resp, policy_doc)
+    return cast(TaxKrSimplifiedVatResult, enrich_response(resp, policy_doc))

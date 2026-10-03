@@ -19,12 +19,13 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.kr_withholding import _calc_labor_income_deduction
@@ -39,6 +40,20 @@ _LABOR_CREDIT_THRESHOLD = Decimal("1300000")
 _LABOR_CREDIT_LOW_RATE  = Decimal("0.55")
 _LABOR_CREDIT_BASE      = Decimal("715000")
 _LABOR_CREDIT_HIGH_RATE = Decimal("0.30")
+
+
+class KrYearEndTaxSettlementResult(PolicyResult):
+    annual_gross:            str
+    labor_deduction:         str
+    personal_deduction:      str
+    taxable_income:          str
+    computed_tax:            str
+    labor_income_tax_credit: str
+    tax_credit:              str
+    decided_tax:             str
+    prepaid_tax:             str
+    refund:                  str
+    status:                  Literal["refund", "additional", "settled"]
 
 
 def _labor_income_tax_credit_limit(total_salary: Decimal) -> Decimal:
@@ -68,8 +83,9 @@ def _labor_income_tax_credit(computed_tax: Decimal, total_salary: Decimal) -> De
     namespace="payroll",
     name="kr_year_end_tax_settlement",
     description=(
-        "한국 연말정산 환급/추가납부 계산. 근로소득공제·기본공제·"
-        "근로소득세액공제·표준세액공제 기반 간이 모델."
+        "연말정산 환급 또는 추가납부액을 간이 모델로 구한다. 연간 총급여에서 근로소득공제, 인당 기본공제, 추가 소득공제를 "
+        "뺀 과세표준에 소득세 누진세율을 적용하고 근로소득세액공제, 표준세액공제 13만원, 추가 세액공제를 차감해 결정세액(원 "
+        "미만 버림)을 낸 뒤 기납부세액과 비교한다. 의료비·교육비·기부금은 각 도구로 따로 구해 extra_* 로 넣어야 한다."
     ),
     version="2.0.0",
     policy=True,
@@ -81,7 +97,7 @@ def payroll_kr_year_end_tax_settlement(
     dependents:         int = 1,
     extra_deductions:   str = "0",
     extra_tax_credits:  str = "0",
-) -> dict[str, Any]:
+) -> KrYearEndTaxSettlementResult:
     """Calculate year-end tax settlement refund or additional tax due.
 
     Args:
@@ -198,4 +214,4 @@ def payroll_kr_year_end_tax_settlement(
         "policy_version":     pv,
         "trace":              trace.to_dict(),
     }
-    return enrich_response(resp, inc_doc)
+    return cast(KrYearEndTaxSettlementResult, enrich_response(resp, inc_doc))

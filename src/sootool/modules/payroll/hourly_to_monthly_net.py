@@ -11,25 +11,41 @@ Modified: 2026-10-03
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy
 from sootool.core.rounding import apply as round_apply
-from sootool.modules.payroll.kr_salary import payroll_kr_salary
+from sootool.modules.payroll.kr_salary import (
+    SalaryInsurances,
+    SalaryTaxes,
+    payroll_kr_salary,
+)
 
 DEFAULT_MONTHLY_HOURS = Decimal("209")  # 주 40h 법정 기준
+
+
+class HourlyToMonthlyNetResult(PolicyResult):
+    hourly_wage:   str
+    monthly_hours: str
+    monthly_gross: str
+    taxable:       str
+    net:           str
+    insurances:    SalaryInsurances
+    taxes:         SalaryTaxes
 
 
 @REGISTRY.tool(
     namespace="payroll",
     name="hourly_to_monthly_net",
     description=(
-        "시급 → 월급(주 40h, 월 209h 환산) → 실수령액. "
-        "kr_salary와 연계하여 4대보험·세액 공제 반영."
+        "시급(원, 문자열)을 월 환산시간(기본 209시간, 주 40시간과 주휴 포함)에 곱해 월급으로 바꾸고 원 미만을 버린 뒤 "
+        "payroll.kr_salary 로 4대보험과 간이세액표 소득세를 공제한 실수령액을 구한다. 식대 비과세 한도, 공제대상가족 수, "
+        "8~20세 자녀 수(children_8_20)를 받는다. 주 40시간이 아닌 근로는 monthly_hours 를 직접 줘야 한다."
     ),
     version="1.1.0",
     policy=True,
@@ -41,7 +57,7 @@ def payroll_hourly_to_monthly_net(
     meal_allowance: str  = "0",
     num_dependents: int  = 1,
     children_8_20:  int  = 0,
-) -> dict[str, Any]:
+) -> HourlyToMonthlyNetResult:
     """Convert an hourly wage to monthly gross and net pay.
 
     Args:
@@ -53,7 +69,7 @@ def payroll_hourly_to_monthly_net(
         children_8_20:  공제대상가족 중 8세 이상 20세 이하 자녀 수(기본 0)
 
     Returns:
-        {hourly_wage, monthly_hours, monthly_gross, net, insurances, taxes,
+        {hourly_wage, monthly_hours, monthly_gross, taxable, net, insurances, taxes,
          policy_version, trace}
     """
     trace = CalcTrace(
@@ -109,11 +125,12 @@ def payroll_hourly_to_monthly_net(
     }
     # Propagate policy_source/etc. from the delegated call if present
     for key in (
-        "policy_source", "policy_audit_id",
-        "policy_sha256", "policy_effective_date",
+        "policy_source", "policy_audit_id", "policy_sha256",
+        "policy_effective_date", "policy_effective_to",
+        "policy_status", "policy_citations",
     ):
         if key in salary_resp:
             resp[key] = salary_resp[key]
     if "_meta" in salary_resp:
         resp["_meta"] = salary_resp["_meta"]
-    return resp
+    return cast(HourlyToMonthlyNetResult, resp)
