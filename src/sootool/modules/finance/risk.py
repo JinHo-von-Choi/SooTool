@@ -12,12 +12,14 @@ from decimal import Decimal
 from typing import Any
 
 import numpy as np
-import scipy.stats as stats
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
+from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+
+stats = lazy_module("scipy.stats")
 
 
 def _to_decimal_array(values: list[str]) -> list[Decimal]:

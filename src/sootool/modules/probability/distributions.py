@@ -12,13 +12,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from scipy import stats
-
 from sootool.core.audit import CalcTrace
 from sootool.core.cast import decimal_to_float64, float64_to_decimal_str
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
+from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+
+stats = lazy_module("scipy.stats")
 
 _SIG_DIGITS = 10  # significant digits for output
 

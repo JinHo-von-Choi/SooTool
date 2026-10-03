@@ -13,13 +13,15 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-from scipy.interpolate import CubicSpline
 
 from sootool.core.audit import CalcTrace
 from sootool.core.cast import decimal_to_float64, float64_to_decimal_str
 from sootool.core.decimal_ops import D
 from sootool.core.errors import DomainConstraintError, InvalidInputError
+from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+
+scipy_interpolate = lazy_module("scipy.interpolate")
 
 _SIG = 12
 
@@ -135,7 +137,7 @@ def interpolate_cubic_spline(
     trace.input("x_query", x_query)
     trace.input("bc_type",  bc_type)
 
-    cs = CubicSpline(xs_arr, ys_arr, bc_type=bc_type)
+    cs = scipy_interpolate.CubicSpline(xs_arr, ys_arr, bc_type=bc_type)
     y_val = float(cs(xq))
     y_str = float64_to_decimal_str(y_val, digits=_SIG)
     trace.step("y", y_str)

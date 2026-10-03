@@ -10,12 +10,14 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-import statsmodels.api as sm
 
 from sootool.core.audit import CalcTrace
 from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
+from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
+
+sm = lazy_module("statsmodels.api")
 
 
 def _fmt(x: float, digits: int = 10) -> str:

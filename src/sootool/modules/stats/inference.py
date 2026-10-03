@@ -10,14 +10,16 @@ from __future__ import annotations
 from typing import Any
 
 import numpy as np
-import scipy.stats as stats
 
 from sootool.core.audit import CalcTrace
 from sootool.core.cast import float64_to_decimal_str
 from sootool.core.errors import InvalidInputError
+from sootool.core.lazy import lazy_module
 from sootool.core.registry import REGISTRY
 from sootool.modules.stats.ci import _ci_mean_from_array
 from sootool.modules.stats.descriptive import _to_float_array
+
+stats = lazy_module("scipy.stats")
 
 
 def _fmt(x: float, digits: int = 10) -> str:
