@@ -1,0 +1,41 @@
+sha256: "9c4d118732be4275dfbf80f143d23824f25d43aa7a85fcf44ac1585b2814fdd9"
+effective_date: "2026-01-01"
+notice_no: "IRS Rev. Proc. 2025-32 sec. 4.03 (LTCG 2026 thresholds) + IRC § 1411 (NIIT)"
+source_url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+citations:
+  - law: "Internal Revenue Code"
+    article: "1(h), 1(j)(5)(B)"
+    url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+    note: "2026 과세연도(2026-01-01 이후 개시) 0% 및 15% 최대 적용액. Rev. Proc. 2025-32 sec. 4.03"
+  - law: "Internal Revenue Code"
+    article: "1411(a)(1), 1411(b)"
+    url: "https://www.law.cornell.edu/uscode/text/26/1411"
+    note: "NIIT 3.8%. 임계액은 법정 고정액(물가연동 없음). 2013-01-01 이후 개시 과세연도부터 시행"
+# 2026-10-03: 2026 과세연도 장기 양도소득세 3구간 (0%/15%/20%).
+# 구간 상한은 일반소득과 양도소득을 합한 과세표준 기준이며, 양도소득은
+# 일반소득 위에 쌓인다(IRC 1(h)(1)).
+data:
+  ltcg_brackets:
+    single:
+      - {upper: 49450,   rate: 0.00}
+      - {upper: 545500,  rate: 0.15}
+      - {upper: null,    rate: 0.20}
+    married_joint:
+      - {upper: 98900,   rate: 0.00}
+      - {upper: 613700,  rate: 0.15}
+      - {upper: null,    rate: 0.20}
+    married_separate:
+      - {upper: 49450,   rate: 0.00}
+      - {upper: 306850,  rate: 0.15}
+      - {upper: null,    rate: 0.20}
+    head_of_household:
+      - {upper: 66200,   rate: 0.00}
+      - {upper: 579600,  rate: 0.15}
+      - {upper: null,    rate: 0.20}
+  niit:
+    rate: 0.038
+    thresholds:
+      single:            200000
+      married_joint:     250000
+      married_separate:  125000
+      head_of_household: 200000

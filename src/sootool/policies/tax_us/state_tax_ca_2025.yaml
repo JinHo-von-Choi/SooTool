@@ -1,62 +1,75 @@
-sha256: "acb1f29842050b6e3a3519d5e86a9f0ac5759785feffee2e58b3f1fde0aa830f"
+sha256: "7b49c55b619ee001b957bdaffdf622a2a23e9daf9b93a76bec31c12636b93cce"
 effective_date: "2025-01-01"
-notice_no: "California FTB 2025 Tax Rate Schedules (placeholder-verified)"
-source_url: "https://www.ftb.ca.gov/forms/2025/2025-540-booklet.html"
-# 2026-04-23: California 2025 주소득세 누진구간 (R&TC § 17041).
-# 9 basic brackets + 1% Mental Health Services Tax on income > $1M
-# (아래 데이터는 최상단에 13.3% 합산 구간으로 단순화).
-# MFJ/QSS brackets = single brackets의 2배. HoH는 별도 스케줄.
-# Standard deduction은 2025 FTB 기준: 5540 single/MFS, 11080 MFJ/HoH.
-# placeholder-verified: 최종 FTB 공시문 재확인 필요.
+notice_no: "California FTB 2025 Tax Rate Schedules; 2025 Form 540 Booklet (Standard Deduction Chart, line 62 Behavioral Health Services Tax)"
+source_url: "https://www.ftb.ca.gov/forms/2025/2025-540-tax-rate-schedules.pdf"
+citations:
+  - law: "California FTB 2025 Tax Rate Schedules"
+    article: "Schedules X, Y, Z"
+    url: "https://www.ftb.ca.gov/forms/2025/2025-540-tax-rate-schedules.pdf"
+    note: "2025 과세연도(2025-01-01 이후 개시). 과세표준 100,000 초과 시 사용하며 그 이하는 Tax Table 적용"
+  - law: "California FTB 2025 Form 540 Booklet"
+    article: "Line 18 Standard Deduction Chart"
+    url: "https://www.ftb.ca.gov/forms/2025/2025-540-booklet.html"
+    note: "2025 과세연도 표준공제 5,706 single/MFS, 11,412 MFJ/HoH/QSS"
+  - law: "California FTB 2025 Form 540 Booklet"
+    article: "Line 62 Behavioral Health Services Tax"
+    url: "https://www.ftb.ca.gov/forms/2025/2025-540-booklet.html"
+    note: "모든 신고 유형에 과세표준 1,000,000 초과분 1%. 2025-01-01 이후 개시 과세연도부터 Mental Health Services Tax 에서 명칭 변경"
+# 2026-10-03: California 2025 주소득세 누진구간 (Schedules X, Y, Z).
+# brackets 는 FTB 세율 스케줄 9구간을 그대로 옮긴 것이며 base 는 표에 인쇄된
+# 해당 구간 기준액이다. 세액 = base + rate x (과세표준 - 하한).
+# surcharge 는 Behavioral Health Services Tax: 신고 유형과 무관하게 과세표준
+# 1,000,000 초과분에 1% 를 더한다.
+# MFJ/QSS 구간 상한 = single 상한의 2배. HoH 는 별도 스케줄.
 data:
   has_income_tax: true
   standard_deduction:
-    single:             5540
-    married_joint:      11080
-    married_separate:   5540
-    head_of_household:  11080
+    single:             5706
+    married_joint:      11412
+    married_separate:   5706
+    head_of_household:  11412
   brackets:
     single:
-      - {upper: 10756,    rate: 0.01}
-      - {upper: 25499,    rate: 0.02}
-      - {upper: 40245,    rate: 0.04}
-      - {upper: 55866,    rate: 0.06}
-      - {upper: 70606,    rate: 0.08}
-      - {upper: 360659,   rate: 0.093}
-      - {upper: 432787,   rate: 0.103}
-      - {upper: 721314,   rate: 0.113}
-      - {upper: 1000000,  rate: 0.123}
-      - {upper: null,     rate: 0.133}
+      - {upper: 11079,    rate: 0.01,   base: 0}
+      - {upper: 26264,    rate: 0.02,   base: 110.79}
+      - {upper: 41452,    rate: 0.04,   base: 414.49}
+      - {upper: 57542,    rate: 0.06,   base: 1022.01}
+      - {upper: 72724,    rate: 0.08,   base: 1987.41}
+      - {upper: 371479,   rate: 0.093,  base: 3201.97}
+      - {upper: 445771,   rate: 0.103,  base: 30986.19}
+      - {upper: 742953,   rate: 0.113,  base: 38638.27}
+      - {upper: null,     rate: 0.123,  base: 72219.84}
     married_joint:
-      - {upper: 21512,    rate: 0.01}
-      - {upper: 50998,    rate: 0.02}
-      - {upper: 80490,    rate: 0.04}
-      - {upper: 111732,   rate: 0.06}
-      - {upper: 141212,   rate: 0.08}
-      - {upper: 721318,   rate: 0.093}
-      - {upper: 865574,   rate: 0.103}
-      - {upper: 1442628,  rate: 0.113}
-      - {upper: 2000000,  rate: 0.123}
-      - {upper: null,     rate: 0.133}
+      - {upper: 22158,    rate: 0.01,   base: 0}
+      - {upper: 52528,    rate: 0.02,   base: 221.58}
+      - {upper: 82904,    rate: 0.04,   base: 828.98}
+      - {upper: 115084,   rate: 0.06,   base: 2044.02}
+      - {upper: 145448,   rate: 0.08,   base: 3974.82}
+      - {upper: 742958,   rate: 0.093,  base: 6403.94}
+      - {upper: 891542,   rate: 0.103,  base: 61972.37}
+      - {upper: 1485906,  rate: 0.113,  base: 77276.52}
+      - {upper: null,     rate: 0.123,  base: 144439.65}
     married_separate:
-      - {upper: 10756,    rate: 0.01}
-      - {upper: 25499,    rate: 0.02}
-      - {upper: 40245,    rate: 0.04}
-      - {upper: 55866,    rate: 0.06}
-      - {upper: 70606,    rate: 0.08}
-      - {upper: 360659,   rate: 0.093}
-      - {upper: 432787,   rate: 0.103}
-      - {upper: 721314,   rate: 0.113}
-      - {upper: 1000000,  rate: 0.123}
-      - {upper: null,     rate: 0.133}
+      - {upper: 11079,    rate: 0.01,   base: 0}
+      - {upper: 26264,    rate: 0.02,   base: 110.79}
+      - {upper: 41452,    rate: 0.04,   base: 414.49}
+      - {upper: 57542,    rate: 0.06,   base: 1022.01}
+      - {upper: 72724,    rate: 0.08,   base: 1987.41}
+      - {upper: 371479,   rate: 0.093,  base: 3201.97}
+      - {upper: 445771,   rate: 0.103,  base: 30986.19}
+      - {upper: 742953,   rate: 0.113,  base: 38638.27}
+      - {upper: null,     rate: 0.123,  base: 72219.84}
     head_of_household:
-      - {upper: 21527,    rate: 0.01}
-      - {upper: 51000,    rate: 0.02}
-      - {upper: 65744,    rate: 0.04}
-      - {upper: 81364,    rate: 0.06}
-      - {upper: 96107,    rate: 0.08}
-      - {upper: 490493,   rate: 0.093}
-      - {upper: 588593,   rate: 0.103}
-      - {upper: 980987,   rate: 0.113}
-      - {upper: 1000000,  rate: 0.123}
-      - {upper: null,     rate: 0.133}
+      - {upper: 22173,    rate: 0.01,   base: 0}
+      - {upper: 52530,    rate: 0.02,   base: 221.73}
+      - {upper: 67716,    rate: 0.04,   base: 828.87}
+      - {upper: 83805,    rate: 0.06,   base: 1436.31}
+      - {upper: 98990,    rate: 0.08,   base: 2401.65}
+      - {upper: 505208,   rate: 0.093,  base: 3616.45}
+      - {upper: 606251,   rate: 0.103,  base: 41394.72}
+      - {upper: 1010417,  rate: 0.113,  base: 51802.15}
+      - {upper: null,     rate: 0.123,  base: 97472.91}
+  surcharge:
+    name:  "Behavioral Health Services Tax"
+    over:  1000000
+    rate:  0.01

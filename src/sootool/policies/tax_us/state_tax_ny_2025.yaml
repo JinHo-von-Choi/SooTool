@@ -1,11 +1,30 @@
-sha256: "e2880aaaa97b165bf4c58de17fee5dd055c0b6380d01f40b1717821c163d2481"
+sha256: "38896c7724d0a559f827b1cc174d8ff34bc2a8d3a64fef21f48ed353b2cb872a"
 effective_date: "2025-01-01"
-notice_no: "NY Tax Law § 601 (2025 rates, post-2022 extension through 2027)"
-source_url: "https://www.tax.ny.gov/pit/file/tax_tables.htm"
-# 2026-04-23: New York 2025 개인소득세 누진 9구간. Tax Law § 601(a)(1).
-# 최상단 10.9% surcharge는 2021~2027년 한시 운용 중.
-# Standard deduction은 NY IT-201 2025 지침 기준 placeholder-verified.
-# MFS/HoH 구간은 Single 구간과 동일 임시치 적용 (정식 공시 전 placeholder).
+notice_no: "NYS DTF IT-201-I (2025) New York State tax rate schedule and tax computation worksheets 1-16"
+source_url: "https://www.tax.ny.gov/pdf/2025/inc/it201i_2025.pdf"
+citations:
+  - law: "NYS DTF Instructions IT-201-I (2025)"
+    article: "New York State tax rate schedule (p.33)"
+    url: "https://www.tax.ny.gov/pdf/2025/inc/it201i_2025.pdf"
+    note: "2025 과세연도(2025-01-01 이후 개시). Single 과 MFS 는 같은 스케줄"
+  - law: "NYS DTF Instructions IT-201-I (2025)"
+    article: "Tax computation worksheets 1-16 (pp.34-39)"
+    url: "https://www.tax.ny.gov/pdf/2025/inc/it201i_2025.pdf"
+    note: "NYAGI 107,650 초과 시 세액 환수(recapture). NYAGI 25,000,000 초과 시 과세표준 전액에 10.9%"
+  - law: "NYS DTF 2025 standard deductions"
+    article: "New York State standard deduction table"
+    url: "https://www.tax.ny.gov/pit/file/standard_deductions.htm"
+    note: "2025 과세연도 8,000 single/MFS, 16,050 MFJ/QSS, 11,200 HoH"
+# 2026-10-03: New York 2025 개인소득세 누진 9구간.
+# MFJ/QSS, Single/MFS, HoH 세 스케줄. 스케줄 세액은 공시 표의 정수 달러
+# 기준액(base)에 해당 구간 세율 x 하한 초과액을 더한다. NYAGI 가 107,650 을 넘으면
+# recapture 항목의 세액 계산 워크시트 규칙을 적용한다.
+# recapture.worksheets.<status>.first: 과세표준이 taxable_upper 이하일 때
+#   NYAGI 가 agi_threshold + phase_in_width 이상이면 과세표준 x rate,
+#   그 미만이면 스케줄 세액에 (rate 세액 - 스케줄 세액) x 비율을 더한다.
+# recapture.worksheets.<status>.steps: 과세표준이 taxable_over 를 넘는 마지막
+#   단계에서 스케줄 세액 + recapture_base + incremental_benefit x 비율.
+#   비율 = min(NYAGI - taxable_over, phase_in_width) / phase_in_width (소수 넷째 자리).
 data:
   has_income_tax: true
   standard_deduction:
@@ -15,42 +34,73 @@ data:
     head_of_household:  11200
   brackets:
     single:
-      - {upper: 8500,      rate: 0.04}
-      - {upper: 11700,     rate: 0.045}
-      - {upper: 13900,     rate: 0.0525}
-      - {upper: 80650,     rate: 0.055}
-      - {upper: 215400,    rate: 0.06}
-      - {upper: 1077550,   rate: 0.0685}
-      - {upper: 5000000,   rate: 0.0965}
-      - {upper: 25000000,  rate: 0.103}
-      - {upper: null,      rate: 0.109}
+      - {upper: 8500,      rate: 0.04,   base: 0}
+      - {upper: 11700,     rate: 0.045,  base: 340}
+      - {upper: 13900,     rate: 0.0525, base: 484}
+      - {upper: 80650,     rate: 0.055,  base: 600}
+      - {upper: 215400,    rate: 0.06,   base: 4271}
+      - {upper: 1077550,   rate: 0.0685, base: 12356}
+      - {upper: 5000000,   rate: 0.0965, base: 71413}
+      - {upper: 25000000,  rate: 0.103,  base: 449929}
+      - {upper: null,      rate: 0.109,  base: 2509929}
     married_joint:
-      - {upper: 17150,     rate: 0.04}
-      - {upper: 23600,     rate: 0.045}
-      - {upper: 27900,     rate: 0.0525}
-      - {upper: 161550,    rate: 0.055}
-      - {upper: 323200,    rate: 0.06}
-      - {upper: 2155350,   rate: 0.0685}
-      - {upper: 5000000,   rate: 0.0965}
-      - {upper: 25000000,  rate: 0.103}
-      - {upper: null,      rate: 0.109}
+      - {upper: 17150,     rate: 0.04,   base: 0}
+      - {upper: 23600,     rate: 0.045,  base: 686}
+      - {upper: 27900,     rate: 0.0525, base: 976}
+      - {upper: 161550,    rate: 0.055,  base: 1202}
+      - {upper: 323200,    rate: 0.06,   base: 8553}
+      - {upper: 2155350,   rate: 0.0685, base: 18252}
+      - {upper: 5000000,   rate: 0.0965, base: 143754}
+      - {upper: 25000000,  rate: 0.103,  base: 418263}
+      - {upper: null,      rate: 0.109,  base: 2478263}
     married_separate:
-      - {upper: 8500,      rate: 0.04}
-      - {upper: 11700,     rate: 0.045}
-      - {upper: 13900,     rate: 0.0525}
-      - {upper: 80650,     rate: 0.055}
-      - {upper: 161550,    rate: 0.06}
-      - {upper: 1077550,   rate: 0.0685}
-      - {upper: 5000000,   rate: 0.0965}
-      - {upper: 25000000,  rate: 0.103}
-      - {upper: null,      rate: 0.109}
+      - {upper: 8500,      rate: 0.04,   base: 0}
+      - {upper: 11700,     rate: 0.045,  base: 340}
+      - {upper: 13900,     rate: 0.0525, base: 484}
+      - {upper: 80650,     rate: 0.055,  base: 600}
+      - {upper: 215400,    rate: 0.06,   base: 4271}
+      - {upper: 1077550,   rate: 0.0685, base: 12356}
+      - {upper: 5000000,   rate: 0.0965, base: 71413}
+      - {upper: 25000000,  rate: 0.103,  base: 449929}
+      - {upper: null,      rate: 0.109,  base: 2509929}
     head_of_household:
-      - {upper: 12800,     rate: 0.04}
-      - {upper: 17650,     rate: 0.045}
-      - {upper: 20900,     rate: 0.0525}
-      - {upper: 107650,    rate: 0.055}
-      - {upper: 269300,    rate: 0.06}
-      - {upper: 1616450,   rate: 0.0685}
-      - {upper: 5000000,   rate: 0.0965}
-      - {upper: 25000000,  rate: 0.103}
-      - {upper: null,      rate: 0.109}
+      - {upper: 12800,     rate: 0.04,   base: 0}
+      - {upper: 17650,     rate: 0.045,  base: 512}
+      - {upper: 20900,     rate: 0.0525, base: 730}
+      - {upper: 107650,    rate: 0.055,  base: 901}
+      - {upper: 269300,    rate: 0.06,   base: 5672}
+      - {upper: 1616450,   rate: 0.0685, base: 15371}
+      - {upper: 5000000,   rate: 0.0965, base: 107651}
+      - {upper: 25000000,  rate: 0.103,  base: 434163}
+      - {upper: null,      rate: 0.109,  base: 2494163}
+  recapture:
+    agi_threshold:   107650
+    phase_in_width:  50000
+    flat_agi_over:   25000000
+    flat_rate:       0.109
+    worksheets:
+      married_joint:
+        first: {taxable_upper: 161550, rate: 0.055}
+        steps:
+          - {taxable_over: 161550,   recapture_base: 333,    incremental_benefit: 807}
+          - {taxable_over: 323200,   recapture_base: 1140,   incremental_benefit: 2747}
+          - {taxable_over: 2155350,  recapture_base: 3887,   incremental_benefit: 60350}
+          - {taxable_over: 5000000,  recapture_base: 64237,  incremental_benefit: 32500}
+      single:
+        first: {taxable_upper: 215400, rate: 0.06}
+        steps:
+          - {taxable_over: 215400,   recapture_base: 568,    incremental_benefit: 1831}
+          - {taxable_over: 1077550,  recapture_base: 2399,   incremental_benefit: 30172}
+          - {taxable_over: 5000000,  recapture_base: 32571,  incremental_benefit: 32500}
+      married_separate:
+        first: {taxable_upper: 215400, rate: 0.06}
+        steps:
+          - {taxable_over: 215400,   recapture_base: 568,    incremental_benefit: 1831}
+          - {taxable_over: 1077550,  recapture_base: 2399,   incremental_benefit: 30172}
+          - {taxable_over: 5000000,  recapture_base: 32571,  incremental_benefit: 32500}
+      head_of_household:
+        first: {taxable_upper: 269300, rate: 0.06}
+        steps:
+          - {taxable_over: 269300,   recapture_base: 787,    incremental_benefit: 2289}
+          - {taxable_over: 1616450,  recapture_base: 3076,   incremental_benefit: 45261}
+          - {taxable_over: 5000000,  recapture_base: 48337,  incremental_benefit: 32500}

@@ -1,0 +1,102 @@
+sha256: "d1a277984838e8026b9fe4112bd3038c7501d20bb634b4381141338a9ab57a17"
+effective_date: "2026-01-01"
+notice_no: "NYS DTF IT-2105-I (2026) New York State tax rates, tax computation worksheets 1-16, standard deduction table"
+source_url: "https://www.tax.ny.gov/pdf/current_forms/it/it2105i.pdf"
+citations:
+  - law: "NYS DTF Instructions IT-2105-I (2026)"
+    article: "New York State tax rates (p.10)"
+    url: "https://www.tax.ny.gov/pdf/current_forms/it/it2105i.pdf"
+    note: "2026 과세연도(2026-01-01 이후 개시). 하위 다섯 구간 세율 인하 반영. Single 과 MFS 는 같은 스케줄"
+  - law: "NYS DTF Instructions IT-2105-I (2026)"
+    article: "Line 6 tax computation worksheets 1-16 (pp.3-7)"
+    url: "https://www.tax.ny.gov/pdf/current_forms/it/it2105i.pdf"
+    note: "NYAGI 107,650 초과 시 세액 환수(recapture). NYAGI 25,000,000 초과 시 과세표준 전액에 10.9%"
+  - law: "NYS DTF Instructions IT-2105-I (2026)"
+    article: "Line 2 New York State standard deduction table"
+    url: "https://www.tax.ny.gov/pdf/current_forms/it/it2105i.pdf"
+    note: "2026 과세연도 8,000 single/MFS, 16,050 MFJ/QSS, 11,200 HoH"
+  - law: "NYS DTF withholding tax rate changes"
+    article: "2026 New York State personal income tax rate schedules"
+    url: "https://www.tax.ny.gov/bus/wt/rate.htm"
+    note: "Tax Law 에 따라 제정된 2026 세율 인하 반영"
+# 2026-10-03: New York 2026 개인소득세 누진 9구간.
+# 구간 기준액(base)과 recapture 항목의 구조, 적용 규칙은 2025 파일과 같다.
+data:
+  has_income_tax: true
+  standard_deduction:
+    single:             8000
+    married_joint:      16050
+    married_separate:   8000
+    head_of_household:  11200
+  brackets:
+    single:
+      - {upper: 8500,      rate: 0.039,  base: 0}
+      - {upper: 11700,     rate: 0.044,  base: 332}
+      - {upper: 13900,     rate: 0.0515, base: 473}
+      - {upper: 80650,     rate: 0.054,  base: 586}
+      - {upper: 215400,    rate: 0.059,  base: 4191}
+      - {upper: 1077550,   rate: 0.0685, base: 12141}
+      - {upper: 5000000,   rate: 0.0965, base: 71198}
+      - {upper: 25000000,  rate: 0.103,  base: 449714}
+      - {upper: null,      rate: 0.109,  base: 2509714}
+    married_joint:
+      - {upper: 17150,     rate: 0.039,  base: 0}
+      - {upper: 23600,     rate: 0.044,  base: 669}
+      - {upper: 27900,     rate: 0.0515, base: 953}
+      - {upper: 161550,    rate: 0.054,  base: 1174}
+      - {upper: 323200,    rate: 0.059,  base: 8391}
+      - {upper: 2155350,   rate: 0.0685, base: 17928}
+      - {upper: 5000000,   rate: 0.0965, base: 143430}
+      - {upper: 25000000,  rate: 0.103,  base: 417939}
+      - {upper: null,      rate: 0.109,  base: 2477939}
+    married_separate:
+      - {upper: 8500,      rate: 0.039,  base: 0}
+      - {upper: 11700,     rate: 0.044,  base: 332}
+      - {upper: 13900,     rate: 0.0515, base: 473}
+      - {upper: 80650,     rate: 0.054,  base: 586}
+      - {upper: 215400,    rate: 0.059,  base: 4191}
+      - {upper: 1077550,   rate: 0.0685, base: 12141}
+      - {upper: 5000000,   rate: 0.0965, base: 71198}
+      - {upper: 25000000,  rate: 0.103,  base: 449714}
+      - {upper: null,      rate: 0.109,  base: 2509714}
+    head_of_household:
+      - {upper: 12800,     rate: 0.039,  base: 0}
+      - {upper: 17650,     rate: 0.044,  base: 499}
+      - {upper: 20900,     rate: 0.0515, base: 712}
+      - {upper: 107650,    rate: 0.054,  base: 879}
+      - {upper: 269300,    rate: 0.059,  base: 5564}
+      - {upper: 1616450,   rate: 0.0685, base: 15101}
+      - {upper: 5000000,   rate: 0.0965, base: 107381}
+      - {upper: 25000000,  rate: 0.103,  base: 433894}
+      - {upper: null,      rate: 0.109,  base: 2493894}
+  recapture:
+    agi_threshold:   107650
+    phase_in_width:  50000
+    flat_agi_over:   25000000
+    flat_rate:       0.109
+    worksheets:
+      married_joint:
+        first: {taxable_upper: 161550, rate: 0.054}
+        steps:
+          - {taxable_over: 161550,   recapture_base: 333,    incremental_benefit: 807}
+          - {taxable_over: 323200,   recapture_base: 1140,   incremental_benefit: 3071}
+          - {taxable_over: 2155350,  recapture_base: 4211,   incremental_benefit: 60350}
+          - {taxable_over: 5000000,  recapture_base: 64561,  incremental_benefit: 32500}
+      single:
+        first: {taxable_upper: 215400, rate: 0.059}
+        steps:
+          - {taxable_over: 215400,   recapture_base: 567,    incremental_benefit: 2047}
+          - {taxable_over: 1077550,  recapture_base: 2614,   incremental_benefit: 30172}
+          - {taxable_over: 5000000,  recapture_base: 32786,  incremental_benefit: 32500}
+      married_separate:
+        first: {taxable_upper: 215400, rate: 0.059}
+        steps:
+          - {taxable_over: 215400,   recapture_base: 567,    incremental_benefit: 2047}
+          - {taxable_over: 1077550,  recapture_base: 2614,   incremental_benefit: 30172}
+          - {taxable_over: 5000000,  recapture_base: 32786,  incremental_benefit: 32500}
+      head_of_household:
+        first: {taxable_upper: 269300, rate: 0.059}
+        steps:
+          - {taxable_over: 269300,   recapture_base: 787,    incremental_benefit: 2559}
+          - {taxable_over: 1616450,  recapture_base: 3346,   incremental_benefit: 45260}
+          - {taxable_over: 5000000,  recapture_base: 48606,  incremental_benefit: 32500}

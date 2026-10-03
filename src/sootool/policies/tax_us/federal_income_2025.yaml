@@ -1,17 +1,34 @@
-sha256: "6d6b1f0b174433d5bc517fd13515b5bdc6c88ca4c100cfb4cc95de61a728d80c"
+sha256: "e78da356618f8d7d5dee97036e91744db02ead3b443bef62ccd1dc2df9733cdd"
 effective_date: "2025-01-01"
-notice_no: "IRS Rev. Proc. 2024-40 (Tax Year 2025, 2026 filing season)"
+notice_no: "IRS Rev. Proc. 2024-40 sec. 2.01 as modified by Rev. Proc. 2025-32 sec. 3.01 (OBBBA, Pub. L. 119-21)"
 source_url: "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf"
-# 2026-04-23: IRS 2025 tax year 연방 소득세 7구간 누진세 (Section 1).
-# 구간·세율은 Rev. Proc. 2024-40로 고시. standard_deduction은 사용자 계약상
-# 명시값(2024 참조치)을 보존하며, 2025 정식값(single 15000, MFJ 30000,
-# HOH 22500, MFS 15000)과 차이가 있음을 인지한 placeholder-verified 상태.
+citations:
+  - law: "Internal Revenue Code"
+    article: "1(j)(2)(A)-(D)"
+    url: "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf"
+    note: "2025 과세연도(2025-01-01 이후 개시) 세율표. Rev. Proc. 2024-40 sec. 2.01 Tables 1-4"
+  - law: "Rev. Proc. 2024-40"
+    article: "sec. 2.01"
+    url: "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf"
+    note: "2025 과세연도 세율표 고시. Rev. Proc. 2025-32 sec. 3 은 sec. 2.15(1), 2.25 만 삭제하여 세율표는 유지"
+  - law: "Internal Revenue Code"
+    article: "63(c)(7) as amended by Pub. L. 119-21 (OBBBA)"
+    url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+    note: "2025 과세연도 기본 표준공제 15,750 / 31,500 / 23,625. 2025 년에 개시하는 과세연도에 적용"
+  - law: "Rev. Proc. 2025-32"
+    article: "sec. 3.01"
+    url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+    note: "Rev. Proc. 2024-40 sec. 2.15(1) 삭제 및 2025 과세연도 표준공제 재고시"
+# 2026-10-03: IRS 2025 과세연도 연방 소득세 7구간 누진세 (IRC 1(j)).
+# 구간·세율은 Rev. Proc. 2024-40 sec. 2.01. 표준공제는 OBBBA 로 개정된
+# IRC 63(c)(7) 법정액(Rev. Proc. 2025-32 sec. 3.01).
+# 생존 배우자(qualifying surviving spouse)는 married_joint 표를 쓴다.
 data:
   standard_deduction:
-    single:             14600
-    married_joint:      29200
-    married_separate:   14600
-    head_of_household:  21900
+    single:             15750
+    married_joint:      31500
+    married_separate:   15750
+    head_of_household:  23625
   brackets:
     single:
       - {upper: 11925,   rate: 0.10}

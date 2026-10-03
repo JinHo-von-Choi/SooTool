@@ -1,9 +1,11 @@
 """US federal income tax calculator (tax_us.federal_income).
 
-Tax year 2025 (filed 2026) IRS progressive brackets, 4 filing statuses.
+IRS progressive brackets per tax year (2025, 2026), 4 filing statuses.
+Qualifying surviving spouse uses the married_joint schedule (IRC 1(j)(2)(A)).
 
 Author: 최진호
 Date: 2026-04-23
+Modified: 2026-10-03
 """
 from __future__ import annotations
 
@@ -29,20 +31,35 @@ _VALID_FILING_STATUSES = frozenset({
 })
 
 
-def _validate_filing_status(filing_status: str) -> None:
+_FILING_STATUS_ALIASES: dict[str, str] = {
+    "qualifying_surviving_spouse": "married_joint",
+}
+
+
+def _validate_filing_status(filing_status: str) -> str:
+    """신고 유형을 검증하고 정책 표의 키를 돌려준다.
+
+    생존 배우자(qualifying_surviving_spouse)는 연방 세율표, 표준공제, 장기 양도소득
+    구간, NIIT 임계액(IRC 1411(b)(1))과 CA·NY 주 스케줄에서 공동 신고와 같은 표를
+    쓰므로 married_joint 로 해석한다.
+    """
+    if filing_status in _FILING_STATUS_ALIASES:
+        return _FILING_STATUS_ALIASES[filing_status]
     if filing_status not in _VALID_FILING_STATUSES:
         raise InvalidInputError(
             f"유효하지 않은 filing_status: '{filing_status}'. "
-            f"허용값: {sorted(_VALID_FILING_STATUSES)}"
+            f"허용값: {sorted(_VALID_FILING_STATUSES | set(_FILING_STATUS_ALIASES))}"
         )
+    return filing_status
 
 
 @REGISTRY.tool(
     namespace="tax_us",
     name="federal_income",
     description=(
-        "미국 연방 소득세 계산 (IRS 2025 tax year, 7 progressive brackets × "
-        "4 filing statuses). 표준공제(standard_deduction) 옵션 지원."
+        "미국 연방 소득세 계산 (IRS 2025·2026 tax year, 7 progressive brackets × "
+        "4 filing statuses, 생존 배우자는 공동 신고 표). 표준공제 옵션을 켜면 "
+        "taxable_income 을 조정총소득(AGI)으로 보고 표준공제를 뺀다."
     ),
     version="1.0.0",
     policy=True,
@@ -58,10 +75,13 @@ def tax_us_federal_income(
     """Calculate US federal income tax using IRS progressive brackets.
 
     Args:
-        taxable_income:           과세표준 (USD, Decimal string)
-        filing_status:            신고 상태 (single/married_joint/married_separate/head_of_household)
-        year:                     tax year (2025)
-        apply_standard_deduction: True면 filing status별 표준공제 차감
+        taxable_income:           과세표준 (USD, Decimal string). apply_standard_deduction=True 이면
+                                  표준공제 전 금액, 곧 조정총소득(AGI, IRC 62)으로 해석한다.
+                                  이미 공제를 뺀 과세표준을 넣을 때는 False 로 둔다.
+        filing_status:            신고 상태 (single/married_joint/married_separate/head_of_household,
+                                  qualifying_surviving_spouse 는 married_joint 표 적용)
+        year:                     tax year (2025, 2026)
+        apply_standard_deduction: True면 filing status별 표준공제 차감 (IRC 63(c))
         rounding:                 반올림 정책 (기본 HALF_UP)
         decimals:                 소수점 자리수 (기본 2, USD cents)
 
@@ -77,7 +97,7 @@ def tax_us_federal_income(
         ),
     )
 
-    _validate_filing_status(filing_status)
+    schedule = _validate_filing_status(filing_status)
     policy   = _parse_rounding(rounding)
     income   = D(taxable_income)
 
@@ -89,8 +109,8 @@ def tax_us_federal_income(
     policy_doc   = policy_load("tax_us", "federal_income", year)
     data         = policy_doc["data"]
     pv           = policy_doc["policy_version"]
-    brackets     = data["brackets"][filing_status]
-    std_ded_raw  = data["standard_deduction"][filing_status]
+    brackets     = data["brackets"][schedule]
+    std_ded_raw  = data["standard_deduction"][schedule]
     std_ded      = D(str(std_ded_raw))
 
     trace.input("taxable_income",            taxable_income)
@@ -99,6 +119,7 @@ def tax_us_federal_income(
     trace.input("apply_standard_deduction",  apply_standard_deduction)
     trace.input("rounding",                  rounding)
     trace.input("policy_version",            pv)
+    trace.step("filing_status_schedule",     schedule)
 
     if apply_standard_deduction:
         taxable_after = income - std_ded

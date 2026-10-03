@@ -1,0 +1,59 @@
+sha256: "2a985e5de1d87013ca22da6fb0a9bbd0b15805391200581eeae5ed679722c8fd"
+effective_date: "2026-01-01"
+notice_no: "IRS Rev. Proc. 2025-32 sec. 4.01 (tax rate tables), sec. 4.14(1) (standard deduction)"
+source_url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+citations:
+  - law: "Internal Revenue Code"
+    article: "1(j)(2)(A)-(D)"
+    url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+    note: "2026 과세연도(2026-01-01 이후 개시) 세율표. Rev. Proc. 2025-32 sec. 4.01 Tables 1-4"
+  - law: "Internal Revenue Code"
+    article: "63(c)(2), 63(c)(7)"
+    url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+    note: "2026 과세연도 표준공제 16,100 / 32,200 / 24,150. Rev. Proc. 2025-32 sec. 4.14(1)"
+  - law: "Rev. Proc. 2025-32"
+    article: "sec. 4.01, sec. 4.14"
+    url: "https://www.irs.gov/pub/irs-drop/rp-25-32.pdf"
+    note: "2025-10-09 현재 시행 법률 기준 물가연동 조정액"
+# 2026-10-03: IRS 2026 과세연도 연방 소득세 7구간 누진세 (IRC 1(j)).
+# 구간·세율은 Rev. Proc. 2025-32 sec. 4.01, 표준공제는 sec. 4.14(1).
+# 생존 배우자(qualifying surviving spouse)는 married_joint 표를 쓴다.
+data:
+  standard_deduction:
+    single:             16100
+    married_joint:      32200
+    married_separate:   16100
+    head_of_household:  24150
+  brackets:
+    single:
+      - {upper: 12400,   rate: 0.10}
+      - {upper: 50400,   rate: 0.12}
+      - {upper: 105700,  rate: 0.22}
+      - {upper: 201775,  rate: 0.24}
+      - {upper: 256225,  rate: 0.32}
+      - {upper: 640600,  rate: 0.35}
+      - {upper: null,    rate: 0.37}
+    married_joint:
+      - {upper: 24800,   rate: 0.10}
+      - {upper: 100800,  rate: 0.12}
+      - {upper: 211400,  rate: 0.22}
+      - {upper: 403550,  rate: 0.24}
+      - {upper: 512450,  rate: 0.32}
+      - {upper: 768700,  rate: 0.35}
+      - {upper: null,    rate: 0.37}
+    married_separate:
+      - {upper: 12400,   rate: 0.10}
+      - {upper: 50400,   rate: 0.12}
+      - {upper: 105700,  rate: 0.22}
+      - {upper: 201775,  rate: 0.24}
+      - {upper: 256225,  rate: 0.32}
+      - {upper: 384350,  rate: 0.35}
+      - {upper: null,    rate: 0.37}
+    head_of_household:
+      - {upper: 17700,   rate: 0.10}
+      - {upper: 67450,   rate: 0.12}
+      - {upper: 105700,  rate: 0.22}
+      - {upper: 201750,  rate: 0.24}
+      - {upper: 256200,  rate: 0.32}
+      - {upper: 640600,  rate: 0.35}
+      - {upper: null,    rate: 0.37}

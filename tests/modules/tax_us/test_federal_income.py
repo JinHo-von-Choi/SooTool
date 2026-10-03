@@ -1,7 +1,11 @@
-"""Tests for tax_us.federal_income tool (IRS 2025 tax year).
+"""Tests for tax_us.federal_income tool (IRS 2025, 2026 tax years).
+
+기대값은 Rev. Proc. 2024-40 sec. 2.01, Rev. Proc. 2025-32 sec. 3.01, 4.01, 4.14 의
+세율표와 표준공제액에서 직접 계산한다.
 
 Author: 최진호
 Date: 2026-04-23
+Modified: 2026-10-03
 """
 from __future__ import annotations
 
@@ -142,27 +146,43 @@ class TestStandardDeduction:
         assert r["taxable_income_after_deduction"] == "50000"
 
     def test_apply_single(self):
-        """Single std deduction $14600 per spec; 50000-14600=35400"""
+        """2025 single 표준공제 15,750 (IRC 63(c)(7), Rev. Proc. 2025-32 sec. 3.01).
+
+        50000-15750=34250; 10%*11925 + 12%*(34250-11925) = 1192.50 + 2679.00 = 3871.50
+        """
         r = call(
             taxable_income="50000",
             filing_status="single",
             year=2025,
             apply_standard_deduction=True,
         )
-        assert r["standard_deduction"] == "14600"
-        assert r["taxable_income_after_deduction"] == "35400"
-        # Tax on 35400: 10%*11925 + 12%*(35400-11925) = 1192.50 + 2817.00 = 4009.50
-        assert r["tax"] == "4009.50"
+        assert r["standard_deduction"] == "15750"
+        assert r["taxable_income_after_deduction"] == "34250"
+        assert r["tax"] == "3871.50"
 
     def test_apply_mfj(self):
+        """2025 MFJ 표준공제 31,500: 100000-31500=68500."""
         r = call(
             taxable_income="100000",
             filing_status="married_joint",
             year=2025,
             apply_standard_deduction=True,
         )
-        assert r["standard_deduction"] == "29200"
-        assert r["taxable_income_after_deduction"] == "70800"
+        assert r["standard_deduction"] == "31500"
+        assert r["taxable_income_after_deduction"] == "68500"
+
+    @pytest.mark.parametrize(
+        ("filing_status", "expected"),
+        [("married_separate", "15750"), ("head_of_household", "23625")],
+    )
+    def test_apply_mfs_hoh_2025(self, filing_status, expected):
+        r = call(
+            taxable_income="100000",
+            filing_status=filing_status,
+            year=2025,
+            apply_standard_deduction=True,
+        )
+        assert r["standard_deduction"] == expected
 
     def test_deduction_floors_at_zero(self):
         """Income less than std deduction -> taxable_after = 0."""
@@ -179,6 +199,86 @@ class TestStandardDeduction:
 # ---------------------------------------------------------------------------
 # Validation & errors
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Tax year 2026 (Rev. Proc. 2025-32 sec. 4.01 Tables 1-4, sec. 4.14(1))
+# ---------------------------------------------------------------------------
+
+class TestYear2026:
+    def test_single_bracket1_upper(self):
+        """10% x 12400 = 1240 (Table 3 인쇄 기준액 1,240)."""
+        r = call(taxable_income="12400", filing_status="single", year=2026)
+        assert r["tax"] == "1240.00"
+
+    def test_single_bracket2_upper(self):
+        """1240 + 12% x (50400-12400) = 1240 + 4560 = 5800 (Table 3)."""
+        r = call(taxable_income="50400", filing_status="single", year=2026)
+        assert r["tax"] == "5800.00"
+
+    @pytest.mark.parametrize(
+        ("filing_status", "income", "expected"),
+        [
+            # 각 표의 37% 구간 시작 기준액(Rev. Proc. 2025-32 Tables 1-4 인쇄값)
+            ("married_joint",     "768700", "206583.50"),
+            ("head_of_household", "640600", "191171.00"),
+            ("single",            "640600", "192979.25"),
+            ("married_separate",  "384350", "103291.75"),
+        ],
+    )
+    def test_top_bracket_base_amounts(self, filing_status, income, expected):
+        r = call(taxable_income=income, filing_status=filing_status, year=2026)
+        assert r["tax"] == expected
+        assert r["marginal_rate"] == "0.35"
+
+    def test_top_rate_above_threshold(self):
+        """MFJ 1,000,000: 206583.50 + 37% x (1000000-768700) = 206583.50 + 85581 = 292164.50."""
+        r = call(taxable_income="1000000", filing_status="married_joint", year=2026)
+        assert r["tax"] == "292164.50"
+        assert r["marginal_rate"] == "0.37"
+
+    @pytest.mark.parametrize(
+        ("filing_status", "expected"),
+        [
+            ("single",            "16100"),
+            ("married_joint",     "32200"),
+            ("married_separate",  "16100"),
+            ("head_of_household", "24150"),
+        ],
+    )
+    def test_standard_deduction_2026(self, filing_status, expected):
+        r = call(
+            taxable_income="100000",
+            filing_status=filing_status,
+            year=2026,
+            apply_standard_deduction=True,
+        )
+        assert r["standard_deduction"] == expected
+
+    def test_policy_citations_present(self):
+        r = call(taxable_income="50000", filing_status="single", year=2026)
+        assert r["policy_version"]["year"] == 2026
+        assert r["policy_citations"]
+
+
+class TestSurvivingSpouse:
+    def test_uses_joint_schedule_and_deduction(self):
+        """생존 배우자는 공동 신고 표(IRC 1(j)(2)(A))와 같은 표준공제 31,500."""
+        qss = call(
+            taxable_income="200000",
+            filing_status="qualifying_surviving_spouse",
+            year=2025,
+            apply_standard_deduction=True,
+        )
+        mfj = call(
+            taxable_income="200000",
+            filing_status="married_joint",
+            year=2025,
+            apply_standard_deduction=True,
+        )
+        assert qss["standard_deduction"] == "31500"
+        assert qss["tax"] == mfj["tax"]
+        assert qss["filing_status"] == "qualifying_surviving_spouse"
+
 
 class TestValidation:
     def test_invalid_filing_status(self):

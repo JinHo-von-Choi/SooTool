@@ -1,9 +1,27 @@
-sha256: "d5ec35841a4e215f31c0d41576488fef92819ec1b665329bad830ab3b8e4ac9b"
+sha256: "6803a995dd3a6e1c9b1310d5b9eb4ca108058e5dea9fe715083d4267dcbc9fb3"
 effective_date: "2025-01-01"
-notice_no: "IRS Rev. Proc. 2024-40 (LTCG 2025 thresholds) + IRC § 1411 (NIIT)"
+notice_no: "IRS Rev. Proc. 2024-40 sec. 2.03 (LTCG 2025 thresholds) + IRC § 1411 (NIIT)"
 source_url: "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf"
-# 2026-04-23: Long-term capital gains tax 2025 tax year 3구간 (0%/15%/20%).
-# Filing status별 0%/15% 경계는 Rev. Proc. 2024-40, 15%/20% 상단은 동일 고시.
+citations:
+  - law: "Internal Revenue Code"
+    article: "1(h), 1(j)(5)(B)"
+    url: "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf"
+    note: "2025 과세연도(2025-01-01 이후 개시) 0% 및 15% 최대 적용액. Rev. Proc. 2024-40 sec. 2.03"
+  - law: "Rev. Proc. 2024-40"
+    article: "sec. 2.03"
+    url: "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf"
+    note: "Rev. Proc. 2025-32 로 변경되지 않음"
+  - law: "Internal Revenue Code"
+    article: "1411(a)(1), 1411(b)"
+    url: "https://www.law.cornell.edu/uscode/text/26/1411"
+    note: "NIIT 3.8%. 임계액 250,000 공동/생존 배우자, 125,000 개별, 200,000 그 밖. 물가연동 없음. 2013-01-01 이후 개시 과세연도부터 시행"
+  - law: "IRS Instructions for Form 1040 (2025)"
+    article: "Qualified Dividends and Capital Gain Tax Worksheet, Lines 1-25"
+    url: "https://www.irs.gov/pub/irs-pdf/i1040gi.pdf"
+    note: "구간 경계는 전체 과세표준 기준. 양도소득은 일반소득 위에 쌓아 과세"
+# 2026-10-03: 2025 과세연도 장기 양도소득세 3구간 (0%/15%/20%).
+# 구간 상한은 일반소득과 양도소득을 합한 과세표준 기준이며, 양도소득은
+# 일반소득 위에 쌓인다(IRC 1(h)(1)).
 # Net Investment Income Tax (IRC § 1411)은 고정 임계치(인플레이션 미연동).
 data:
   ltcg_brackets:
