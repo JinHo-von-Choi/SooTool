@@ -1,9 +1,35 @@
-sha256: "709386e0ccad79a9de7e6d46bd24ec39442ca5cc928e339949dcb91ffe1a5617"
+sha256: "e5c96e9fcdbd3320aae7cd7d5262fdbfc88ffbb23c4929d075db38f333fcf0e3"
 effective_date: "2026-01-01"
-notice_no: "상속세 및 증여세법 제56조·제53조"
+status: enacted
+notice_no: "상속세 및 증여세법 제26조·제53조·제53조의2·제56조·제57조·제69조 (법률 제21219호, 2025-12-23 공포, 2026-01-01 시행 기준)"
 source_url: "https://www.law.go.kr/법령/상속세및증여세법"
+citations:
+  - law: "상속세 및 증여세법"
+    article: "제26조"
+    url: "https://www.law.go.kr/법령/상속세및증여세법/제26조"
+    note: "세율 10/20/30/40/50%, 구간 1억/5억/10억/30억. 시행 2026-01-01 현행"
+  - law: "상속세 및 증여세법"
+    article: "제56조"
+    url: "https://www.law.go.kr/법령/상속세및증여세법/제56조"
+    note: "증여세산출세액은 제26조 세율 준용. 시행 2026-01-01 현행"
+  - law: "상속세 및 증여세법"
+    article: "제53조"
+    url: "https://www.law.go.kr/법령/상속세및증여세법/제53조"
+    note: "배우자 6억, 직계존속 5천만(미성년 2천만), 직계비속 5천만, 4촌 이내 혈족·3촌 이내 인척 1천만, 증여 전 10년 이내 공제액 합산 한도. 법률 제20777호 2025-03-14 시행"
+  - law: "상속세 및 증여세법"
+    article: "제53조의2"
+    url: "https://www.law.go.kr/법령/상속세및증여세법/제53조의2"
+    note: "직계존속 증여 혼인·출산 공제 1억, 혼인·출산 합산 1억 한도. 법률 제19932호 부칙 제3조, 2024-01-01 이후 증여분부터"
+  - law: "상속세 및 증여세법"
+    article: "제57조제1항"
+    url: "https://www.law.go.kr/법령/상속세및증여세법/제57조"
+    note: "자녀가 아닌 직계비속 수증 시 산출세액의 30% 가산, 미성년자이면서 증여재산가액 20억 초과 시 40%. 개정 2015-12-15, 2026-01-01 시행본 현행"
+  - law: "상속세 및 증여세법"
+    article: "제69조제2항"
+    url: "https://www.law.go.kr/법령/상속세및증여세법/제69조"
+    note: "신고세액공제: (산출세액 + 제57조 가산액 - 징수유예액 - 공제감면액) x 3%. 개정 2017-12-19, 2026-01-01 시행본 현행"
 data:
-  # 증여세 누진세율 (상속과 동일 구간 구조)
+  # 증여세 누진세율 (상속세 및 증여세법 제56조, 제26조 준용)
   brackets:
     - upper: 100000000
       rate: 0.10
@@ -15,11 +41,22 @@ data:
       rate: 0.40
     - upper: null
       rate: 0.50
-  # 증여재산공제 (상속세및증여세법 제53조) — 10년 합산 기준
+  # 증여재산공제 (상속세 및 증여세법 제53조). 증여자 그룹별 한도이며
+  # 수증자가 증여 전 10년 이내에 같은 그룹에서 공제받은 금액을 합산한다.
   relationship_deduction:
     spouse: 600000000            # 배우자 6억
-    lineal_ascendant: 50000000   # 직계존속 5000만 (미성년자 2000만)
+    lineal_ascendant: 50000000   # 직계존속 5천만 (미성년자 2천만)
     lineal_ascendant_minor: 20000000
-    lineal_descendant: 50000000  # 직계비속 5000만
-    other_relative: 10000000     # 기타 친족 1000만
+    lineal_descendant: 50000000  # 직계비속 5천만
+    other_relative: 10000000     # 4촌 이내 혈족, 3촌 이내 인척 1천만 (2025-03-14 이후 증여분)
     other: 0
+  deduction_lookback_years: 10   # 제53조 본문, 증여 전 10년 이내 공제액 합산
+  # 혼인·출산 증여재산공제 (제53조의2). 직계존속 증여에만 적용, 혼인·출산 합산 1억
+  marriage_birth_deduction: 100000000
+  # 세대생략 할증 (제57조제1항)
+  generation_skip_surcharge:
+    rate: "0.30"
+    minor_large_gift_rate: "0.40"
+    minor_large_gift_threshold: 2000000000   # 증여재산가액 20억원 초과
+  # 신고세액공제율 (제69조제2항)
+  filing_credit_rate: "0.03"

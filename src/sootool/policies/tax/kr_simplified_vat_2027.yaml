@@ -1,12 +1,12 @@
-sha256: "1ca225ce2713fadc4e58452e1b591c320160be5f64f3c1e70ec69dce173b5da2"
+sha256: "c8c87ef671fa83184b849acdd7fe74677ab9156eb9f9074c1174caa2106201dd"
 meta:
   domain: tax
   name:   kr_simplified_vat
-  year:   2026
-effective_date: "2026-01-01"
-status: enacted
-notice_no: "부가가치세법 제46조·제61조·제63조·제69조 (법률 제21218호, 2026-01-01 시행 기준) / 같은 법 시행령 제109조제1항·제111조제2항"
-source_url: "https://www.law.go.kr/법령/부가가치세법"
+  year:   2027
+effective_date: "2027-01-01"
+status: proposed
+notice_no: "2026년 세제개편안 부가가치세법 제46조 개정안 (재정경제부 2026-08-03 발표, 2026-09-01 국무회의 의결, 2027-01-01 이후 공급분) / 그 밖의 값은 현행 부가가치세법 제61조·제63조·제69조, 같은 법 시행령 제109조제1항·제111조제2항"
+source_url: "https://mofe.go.kr/nw/nes/detailNesDtaView.do?searchBbsId1=MOSFBBS_000000000028&searchNttId1=MOSF_000000000078809&menuNo=4010100"
 citations:
   - law: "부가가치세법"
     article: "제61조제1항"
@@ -28,10 +28,14 @@ citations:
     article: "제69조제1항"
     url: "https://www.law.go.kr/법령/부가가치세법/제69조"
     note: "해당 과세기간 공급대가 4,800만원 미만 납부의무 면제"
+  - law: "부가가치세법 개정안(2026년 세제개편안)"
+    article: "제46조제1항제3호"
+    url: "https://mofe.go.kr/com/cmm/fms/FileDown.do?atchFileId=ATCH_000000000032335&fileSn=6"
+    note: "한시 우대공제 공제율 1.3%에서 1.2%, 한도 연 1천만원에서 500만원, 적용기한 2029-12-31까지 연장. 2027-01-01 이후 공급분부터. 국회 의결 전"
   - law: "부가가치세법"
-    article: "제46조제1항"
+    article: "제46조제1항제3호"
     url: "https://www.law.go.kr/법령/부가가치세법/제46조"
-    note: "신용카드매출전표등 발급금액 x 1.3%, 연간 1천만원 한도(2026-12-31까지). 2027-01-01부터 본칙 1%, 연간 500만원"
+    note: "현행 본칙: 2027-01-01 이후 발급금액 x 1%, 연간 500만원 한도. 개정안이 의결되지 않으면 본칙이 적용됨"
 data:
   # 간이과세 기준 (직전 연도 공급대가 기준, 시행령 제109조제1항)
   threshold_amount: 104000000       # 1억4백만원 미만이어야 간이과세 대상
@@ -41,10 +45,10 @@ data:
   vat_rate: "0.10"                  # 부가가치세율 10% (법 제63조제2항)
   # 세금계산서등 수취 공급대가 공제율 (법 제63조제3항제1호)
   input_credit_rate: "0.005"
-  # 신용카드 등 매출세액공제 (법 제46조제1항제3호, 2026-12-31까지 공급분)
+  # 신용카드 등 매출세액공제 (법 제46조제1항제3호 개정안, 2027-01-01 이후 공급분)
   card_sales_credit:
-    rate: "0.013"
-    annual_limit: 10000000
+    rate: "0.012"
+    annual_limit: 5000000
 
   # 업종별 부가가치율 (시행령 제111조제2항 표)
   value_added_rates:

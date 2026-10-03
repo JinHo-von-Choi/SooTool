@@ -1,0 +1,51 @@
+sha256: "562f8f0a1fc282e050433e00dd984cc77f62864c0125e1ec225e2073269dc2d5"
+effective_date: "2025-01-01"
+status: enacted
+notice_no: "법인세법 제55조제1항 (법률 제20613호, 2024-12-31 공포, 2025-01-01 시행) / 조세특례제한법 제132조제1항"
+source_url: "https://www.law.go.kr/DRF/lawService.do?OC=test&target=eflaw&MST=267551&efYd=20250101&type=XML"
+citations:
+  - law: "법인세법"
+    article: "제55조제1항제1호"
+    url: "https://www.law.go.kr/DRF/lawService.do?OC=test&target=eflaw&MST=267551&efYd=20250101&type=XML"
+    note: "2억 이하 9%, 200억 이하 19%, 3천억 이하 21%, 초과 24%. 법률 제20613호 2025-01-01 시행, 2025-12-31 이전 개시 사업연도"
+  - law: "법인세법"
+    article: "제55조제1항제2호, 제60조의2제1항제1호"
+    url: "https://www.law.go.kr/DRF/lawService.do?OC=test&target=eflaw&MST=267551&efYd=20250101&type=XML"
+    note: "성실신고확인대상 소규모 법인: 200억 이하 19%, 3천억 이하 21%, 초과 24%. 법률 제20613호 2025-01-01 시행"
+  - law: "조세특례제한법"
+    article: "제132조제1항"
+    url: "https://www.law.go.kr/DRF/lawService.do?OC=test&target=eflaw&MST=267555&efYd=20250101&type=XML"
+    note: "최저한세: 중소 7%, 졸업 후 3년 8%·다음 2년 9%, 일반 100억 이하 10%·1천억 이하 12%·초과 17%. 2025-01-01 시행본"
+data:
+  # 법인세 누진세율 (법인세법 제55조제1항제1호, 2025-01-01 시행본)
+  brackets:
+    - upper: 200000000
+      rate: 0.09
+    - upper: 20000000000
+      rate: 0.19
+    - upper: 300000000000
+      rate: 0.21
+    - upper: null
+      rate: 0.24
+  # 제60조의2제1항제1호 해당 법인 (법인세법 제55조제1항제2호)
+  small_rental_brackets:
+    - upper: 20000000000
+      rate: 0.19
+    - upper: 300000000000
+      rate: 0.21
+    - upper: null
+      rate: 0.24
+  # 최저한세율 (조세특례제한법 제132조제1항, 2025-01-01 시행본)
+  minimum_tax:
+    small:      "0.07"
+    general:    "0.10"
+    general_brackets:
+      - upper: 10000000000
+        rate: 0.10
+      - upper: 100000000000
+        rate: 0.12
+      - upper: null
+        rate: 0.17
+    sme_graduation:
+      first_3y: "0.08"
+      next_2y:  "0.09"

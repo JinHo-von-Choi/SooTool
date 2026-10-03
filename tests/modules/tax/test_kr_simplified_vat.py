@@ -7,7 +7,7 @@ import pytest
 
 import sootool.modules.tax  # noqa: F401
 from sootool.core.batch import BatchExecutor
-from sootool.core.errors import InvalidInputError
+from sootool.core.errors import InvalidInputError, PolicyNotEnactedError
 from sootool.core.registry import REGISTRY
 
 
@@ -60,7 +60,7 @@ class TestSimplifiedVatExemptionAndCredit:
         assert Decimal(r["vat_payable"]) > Decimal("0")
 
     def test_input_credit_subtraction(self):
-        """매입공제세액 차감."""
+        """세금계산서등 수취 공급대가 × 0.5% 공제 (법 제63조제3항제1호)."""
         r = call(
             supply_value="80000000",
             business_type="retail",
@@ -68,26 +68,150 @@ class TestSimplifiedVatExemptionAndCredit:
             input_tax_amount="20000000",
         )
         # vat_payable: 8천만 × 15% × 10% = 120만
-        # input_credit: 2천만 × 15% × 10% = 30만
-        # net: 90만
-        assert Decimal(r["input_credit"]) == Decimal("300000")
-        assert Decimal(r["net_payable"]) == Decimal("900000")
+        # input_credit: 2천만 × 0.5% = 10만
+        # net: 110만
+        assert Decimal(r["input_credit"]) == Decimal("100000")
+        assert Decimal(r["net_payable"]) == Decimal("1100000")
+
+    def test_input_credit_does_not_depend_on_business_type(self):
+        """공제율은 업종과 무관하게 0.5%: 제조업 2천만 수취 → 10만."""
+        r = call(
+            supply_value="80000000",
+            business_type="manufacturing",
+            year=2026,
+            input_tax_amount="20000000",
+        )
+        assert Decimal(r["input_credit"]) == Decimal("100000")
+        assert Decimal(r["net_payable"]) == Decimal("1500000")
 
     def test_input_credit_exceeds_payable(self):
-        """공제세액이 납부세액을 초과해도 net은 0 (환급 없음)."""
+        """공제세액이 납부세액을 초과해도 net은 0 (법 제63조제6항)."""
         r = call(
             supply_value="80000000",
             business_type="retail",
             year=2026,
-            input_tax_amount="100000000",
+            input_tax_amount="300000000",
         )
-        # input_credit: 1억 × 15% × 10% = 150만. vat_payable 120만 → net 0
+        # input_credit: 3억 × 0.5% = 150만. vat_payable 120만 → net 0
+        assert Decimal(r["input_credit"]) == Decimal("1500000")
         assert Decimal(r["net_payable"]) == Decimal("0")
+
+    def test_card_sales_credit(self):
+        """신용카드 매출 5천만 × 1.3% = 65만 공제 (법 제46조제1항제3호, 2026-12-31까지)."""
+        r = call(
+            supply_value="80000000",
+            business_type="retail",
+            year=2026,
+            card_sales_amount="50000000",
+        )
+        assert Decimal(r["card_sales_credit"]) == Decimal("650000")
+        assert Decimal(r["net_payable"]) == Decimal("550000")
+
+    def test_card_sales_credit_annual_limit(self):
+        """카드 매출 10억 × 1.3% = 1,300만 → 연간 한도 1,000만. 공제 합계 초과분은 없음."""
+        r = call(
+            supply_value="80000000",
+            business_type="retail",
+            year=2026,
+            card_sales_amount="1000000000",
+        )
+        assert Decimal(r["card_sales_credit"]) == Decimal("10000000")
+        assert Decimal(r["net_payable"]) == Decimal("0")
+
+    def test_combined_credits(self):
+        """수취분 10만 + 카드 65만 = 75만 공제 → 120만 - 75만 = 45만."""
+        r = call(
+            supply_value="80000000",
+            business_type="retail",
+            year=2026,
+            input_tax_amount="20000000",
+            card_sales_amount="50000000",
+        )
+        assert Decimal(r["net_payable"]) == Decimal("450000")
 
     def test_threshold_exceeded_flag(self):
         """1억 4백만 이상 공급대가 → threshold_exceeded=True."""
         r = call(supply_value="105000000", business_type="retail", year=2026)
         assert r["threshold_exceeded"] is True
+        assert r["threshold_basis"] == "supply_value"
+
+    def test_threshold_uses_prior_year_supply(self):
+        """간이과세 기준은 직전 연도 공급대가 (법 제61조제1항)."""
+        r = call(
+            supply_value="80000000",
+            business_type="retail",
+            year=2026,
+            prior_year_supply="104000000",
+        )
+        assert r["threshold_exceeded"] is True
+        assert r["threshold_basis"] == "prior_year_supply"
+        r = call(
+            supply_value="110000000",
+            business_type="retail",
+            year=2026,
+            prior_year_supply="103999999",
+        )
+        assert r["threshold_exceeded"] is False
+
+    def test_real_estate_rental_restricted_threshold(self):
+        """부동산임대업: 직전 연도 공급대가 4,800만원 이상이면 간이과세 배제 (법 제61조제1항제3호)."""
+        r = call(
+            supply_value="50000000",
+            business_type="real_estate_rental",
+            year=2026,
+            prior_year_supply="48000000",
+        )
+        assert Decimal(r["value_added_rate"]) == Decimal("0.40")
+        assert Decimal(r["applicable_threshold"]) == Decimal("48000000")
+        assert r["threshold_exceeded"] is True
+
+    def test_restricted_business_flag(self):
+        """과세유흥장소 경영자: restricted_business=True 로 4,800만원 기준 적용."""
+        r = call(
+            supply_value="50000000",
+            business_type="retail",
+            year=2026,
+            prior_year_supply="50000000",
+            restricted_business=True,
+        )
+        assert r["threshold_exceeded"] is True
+        r = call(
+            supply_value="50000000",
+            business_type="retail",
+            year=2026,
+            prior_year_supply="50000000",
+        )
+        assert r["threshold_exceeded"] is False
+
+
+class TestSimplifiedVat2027Proposed:
+    def test_2027_requires_include_proposed(self):
+        with pytest.raises(PolicyNotEnactedError):
+            call(supply_value="80000000", business_type="retail", year=2027)
+
+    def test_2027_proposed_card_credit(self):
+        """2026 세제개편안: 2027-01-01 이후 공급분 1.2%, 연 500만원. 5천만 × 1.2% = 60만."""
+        r = call(
+            supply_value="80000000",
+            business_type="retail",
+            year=2027,
+            card_sales_amount="50000000",
+            include_proposed=True,
+        )
+        assert r["policy_status"] == "proposed"
+        assert Decimal(r["card_sales_credit"]) == Decimal("600000")
+        assert Decimal(r["net_payable"]) == Decimal("600000")
+
+    def test_2027_proposed_card_limit(self):
+        """카드 매출 10억 × 1.2% = 1,200만 → 연 500만 한도."""
+        r = call(
+            supply_value="200000000",
+            business_type="retail",
+            year=2027,
+            card_sales_amount="1000000000",
+            include_proposed=True,
+        )
+        assert Decimal(r["card_sales_credit"]) == Decimal("5000000")
 
 
 class TestSimplifiedVatValidation:
@@ -98,6 +222,15 @@ class TestSimplifiedVatValidation:
     def test_negative_supply_raises(self):
         with pytest.raises(InvalidInputError):
             call(supply_value="-1", business_type="retail", year=2026)
+
+    def test_negative_card_sales_raises(self):
+        with pytest.raises(InvalidInputError):
+            call(
+                supply_value="80000000",
+                business_type="retail",
+                year=2026,
+                card_sales_amount="-1",
+            )
 
     def test_negative_input_raises(self):
         with pytest.raises(InvalidInputError):
