@@ -88,13 +88,13 @@ REGISTRY 수치: 18 domains, 271 base tools, 10 admin policy-management tools (0
 Release quality uplift. `docs/plans/2026-04-24-release-quality-improvements.md` 계획의 P0~P2 전 항목 반영. 기능 도구 추가 없음. REGISTRY 수치 0.1.3과 동일(18 domains, 254 base tools, 10 admin policy-management tools, 5 transport modes).
 
 ### Added
-- `scripts/release_preflight.py` — stdlib `urllib.request`로 GitHub Actions API를 호출하여 현재 master commit의 CI `conclusion="success"`를 사전 검증하는 릴리스 게이트. `gh` CLI 의존 없음(snap gh의 cgroup 제약 회피). 토큰 해석 순서 `GH_TOKEN` → `GITHUB_TOKEN` → `~/.config/gh/hosts.yml` → `~/snap/gh/current/.config/gh/hosts.yml`. 403/5xx 지수 백오프 2회.
-- `scripts/draft_changelog.py` — git log + REGISTRY 스냅샷 기반 `[Unreleased]` 초안 자동 생성. Conventional Commits 매핑(feat·fix·chore·docs·refactor·perf·test·build·ci·style·security → Added·Fixed·Changed·Security·Unclassified). `--since`/`--until`/`--write` 지원.
-- `tests/core/test_timeout_contracts.py` — 7 케이스 시간 축 계약 테스트. `BatchExecutor.batch_timeout_s`·`item_timeout_s`, `PipelineExecutor.step_timeout_s`·`pipeline_timeout_s`, `symbolic _EVAL_TIMEOUT_S`(메인 스레드 SIGALRM 경로 + 비메인 스레드 ThreadPoolExecutor watchdog 경로)의 실제 wall-clock 구속을 실측. `SOOTOOL_TIMEOUT_TOLERANCE` 환경변수로 CI flake 방지.
-- `docs/release.md` — 9단계 릴리스 절차 문서. master CI green 사전 검증부터 PyPI 반영 확인까지. branch protection required status check 3종(`Test (Python 3.12 / extras=none|symbolic|all)`) 안내.
-- `SECURITY.md` — 공급망 신뢰 검증 3경로 문서화: `gh attestation verify`, `sigstore verify identity`, GitHub Attestations 브라우저 페이지.
-- `docs/architecture.md` ADR-023 "Release Gate, Timeout Contracts, Optional Extras Matrix" — R1(릴리스 게이트), R2(시간 축 계약 7 테스트), R3(optional extras 매트릭스) 3개 계약을 규범화. ADR-018 번호는 CLI 서브커맨드 계획 예약 존중.
-- `docs/architecture.md` ADR-019 Appendix — `base_tools = total_tools − policy_tools` 공식을 규범으로 고착. CI 5종 단언(total·base·domains·policy·admin) 명시.
+- `scripts/release_preflight.py`, stdlib `urllib.request`로 GitHub Actions API를 호출하여 현재 master commit의 CI `conclusion="success"`를 사전 검증하는 릴리스 게이트. `gh` CLI 의존 없음(snap gh의 cgroup 제약 회피). 토큰 해석 순서 `GH_TOKEN` → `GITHUB_TOKEN` → `~/.config/gh/hosts.yml` → `~/snap/gh/current/.config/gh/hosts.yml`. 403/5xx 지수 백오프 2회.
+- `scripts/draft_changelog.py`, git log + REGISTRY 스냅샷 기반 `[Unreleased]` 초안 자동 생성. Conventional Commits 매핑(feat·fix·chore·docs·refactor·perf·test·build·ci·style·security → Added·Fixed·Changed·Security·Unclassified). `--since`/`--until`/`--write` 지원.
+- `tests/core/test_timeout_contracts.py`, 7 케이스 시간 축 계약 테스트. `BatchExecutor.batch_timeout_s`·`item_timeout_s`, `PipelineExecutor.step_timeout_s`·`pipeline_timeout_s`, `symbolic _EVAL_TIMEOUT_S`(메인 스레드 SIGALRM 경로 + 비메인 스레드 ThreadPoolExecutor watchdog 경로)의 실제 wall-clock 구속을 실측. `SOOTOOL_TIMEOUT_TOLERANCE` 환경변수로 CI flake 방지.
+- `docs/release.md`, 9단계 릴리스 절차 문서. master CI green 사전 검증부터 PyPI 반영 확인까지. branch protection required status check 3종(`Test (Python 3.12 / extras=none|symbolic|all)`) 안내.
+- `SECURITY.md`, 공급망 신뢰 검증 3경로 문서화: `gh attestation verify`, `sigstore verify identity`, GitHub Attestations 브라우저 페이지.
+- `docs/architecture.md` ADR-023 "Release Gate, Timeout Contracts, Optional Extras Matrix", R1(릴리스 게이트), R2(시간 축 계약 7 테스트), R3(optional extras 매트릭스) 3개 계약을 규범화. ADR-018 번호는 CLI 서브커맨드 계획 예약 존중.
+- `docs/architecture.md` ADR-019 Appendix, `base_tools = total_tools − policy_tools` 공식을 규범으로 고착. CI 5종 단언(total·base·domains·policy·admin) 명시.
 
 ### Changed
 - `Makefile`: `release-preflight`, `draft-changelog` 두 타깃 추가.
@@ -138,13 +138,13 @@ Current master snapshot: 18 domains, 254 base tools, 10 admin policy-management 
 ### Added
 - FB-M1 (P0 remediation): `scripts/count_tools.py` registry-backed single source for domain/tool counts; CI guard (ADR-019) gates README, `pyproject.toml`, and CHANGELOG numbers against the live REGISTRY.
 - FB-M2: README subtitle "Precision Calc MCP for LLM tool use", CI/PyPI/Python/License badges, and a real `finance.npv` audit-trace sample block.
-- FB-M9: GitHub About tagline aligned to "SooTool — Precision Calc MCP: Decimal-only deterministic calculation server for LLM tool use".
-- `docs/architecture.md` — ADR-019 (docs-number single source) and ADR-020 (batch deterministic as_completed reordering).
+- FB-M9: GitHub About tagline aligned to "SooTool, Precision Calc MCP: Decimal-only deterministic calculation server for LLM tool use".
+- `docs/architecture.md`, ADR-019 (docs-number single source) and ADR-020 (batch deterministic as_completed reordering).
 - Batch regression tests covering wall-clock reduction and completion-order independence for `deterministic=True`.
-- CE-M2 한국 수직 심화: realestate.kr_local_property (광역 계수), tax.kr_simplified_vat (간이과세), payroll 의료비·교육비·기부금·주택차입이자 공제 4종 — 6 신규 도구 + 정책 YAML 3종.
+- CE-M2 한국 수직 심화: realestate.kr_local_property (광역 계수), tax.kr_simplified_vat (간이과세), payroll 의료비·교육비·기부금·주택차입이자 공제 4종, 6 신규 도구 + 정책 YAML 3종.
 - CE-M3 결정적 재현성 인증: 모든 응답에 `_meta.integrity`(input_hash·policy_sha256·tool_version·sootool_version·policy_source) post-processor 자동 주입. ADR-021.
 - CE-M4 symbolic 하이브리드: symbolic.solve·symbolic.diff (sympy optional extra), AST 화이트리스트 + sympify locals={} 이중 경계, SIGALRM 5초 타임아웃. ADR-022.
-- CE-M10 글로벌 세법 1단계 tax_us: federal_income (7 brackets × 4 filing), capital_gains (LTCG + NIIT), state_tax (CA·NY·TX) — 3 신규 도구 + 정책 YAML 5종.
+- CE-M10 글로벌 세법 1단계 tax_us: federal_income (7 brackets × 4 filing), capital_gains (LTCG + NIIT), state_tax (CA·NY·TX), 3 신규 도구 + 정책 YAML 5종.
 
 ### Changed
 - `pyproject.toml` description resynced to match README first paragraph; annotated with "keep in sync" marker (ADR-019).
@@ -172,9 +172,9 @@ Infrastructure patch: GitHub Actions CI and PyPI Trusted Publishing workflows.
 No functional changes to tools, policies, or transports.
 
 ### Added
-- `.github/workflows/ci.yml` — ruff, mypy, pytest, MCP stdio smoke, `uv build` on push and pull requests
-- `.github/workflows/publish-pypi.yml` — automated PyPI upload on GitHub Release publish, manual TestPyPI target via `workflow_dispatch`
-- `.github/workflows/README.md` — Trusted Publishing setup guide
+- `.github/workflows/ci.yml`, ruff, mypy, pytest, MCP stdio smoke, `uv build` on push and pull requests
+- `.github/workflows/publish-pypi.yml`, automated PyPI upload on GitHub Release publish, manual TestPyPI target via `workflow_dispatch`
+- `.github/workflows/README.md`, Trusted Publishing setup guide
 
 ### Changed
 - Version bump 0.1.0 → 0.1.1
@@ -187,28 +187,28 @@ Initial public release. Decimal-only calculation MCP server with 16 domains,
 236 base tools, 10 admin policy-management tools, and 5 transport modes.
 
 ### Added
-- Phase 1 — Core kernel (M1~M4): Decimal operators, CalcTrace, REGISTRY
+- Phase 1, Core kernel (M1~M4): Decimal operators, CalcTrace, REGISTRY
   auto-discovery, `core.batch` parallel executor, `core.pipeline` DAG runner
   with resume, payload guard, trace-level filter.
-- Phase 1 — Transports (M5): multi-transport runtime (stdio, HTTP, SSE,
+- Phase 1, Transports (M5): multi-transport runtime (stdio, HTTP, SSE,
   WebSocket, Unix socket) with unified hardening middleware, origin guard,
   payload size limit, per-session isolation.
-- Phase 1 — Skill guide (M6~M7): `sootool.skill_guide` MCP tool,
+- Phase 1, Skill guide (M6~M7): `sootool.skill_guide` MCP tool,
   `_meta.hints` injection pipeline, bilingual (KO+EN) playbooks and triggers
   covering tax / finance / payroll / realestate / policy-management flows.
-- Phase 1 — Policy management (M8): 10 admin MCP tools implementing the
+- Phase 1, Policy management (M8): 10 admin MCP tools implementing the
   propose → activate → rollback workflow with 6-stage YAML validation,
   SHA256 integrity check, signature chain, audit log, and `policy_source` /
   `sha256` / `audit_id` trace extensions on all policy-dependent tools.
-- Phase 4 — Safe expression evaluator (P4-M1, ADR-017): AST-based `core.calc`
+- Phase 4, Safe expression evaluator (P4-M1, ADR-017): AST-based `core.calc`
   with Decimal results, mpmath transcendentals, and explicit variable binding.
-- Phase 4 — Engineering domain Tier 1~3 (P4-M2~M4): 50 tools covering
+- Phase 4, Engineering domain Tier 1~3 (P4-M2~M4): 50 tools covering
   electrical, fluid, thermal, mechanical, civil, chemistry engineering, and
   SI prefix conversions.
-- Phase 4 — Domain Tier A (P4-M5): 25 tools across 6 domains with 6 policy
+- Phase 4, Domain Tier A (P4-M5): 25 tools across 6 domains with 6 policy
   YAML sources (capital gains, corporate, gift, inheritance, withholding,
   property tax).
-- Phase 4 — Domain Tier B/C (P4-M6~M7): 60 tools covering the remaining
+- Phase 4, Domain Tier B/C (P4-M6~M7): 60 tools covering the remaining
   statistics, probability, geometry, crypto, and project-management
   surfaces plus the new `math` domain.
 - Architecture Decision Records ADR-001 through ADR-017 covering kernel

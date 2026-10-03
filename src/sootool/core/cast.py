@@ -1,5 +1,5 @@
 """
-core/cast.py — Boundary casting between Decimal, float64, mpmath, and pint Quantity.
+core/cast.py, Boundary casting between Decimal, float64, mpmath, and pint Quantity.
 
 All cross-type conversions in SooTool must go through this module.
 No module may call float() on a Decimal or cast mpf directly outside this file.
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-# float64 has 15–17 significant decimal digits of precision.
+# float64 has 15-17 significant decimal digits of precision.
 _FLOAT64_MAX_SAFE_DIGITS = 15
 
 
@@ -36,7 +36,7 @@ def decimal_to_float64(x: Decimal) -> float:
     sign, digits, exponent = x.as_tuple()
     if len(digits) > _FLOAT64_MAX_SAFE_DIGITS:
         log.warning(
-            "decimal_to_float64: precision loss possible — "
+            "decimal_to_float64: precision loss possible, "
             "Decimal has %d significant digits, float64 supports ~%d. value=%s",
             len(digits),
             _FLOAT64_MAX_SAFE_DIGITS,

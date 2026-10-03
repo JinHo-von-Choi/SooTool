@@ -26,7 +26,7 @@ from sootool.core.registry import REGISTRY, ToolRegistry
 try:
     import sootool.modules.symbolic  # noqa: F401
 except ImportError:
-    pass  # sympy 미설치 환경 — symbolic 테스트는 pytest.importorskip 으로 skip 됨
+    pass  # sympy 미설치 환경, symbolic 테스트는 pytest.importorskip 으로 skip 됨
 
 TIMEOUT_TOLERANCE = float(os.environ.get("SOOTOOL_TIMEOUT_TOLERANCE", "2.0"))
 
@@ -129,7 +129,7 @@ def test_pipeline_step_timeout_enforced() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 4: pipeline_timeout 전파 — 후속 step 이 skipped 처리됨
+# Test 4: pipeline_timeout 전파, 후속 step 이 skipped 처리됨
 # ---------------------------------------------------------------------------
 
 
@@ -237,7 +237,7 @@ def test_symbolic_main_thread_sigalrm_path() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Test 7: batch + symbolic protection — worker 내 DomainConstraintError 처리
+# Test 7: batch + symbolic protection, worker 내 DomainConstraintError 처리
 # ---------------------------------------------------------------------------
 
 
@@ -272,5 +272,5 @@ def test_batch_worker_symbolic_protection() -> None:
     )
     # error(DomainConstraintError) 또는 timeout 으로 처리돼야 함
     assert resp["count_timeout"] + resp["count_error"] >= 1, (
-        "symbolic 연산이 타임아웃/에러 없이 모두 완료됨 — protection 미작동"
+        "symbolic 연산이 타임아웃/에러 없이 모두 완료됨, protection 미작동"
     )

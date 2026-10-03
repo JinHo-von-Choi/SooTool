@@ -81,9 +81,9 @@ def _sha256_hex(text: str) -> str:
 class _IntegrityContext(threading.local):
     """Per-thread scratch pad for the in-flight tool invocation.
 
-    ``inputs``         — kwargs captured at REGISTRY.invoke entry.
-    ``policy_meta``    — set by policy loaders when a policy YAML is consumed.
-    ``sootool_version``— cached package version (importlib.metadata lookup).
+    ``inputs``, kwargs captured at REGISTRY.invoke entry.
+    ``policy_meta``, set by policy loaders when a policy YAML is consumed.
+    ``sootool_version``, cached package version (importlib.metadata lookup).
     """
 
     def __init__(self) -> None:
@@ -112,7 +112,7 @@ def set_policy_meta(
 ) -> None:
     """Record policy metadata for the current tool invocation (thread-local).
 
-    Multiple policy loads within a single tool call are allowed — the last one
+    Multiple policy loads within a single tool call are allowed, the last one
     wins, matching the semantics of trace_ext.enrich_response which only
     stamps a single policy per response.
     """

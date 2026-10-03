@@ -132,7 +132,7 @@ def _parse_tokens(
             break
 
         elif re.match(r"^[A-Z]", tok):
-            # Element symbol — validate and parse count
+            # Element symbol, validate and parse count
             elem = tok
             pos += 1
             count = 1
@@ -224,7 +224,7 @@ def stoichiometry(
     Args:
         reactants:    List of {formula: str, mass?: str (g), moles?: str}.
                       Provide either mass or moles for each reactant.
-        products:     List of {formula: str} — formulas for which to compute amounts.
+        products:     List of {formula: str}, formulas for which to compute amounts.
         coefficients: Balanced equation coefficients for all species
                       (reactants and products), e.g. {"H2": 2, "O2": 1, "H2O": 2}.
 

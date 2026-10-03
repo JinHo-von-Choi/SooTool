@@ -21,7 +21,7 @@ def _solve(**kwargs: object) -> dict[str, object]:
     return REGISTRY.invoke("symbolic.solve", **kwargs)
 
 
-# 악성 입력 세트 — 각 항목은 AST 화이트리스트에서 거부되어야 한다.
+# 악성 입력 세트, 각 항목은 AST 화이트리스트에서 거부되어야 한다.
 _MALICIOUS_INPUTS: list[str] = [
     '__import__("os")',
     '__import__("os").system("ls")',

@@ -28,7 +28,7 @@ def _miller_rabin_witness(n: int, a: int) -> bool:
 
     x = pow(a, d, n)
     if x == 1 or x == n - 1:
-        return False  # inconclusive — not a witness
+        return False  # inconclusive, not a witness
 
     for _ in range(r - 1):
         x = pow(x, 2, n)

@@ -4,7 +4,7 @@ from decimal import Decimal
 
 
 def test_server_exposes_core_add():
-    import sootool.server  # noqa: F401 — triggers _register_core_tools() side-effect
+    import sootool.server  # noqa: F401, triggers _register_core_tools() side-effect
     from sootool.core.registry import REGISTRY
     names = {e.full_name for e in REGISTRY.list()}
     assert "core.add" in names
@@ -109,7 +109,7 @@ def test_payload_limit_truncates(monkeypatch):
 def test_payload_limit_no_truncation_when_small():
     from sootool.server import _enforce_payload_limit, invoke_tool
     result = invoke_tool("core.add", {"operands": ["1", "2"]})
-    # Default 512 KB limit — a tiny result must not be flagged
+    # Default 512 KB limit, a tiny result must not be flagged
     result = _enforce_payload_limit(result)
     assert result.get("truncated") is not True
 

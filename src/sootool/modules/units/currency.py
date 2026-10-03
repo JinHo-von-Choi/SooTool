@@ -10,7 +10,7 @@ from sootool.core.registry import REGISTRY
 from sootool.core.result_types import TracedResult
 from sootool.core.rounding import RoundingPolicy, apply
 
-# ISO 4217 minor units — number of decimal places for final rounding.
+# ISO 4217 minor units, number of decimal places for final rounding.
 # 0-decimal: whole-unit currencies (no sub-unit).
 # 2-decimal: most major currencies.
 # 3-decimal: dinar-family currencies.

@@ -40,7 +40,7 @@ class TestTaxDomainHints:
             "tax.kr_income",
             taxable_income="50000000",
             year=2026,
-            # trace_level not passed — defaults to whatever the tool uses internally
+            # trace_level not passed, defaults to whatever the tool uses internally
         )
         # The post-processor records the call; at minimum _meta must be present
         assert "_meta" in result

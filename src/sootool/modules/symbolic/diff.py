@@ -1,4 +1,4 @@
-"""symbolic.diff — n차 기호 미분 후 Decimal 평가 브릿지 (ADR-022).
+"""symbolic.diff, n차 기호 미분 후 Decimal 평가 브릿지 (ADR-022).
 
 시그니처:
     diff(expression, var, order=1, variables=None, numeric_eval=True)

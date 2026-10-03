@@ -1,4 +1,4 @@
-"""SooTool skill guide — agentic active usage guide system (M7).
+"""SooTool skill guide, agentic active usage guide system (M7).
 
 Importing this package registers the sootool.skill_guide MCP tool
 via REGISTRY side-effect.

@@ -24,7 +24,7 @@ git status  # working tree가 clean해야 한다
 
 릴리스 전 현재 HEAD의 CI가 반드시 green이어야 한다.
 
-방법 A — 스크립트 사용 (권장):
+방법 A, 스크립트 사용 (권장):
 
 ```
 make release-preflight
@@ -33,7 +33,7 @@ make release-preflight
 exit 0이면 CI 성공 확인 완료. exit 1이면 CI 실패이므로 원인 수정 후 재시도.
 exit 2이면 GitHub 토큰이 없으므로 GH_TOKEN 환경변수를 설정한 후 재실행한다.
 
-방법 B — GitHub Actions UI 직접 확인:
+방법 B, GitHub Actions UI 직접 확인:
 
 https://github.com/JinHo-von-Choi/SooTool/actions 에서
 현재 master 최신 커밋의 CI 런이 초록(success) 상태인지 확인한다.
@@ -106,7 +106,7 @@ uv build
 
 ```
 git add pyproject.toml CHANGELOG.md
-git commit -m "chore(release): x.y.z — <한 줄 요약>"
+git commit -m "chore(release): x.y.z, <한 줄 요약>"
 ```
 
 커밋 메시지에 Co-Authored-By 라인을 포함하지 않는다.
@@ -136,7 +136,7 @@ gh CLI 사용:
 
 ```
 gh release create vx.y.z \
-  --title "vx.y.z — <제목>" \
+  --title "vx.y.z, <제목>" \
   --notes "$(sed -n '/## \[x.y.z\]/,/## \[/p' CHANGELOG.md | head -n -1)"
 ```
 
@@ -150,7 +150,7 @@ curl -s -X POST \
   -H "Authorization: Bearer $GH_TOKEN" \
   -H "Accept: application/vnd.github+json" \
   https://api.github.com/repos/JinHo-von-Choi/SooTool/releases \
-  -d '{"tag_name":"vx.y.z","name":"vx.y.z — <제목>","body":"<내용>","draft":false}'
+  -d '{"tag_name":"vx.y.z","name":"vx.y.z, <제목>","body":"<내용>","draft":false}'
 ```
 
 ---

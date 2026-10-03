@@ -25,7 +25,7 @@ WHO 기준 BMI 계산 및 분류.
 **소수점**: 4자리
 
 **출처**:
-- Du Bois D, Du Bois EF. A formula to estimate the approximate surface area if height and weight be known. *Arch Intern Med.* 1916;17:863–871.
+- Du Bois D, Du Bois EF. A formula to estimate the approximate surface area if height and weight be known. *Arch Intern Med.* 1916;17:863-871.
 - Mosteller RD. Simplified calculation of body-surface area. *N Engl J Med.* 1987;317(17):1098.
 
 ---
@@ -64,8 +64,8 @@ eGFR = 142 × min(Scr/κ, 1)^α × max(Scr/κ, 1)^-1.200 × 0.9938^age [× 1.012
 | G5 | < 15 |
 
 **출처**:
-- Inker LA, et al. New Creatinine- and Cystatin C-Based Equations to Estimate GFR without Race. *N Engl J Med.* 2021;385(19):1737–1749.
-- Kidney Disease: Improving Global Outcomes (KDIGO) CKD Work Group. *Kidney Int Suppl.* 2013;3:1–150.
+- Inker LA, et al. New Creatinine- and Cystatin C-Based Equations to Estimate GFR without Race. *N Engl J Med.* 2021;385(19):1737-1749.
+- Kidney Disease: Improving Global Outcomes (KDIGO) CKD Work Group. *Kidney Int Suppl.* 2013;3:1-150.
 
 ---
 

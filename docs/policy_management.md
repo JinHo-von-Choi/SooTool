@@ -241,4 +241,4 @@ The audit log records the rollback event.
 - Override directories are created with 0700, files with 0600.
 - Audit log file permissions are 0600.
 - `yaml.SafeLoader` is enforced; Python object tags are rejected.
-- `source_url` is stored as metadata only — no automatic URL fetching.
+- `source_url` is stored as metadata only, no automatic URL fetching.

@@ -389,7 +389,7 @@ def _scan_store(
                     "path":           str(yaml_path),
                 }
                 if source == "override" or key not in entries:
-                    # override always wins — replace any existing package entry of the same file
+                    # override always wins, replace any existing package entry of the same file
                     entries[key] = entry
             except Exception:
                 log.warning("Could not read policy file: %s", yaml_path, exc_info=True)

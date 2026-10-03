@@ -204,7 +204,7 @@ class TestModinv:
             assert (int(a) * inv) % int(m) == 1
 
     def test_modinv_large(self) -> None:
-        # modinv(65537, 10^9 + 7) — 10^9 + 7 is prime so gcd is 1
+        # modinv(65537, 10^9 + 7), 10^9 + 7 is prime so gcd is 1
         a = "65537"
         m = "1000000007"
         result = _modinv(a, m)

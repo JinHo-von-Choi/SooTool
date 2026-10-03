@@ -113,7 +113,7 @@ def _enforce_payload_limit(response: dict[str, Any]) -> dict[str, Any]:
             steps.pop()
             result["trace"]["steps"] = steps
         if _size(result) > limit_bytes:
-            # Still over — strip trace entirely
+            # Still over, strip trace entirely
             result.pop("trace", None)
 
     result["truncated"] = True
@@ -184,7 +184,7 @@ def _integrity_post_processor(response: dict[str, Any], tool_name: str) -> dict[
 
     Reads the in-flight tool kwargs and (optional) policy metadata from the
     thread-local integrity context populated by ``REGISTRY.invoke`` and
-    ``policy_mgmt.loader.load``. Result and trace fields are never modified —
+    ``policy_mgmt.loader.load``. Result and trace fields are never modified ,
     only ``_meta.integrity`` is added (ADR-011 / ADR-021 invariant).
 
     ``sootool.skill_guide`` is skipped to keep the guide output minimal.
@@ -218,7 +218,7 @@ def _integrity_post_processor(response: dict[str, Any], tool_name: str) -> dict[
 
 
 # ---------------------------------------------------------------------------
-# Core tool registration (idempotent — only runs once per process)
+# Core tool registration (idempotent, only runs once per process)
 # ---------------------------------------------------------------------------
 
 _CORE_TOOLS_REGISTERED = False

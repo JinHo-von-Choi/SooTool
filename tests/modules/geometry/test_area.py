@@ -140,7 +140,7 @@ class TestAreaPolygon:
         assert Decimal(result["area"]) == Decimal("6")
 
     def test_polygon_pentagon(self) -> None:
-        # Regular-ish pentagon — just check it returns positive area
+        # Regular-ish pentagon, just check it returns positive area
         vertices = [
             ["0", "2"], ["2", "0"], ["3", "2"],
             ["2", "4"], ["0", "4"],

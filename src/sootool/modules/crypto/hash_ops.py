@@ -30,7 +30,7 @@ def hash_data(data: str, algorithm: str = "sha256") -> HashDataResult:
 
     Args:
         data:      Input string (UTF-8).
-        algorithm: Hash algorithm — "sha256", "sha512", or "blake2b".
+        algorithm: Hash algorithm, "sha256", "sha512", or "blake2b".
 
     Returns:
         {hex, trace}

@@ -1,5 +1,5 @@
 """
-policies/__init__.py — Policy YAML loader with SHA256 integrity verification.
+policies/__init__.py, Policy YAML loader with SHA256 integrity verification.
 
 SHA256 Integrity Scheme:
   The sha256 field in each YAML file is computed over the file content
@@ -122,15 +122,15 @@ def load(domain: str, key: str, year: int) -> dict[str, Any]:
 
     Parameters
     ----------
-    domain : str — policy domain subdirectory (e.g. "tax").
-    key    : str — policy key prefix (e.g. "kr_income").
-    year   : int — policy year (e.g. 2026).
+    domain : str, policy domain subdirectory (e.g. "tax").
+    key    : str, policy key prefix (e.g. "kr_income").
+    year   : int, policy year (e.g. 2026).
 
     Returns
     -------
     dict with keys:
-      - data         : dict  — the policy data section.
-      - policy_version : dict — {year, sha256, effective_date, notice_no}.
+      - data         : dict, the policy data section.
+      - policy_version : dict, {year, sha256, effective_date, notice_no}.
 
     Raises
     ------

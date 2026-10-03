@@ -59,9 +59,9 @@ def accounting_cashflow_operating(
         depreciation:            감가상각비
         amortization:            무형자산상각비
         other_noncash:           기타 비현금 항목 (주식보상비용 등)
-        change_in_receivables:   매출채권 증가(+) 또는 감소(-) — 증가면 현금 감소
-        change_in_inventory:     재고자산 증가(+) 또는 감소(-) — 증가면 현금 감소
-        change_in_payables:      매입채무 증가(+) 또는 감소(-) — 증가면 현금 증가
+        change_in_receivables:   매출채권 증가(+) 또는 감소(-), 증가면 현금 감소
+        change_in_inventory:     재고자산 증가(+) 또는 감소(-), 증가면 현금 감소
+        change_in_payables:      매입채무 증가(+) 또는 감소(-), 증가면 현금 증가
         change_in_other_wc:      기타 운전자본 순변동 (부호 convention: 현금 증감 기준)
 
     Returns:

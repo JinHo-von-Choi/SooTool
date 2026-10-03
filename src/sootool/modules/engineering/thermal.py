@@ -244,8 +244,8 @@ def lmtd(
     """Compute log-mean temperature difference.
 
     Args:
-        delta_t_hot_inlet:   hot-side 입구 – cold-side 대응 단(ΔT₁)
-        delta_t_cold_outlet: hot-side 출구 – cold-side 대응 단(ΔT₂)
+        delta_t_hot_inlet:   hot-side 입구, cold-side 대응 단(ΔT₁)
+        delta_t_cold_outlet: hot-side 출구, cold-side 대응 단(ΔT₂)
 
     Both ΔT values must be > 0 (positive temperature difference at each end).
     """

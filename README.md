@@ -252,9 +252,9 @@ LLM이 한 건씩 산출하면 재현성·신뢰성이 흔들린다. SooTool은 
 
 구현 세부:
 
-- `core.batch` — N개 독립 연산을 ThreadPoolExecutor로 병렬 실행. id 중복 거부, per-item 격리(`ok|error|timeout|skipped`), 최대 500 items, per-item 10s, batch 60s 제한. 결과는 입력 id 순으로 결정적 재정렬된다(ADR-011).
-- `core.pipeline` — `graphlib.TopologicalSorter` 기반 DAG 실행기. `${step_id.result.field}` 참조 문법으로 단계 간 데이터 전달. max_steps=50, max_depth=10, step_timeout_s=2.0, pipeline_timeout_s=30.0(ADR-006).
-- `core.pipeline_resume` — 실패한 스텝을 TTL 10분 in-memory 캐시로부터 부분 재실행.
+- `core.batch`, N개 독립 연산을 ThreadPoolExecutor로 병렬 실행. id 중복 거부, per-item 격리(`ok|error|timeout|skipped`), 최대 500 items, per-item 10s, batch 60s 제한. 결과는 입력 id 순으로 결정적 재정렬된다(ADR-011).
+- `core.pipeline`, `graphlib.TopologicalSorter` 기반 DAG 실행기. `${step_id.result.field}` 참조 문법으로 단계 간 데이터 전달. max_steps=50, max_depth=10, step_timeout_s=2.0, pipeline_timeout_s=30.0(ADR-006).
+- `core.pipeline_resume`, 실패한 스텝을 TTL 10분 in-memory 캐시로부터 부분 재실행.
 
 ## 전송 지원
 

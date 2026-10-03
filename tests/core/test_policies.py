@@ -1,5 +1,5 @@
 """
-Tests for policies/__init__.py — YAML policy loader with SHA256 integrity check.
+Tests for policies/__init__.py, YAML policy loader with SHA256 integrity check.
 
 작성자: 최진호
 작성일: 2026-04-22

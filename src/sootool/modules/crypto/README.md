@@ -25,7 +25,7 @@
 
 - GCD/LCM: Python `math.gcd`, `math.lcm` (Python 3.9+)
 - 모듈러 역원: Python `pow(a, -1, m)` (Python 3.8+)
-- Miller-Rabin 결정론적 증인 집합: [Wikipedia — Miller-Rabin primality test](https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test#Testing_against_small_sets_of_bases)
+- Miller-Rabin 결정론적 증인 집합: [Wikipedia, Miller-Rabin primality test](https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test#Testing_against_small_sets_of_bases)
 - 해시: Python `hashlib` (FIPS 140-2 준수)
 
 ## 수용 기준

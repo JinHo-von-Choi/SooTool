@@ -1,5 +1,5 @@
 """
-Tests for core/cast.py — boundary casting between Decimal, float64, mpmath, Quantity.
+Tests for core/cast.py, boundary casting between Decimal, float64, mpmath, Quantity.
 
 작성자: 최진호
 작성일: 2026-04-22

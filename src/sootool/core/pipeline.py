@@ -17,7 +17,7 @@ from sootool.core.registry import ToolRegistry
 from sootool.core.request_context import submit_with_context
 from sootool.core.result_types import ToolResult
 
-# Non-recursive linear scanner — single finditer, no nested quantifiers.
+# Non-recursive linear scanner, single finditer, no nested quantifiers.
 REF_PATTERN = re.compile(
     r"\$\{([a-zA-Z_][a-zA-Z0-9_]*)(\.[a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z_][a-zA-Z0-9_]*)*)\}"
 )

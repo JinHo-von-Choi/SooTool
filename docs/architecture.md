@@ -137,7 +137,7 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 결정:
 - 정책 YAML을 이중 저장소로 분리: 패키지 동봉 기본값(읽기 전용) + 사용자 덮어쓰기(XDG_DATA_HOME 또는 `SOOTOOL_POLICY_DIR`).
 - 로더는 덮어쓰기 > 기본값 순으로 해석하며, 호출자에게 `policy_source` 로 어느 저장소가 적용됐는지 투명하게 반환한다.
-- 쓰기 도구 10종(`sootool.policy_*` — validate, propose, activate, rollback, history, diff, list, export, import, status)은 admin 모드 한정으로 노출한다. 진입은 환경변수 `SOOTOOL_ADMIN_MODE=1` 또는 CLI `--admin` 중 하나.
+- 쓰기 도구 10종(`sootool.policy_*`, validate, propose, activate, rollback, history, diff, list, export, import, status)은 admin 모드 한정으로 노출한다. 진입은 환경변수 `SOOTOOL_ADMIN_MODE=1` 또는 CLI `--admin` 중 하나.
 - 모든 쓰기는 원자적 파일 교체(tmp → rename) + JSONL 감사 로그(append-only)로 기록한다. audit_id 는 계산 도구 trace 에 `policy_audit_id` 로 전파된다.
 - 수명 주기: draft → validate → propose → activate (24시간 TTL). rollback 은 activate 역연산으로 감사 로그에 기록한다.
 - 계산 도구 trace 는 `policy_source: package|override`, `policy_sha256`, `policy_audit_id` 3개 필드를 의무 주입하여 덮어쓰기 여부를 호출자가 항상 식별 가능하게 한다.
@@ -169,7 +169,7 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 
 결정:
 - 도구 수·계산 도메인 수·운영 네임스페이스 수·정책 도구 수·admin 정책 도구 수는 REGISTRY 전수 조회 결과(`scripts/count_tools.py`)를 유일한 진실로 한다.
-- 배포 문서 3자 — `README.md` 첫 문단·도구 카탈로그 헤더, `pyproject.toml` `project.description`, `CHANGELOG.md` 릴리즈 요약 — 는 동일 숫자 문자열을 노출한다. `pyproject.toml` description 상단에 `# keep in sync with README first paragraph` 주석을 유지한다.
+- 배포 문서 3자, `README.md` 첫 문단·도구 카탈로그 헤더, `pyproject.toml` `project.description`, `CHANGELOG.md` 릴리즈 요약, 는 동일 숫자 문자열을 노출한다. `pyproject.toml` description 상단에 `# keep in sync with README first paragraph` 주석을 유지한다.
 - 계산 도메인의 정의는 "운영 네임스페이스(`core`, `sootool`) 를 제외한 모든 네임스페이스" 로 고정한다. 전체 네임스페이스·계산 도메인·운영 도메인은 분리 표기하여 혼동을 차단한다.
 - CI 가드는 `scripts/count_tools.py --json` 출력을 기준으로 README·pyproject·CHANGELOG 의 선언 숫자 토큰을 정규식으로 대조하고, `--assert-total`/`--assert-domains`/`--assert-policy` 단언을 병행한다. 불일치 시 빌드 실패로 릴리즈 태깅·PyPI 배포를 차단한다.
 - 테스트 수는 `pytest --collect-only` 결과를 부가 지표로 기록하되 빌드 차단 기준은 아니다(테스트는 지속 추가되며 문서 동기화 우선순위가 낮다).
@@ -179,7 +179,7 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - 수동 동기화는 사람 개입마다 드리프트가 재발한다. REGISTRY 를 단일 소스로 삼고 CI 에서 기계적으로 대조하면 릴리즈 이전에 오차가 발견되며, 배포 후 사후 패치(0.1.1 hotfix) 필요성을 제거한다.
 - `core`·`sootool` 을 계산 도메인에서 분리하는 것은 외부 사용자 관점의 "계산 능력" 정의와 내부 아키텍처의 "운영 표면" 정의를 충돌 없이 유지하기 위한 결정이다.
 
-### Appendix — base_tools 공식 규범 (2026-04-24)
+### Appendix, base_tools 공식 규범 (2026-04-24)
 
 `scripts/count_tools.py`가 보고하는 `base_tools`는 다음 공식으로 고정한다.
 
@@ -258,11 +258,11 @@ R1. 릴리스 게이트 (Release Gate)
 
 R2. 시간 축 계약 (Timeout Contracts)
 - 다음 계약은 `tests/core/test_timeout_contracts.py` 의 7 테스트 케이스로 실제 wall-clock 구속을 증명해야 한다.
-  - `BatchExecutor.batch_timeout_s` — batch 수준 wall-clock 상한.
-  - `BatchExecutor.item_timeout_s` — 개별 아이템 wall-clock 상한.
-  - `PipelineExecutor.step_timeout_s` — step 수준 wall-clock 상한.
-  - `PipelineExecutor.pipeline_timeout_s` — 파이프라인 수준 wall-clock 상한(초과 시 후속 step 은 `status="skipped"` + `error.type="PipelineTimeout"`).
-  - `symbolic/_bridge._EVAL_TIMEOUT_S` — 메인 스레드 SIGALRM 경로와 비메인 스레드 `ThreadPoolExecutor` watchdog 경로 양쪽에서 강제.
+  - `BatchExecutor.batch_timeout_s`, batch 수준 wall-clock 상한.
+  - `BatchExecutor.item_timeout_s`, 개별 아이템 wall-clock 상한.
+  - `PipelineExecutor.step_timeout_s`, step 수준 wall-clock 상한.
+  - `PipelineExecutor.pipeline_timeout_s`, 파이프라인 수준 wall-clock 상한(초과 시 후속 step 은 `status="skipped"` + `error.type="PipelineTimeout"`).
+  - `symbolic/_bridge._EVAL_TIMEOUT_S`, 메인 스레드 SIGALRM 경로와 비메인 스레드 `ThreadPoolExecutor` watchdog 경로 양쪽에서 강제.
 - 실행 계약 변경이 필요하면 해당 테스트 파일의 tolerance(`SOOTOOL_TIMEOUT_TOLERANCE`) 와 본 ADR 을 함께 개정한다.
 
 R3. Optional Extras 매트릭스 (Optional Extras Matrix)

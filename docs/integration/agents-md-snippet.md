@@ -1,4 +1,4 @@
-# SooTool — 범용 AGENTS.md 삽입용 스니펫
+# SooTool, 범용 AGENTS.md 삽입용 스니펫
 
 아래 내용을 `AGENTS.md` 또는 에이전트 시스템 프롬프트에 복사한다.
 
@@ -12,7 +12,7 @@ SooTool replaces probabilistic LLM arithmetic with 100% deterministic Decimal-pa
 
 Call `sootool.skill_guide()` at session start to internalize the trigger table.
 
-### Trigger table — invoke immediately (never compute inline)
+### Trigger table, invoke immediately (never compute inline)
 
 | Signal | Tool |
 |-|-|

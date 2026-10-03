@@ -113,7 +113,7 @@ def test_policy_validate_bad_yaml():
 
 
 # ---------------------------------------------------------------------------
-# Admin gate — all write tools must return admin_required when not in admin mode
+# Admin gate, all write tools must return admin_required when not in admin mode
 # ---------------------------------------------------------------------------
 
 def test_policy_propose_requires_admin(monkeypatch):

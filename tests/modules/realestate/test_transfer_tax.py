@@ -4,7 +4,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 import sootool.modules.realestate  # noqa: F401
-import sootool.modules.tax  # noqa: F401  — registers tax.capital_gains_kr
+import sootool.modules.tax  # noqa: F401, registers tax.capital_gains_kr
 from sootool.core.registry import REGISTRY
 
 

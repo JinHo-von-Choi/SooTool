@@ -5,8 +5,8 @@
 
 cases.yaml 에 정의된 20 케이스를 다음 경로로 평가한다.
 
-1. SooTool ground truth — REGISTRY.invoke() 직접 호출하여 Decimal 정답 확정.
-2. LLM 비교 — OpenAI / Anthropic / Google GenAI SDK 를 런타임 import.
+1. SooTool ground truth, REGISTRY.invoke() 직접 호출하여 Decimal 정답 확정.
+2. LLM 비교, OpenAI / Anthropic / Google GenAI SDK 를 런타임 import.
    - SDK 미설치 또는 API 키 미설정 시 해당 LLM 을 graceful skip.
    - 응답 텍스트에서 숫자 추출 후 기대값과 비교.
 
@@ -21,17 +21,17 @@ CI 에서 실행하지 않는다 (API 비용 발생). 로컬에서 수동 실행
     uv run python bench/run_benchmark.py --skip-llm     # SooTool ground truth 만
 
 환경변수:
-    OPENAI_API_KEY    — OpenAI chat 모델 호출
-    ANTHROPIC_API_KEY — Anthropic Claude 모델 호출
-    GOOGLE_API_KEY    — Google GenAI (Gemini) 모델 호출
+    OPENAI_API_KEY, OpenAI chat 모델 호출
+    ANTHROPIC_API_KEY, Anthropic Claude 모델 호출
+    GOOGLE_API_KEY, Google GenAI (Gemini) 모델 호출
     SOOTOOL_BENCH_OPENAI_MODEL    기본 gpt-4o
     SOOTOOL_BENCH_ANTHROPIC_MODEL 기본 claude-3-7-sonnet-latest
     SOOTOOL_BENCH_GOOGLE_MODEL    기본 gemini-2.5-pro
 
 LLM 응답 매칭 규칙:
-    exact  — 문자열 정규화 후 정확 일치
-    approx — 상대오차 |llm - expected| / |expected| <= 1e-4
-    wrong  — 위 두 조건 모두 실패
+    exact, 문자열 정규화 후 정확 일치
+    approx, 상대오차 |llm - expected| / |expected| <= 1e-4
+    wrong, 위 두 조건 모두 실패
 """
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ _APPROX_TOL    = Decimal("0.0001")  # 상대오차 0.01%
 
 
 # ---------------------------------------------------------------------------
-# LLM adapters — SDK 를 런타임 import 하여 미설치 상황에서도 graceful skip.
+# LLM adapters, SDK 를 런타임 import 하여 미설치 상황에서도 graceful skip.
 # ---------------------------------------------------------------------------
 
 
@@ -250,7 +250,7 @@ def _run_cases(
 def _render_markdown(rows: list[dict[str, Any]], *, skip_llm: bool) -> str:
     today = _dt.date.today().isoformat()
     lines: list[str] = []
-    lines.append(f"# SooTool 벤치마크 리트머스 결과 — {today}")
+    lines.append(f"# SooTool 벤치마크 리트머스 결과, {today}")
     lines.append("")
     lines.append("자동 생성 파일. `bench/run_benchmark.py` 실행 결과.")
     lines.append("")
@@ -326,14 +326,14 @@ def _render_markdown(rows: list[dict[str, Any]], *, skip_llm: bool) -> str:
         for p in providers:
             llm = r["llms"].get(p, {})
             if llm.get("error"):
-                lines.append(f"- {p}: skip — {llm['error']}")
+                lines.append(f"- {p}: skip, {llm['error']}")
             else:
                 raw = (llm.get("raw") or "").strip().replace("\n", " ")
                 if len(raw) > 200:
                     raw = raw[:200] + "..."
                 lines.append(
                     f"- {p} ({llm.get('model')}): `{llm.get('number','-')}` "
-                    f"{llm.get('class','?')} — raw=`{raw}`"
+                    f"{llm.get('class','?')}, raw=`{raw}`"
                 )
         lines.append("")
     return "\n".join(lines) + "\n"

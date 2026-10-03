@@ -1,5 +1,5 @@
 """
-core/determinism.py — Deterministic helpers for reproducible computations.
+core/determinism.py, Deterministic helpers for reproducible computations.
 
 get_rng(seed) returns a cached np.random.Generator so that code paths
 that need randomness can be made reproducible across runs by fixing the seed.
@@ -28,12 +28,12 @@ def get_rng(seed: int = 0) -> np.random.Generator:
     Return a cached np.random.Generator for the given seed.
 
     The same Generator instance is returned for the same seed on every call.
-    This means callers share state across calls — use this when you need
+    This means callers share state across calls, use this when you need
     reproducible but stateful random sequences.
 
     Parameters
     ----------
-    seed : int — random seed (default 0).
+    seed : int, random seed (default 0).
 
     Returns
     -------

@@ -26,7 +26,7 @@
 ### NPV / IRR
 - Brealey, Myers & Allen, "Principles of Corporate Finance", 13th ed., Ch. 5-6.
 - NPV = sum(CF_t / (1+r)^t, t=0..n)
-- IRR: NPV(r) = 0 — Newton-Raphson + bisection fallback
+- IRR: NPV(r) = 0, Newton-Raphson + bisection fallback
 
 ### 대출 상환
 - 금융감독원 표준 대출 상환 공식 (표준 금융상품 약관)

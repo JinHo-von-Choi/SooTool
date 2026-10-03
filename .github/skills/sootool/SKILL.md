@@ -48,11 +48,11 @@ Numeric request
 
 ## Anti-patterns
 
-- Do NOT write `40000000 × 0.15 = 6000000` in the prompt — call core.mul.
-- Do NOT omit `year` when calling tax.* — results in UnsupportedPolicyError or wrong rates.
-- Do NOT call core.add 10 times — use core.batch instead.
+- Do NOT write `40000000 × 0.15 = 6000000` in the prompt, call core.mul.
+- Do NOT omit `year` when calling tax.*, results in UnsupportedPolicyError or wrong rates.
+- Do NOT call core.add 10 times, use core.batch instead.
 - Do NOT ignore `status: "skipped"` in pipeline responses.
-- Do NOT use trace_level="none" for tax/accounting — audit trail is required.
+- Do NOT use trace_level="none" for tax/accounting, audit trail is required.
 
 ## Playbooks (abbreviated)
 

@@ -160,7 +160,7 @@ def thin_lens(
             raise DomainConstraintError("object_dist 또는 image_dist 가 0 입니다.")
         inv = D("1") / p + D("1") / q
         if inv == D("0"):
-            raise DomainConstraintError("1/p + 1/q = 0 — 초점거리 역산 불가.")
+            raise DomainConstraintError("1/p + 1/q = 0, 초점거리 역산 불가.")
         f = D("1") / inv
         m_mag = -q / p
         result_name = "focal_length"
@@ -258,7 +258,7 @@ def bragg(
             a_rad  = _to_radians(a_val, unit)
             sin_a  = mpmath.sin(a_rad)
             if sin_a == 0:
-                raise DomainConstraintError("sin(angle) = 0 — spacing 역산 불가.")
+                raise DomainConstraintError("sin(angle) = 0, spacing 역산 불가.")
             d_mpf = order * mpmath.mpf(str(l_val)) / (2 * sin_a)
             d_dec = mpmath_to_decimal(d_mpf, digits=20)
             trace.step("spacing", str(d_dec))
@@ -272,7 +272,7 @@ def bragg(
         sin_t = order * mpmath.mpf(str(l_val)) / (2 * mpmath.mpf(str(d_val)))
         if abs(sin_t) > 1:
             raise DomainConstraintError(
-                f"sin θ > 1 — 해당 차수에서 회절 조건 불성립 (sin θ={float(sin_t):.4f})."
+                f"sin θ > 1, 해당 차수에서 회절 조건 불성립 (sin θ={float(sin_t):.4f})."
             )
         t_rad = mpmath.asin(sin_t)
         t_dec = _from_radians(t_rad, unit)

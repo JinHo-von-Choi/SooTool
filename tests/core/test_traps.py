@@ -1,5 +1,5 @@
 """
-tests/core/test_traps.py — Trap defense tests.
+tests/core/test_traps.py, Trap defense tests.
 
 Documents known precision/serialization/concurrency traps in SooTool
 and verifies that each trap is properly guarded.
@@ -17,7 +17,7 @@ from decimal import Decimal
 # ---------------------------------------------------------------------------
 
 def test_quantity_direct_json_fails() -> None:
-    """Direct json.dumps of a pint Quantity raises TypeError — never pass Quantity into JSON."""
+    """Direct json.dumps of a pint Quantity raises TypeError, never pass Quantity into JSON."""
     from sootool.core.units import Q
 
     q = Q("1.5", "meter")
@@ -47,7 +47,7 @@ def test_quantity_snapshot_roundtrip_safe() -> None:
 # ---------------------------------------------------------------------------
 
 def test_json_default_loses_float_precision() -> None:
-    """Standard json.loads returns float for numeric values — precision is not preserved."""
+    """Standard json.loads returns float for numeric values, precision is not preserved."""
     d = json.loads('{"x": 0.1}')
     assert isinstance(d["x"], float)  # float leaks
 
@@ -114,7 +114,7 @@ def test_pipeline_resume_returns_reused_results() -> None:
 # ---------------------------------------------------------------------------
 
 def test_krw_sum_then_round_vs_round_then_sum_differ() -> None:
-    """Round-then-sum and sum-then-round produce different totals — order matters."""
+    """Round-then-sum and sum-then-round produce different totals, order matters."""
     from sootool.core.locale_kr import KRWMoney
     from sootool.core.rounding import RoundingPolicy
 
@@ -159,7 +159,7 @@ def test_batch_100_parallel_deterministic_order() -> None:
 
     @r.tool(namespace="t", name="identity_det")
     def _id(value: str) -> dict:
-        time.sleep(random.random() * 0.01)  # noqa: S311 — deliberate non-crypto random for race stress
+        time.sleep(random.random() * 0.01)  # noqa: S311, deliberate non-crypto random for race stress
         return {"v": value}
 
     ex    = BatchExecutor(registry=r, max_items=200, item_timeout_s=5.0, batch_timeout_s=30.0)

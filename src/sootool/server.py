@@ -146,5 +146,5 @@ def build_server(profile: str = DEFAULT_PROFILE, *, expose_writes: bool = True) 
 
 
 def invoke_tool(full_name: str, args: dict[str, Any]) -> Any:
-    """Direct invocation for testing — bypasses FastMCP transport."""
+    """Direct invocation for testing, bypasses FastMCP transport."""
     return REGISTRY.invoke(full_name, **args)

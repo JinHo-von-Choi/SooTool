@@ -6,7 +6,7 @@ from decimal import Decimal
 import pytest
 
 import sootool.modules.realestate  # noqa: F401
-import sootool.server  # noqa: F401  — registers core.batch
+import sootool.server  # noqa: F401, registers core.batch
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 

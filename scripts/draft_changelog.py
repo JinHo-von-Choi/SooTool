@@ -230,7 +230,7 @@ def _write_changelog(body: str) -> None:
 
     # body에서 헤더 줄 이후 내용만 추출 (헤더는 기존 파일 것을 유지)
     body_lines_raw = body.splitlines(keepends=True)
-    # body_lines_raw[0]는 "## [Unreleased]\n" — 기존 헤더로 대체되므로 제거
+    # body_lines_raw[0]는 "## [Unreleased]\n", 기존 헤더로 대체되므로 제거
     replacement_content = "".join(body_lines_raw[1:])
 
     if next_section_idx is not None:

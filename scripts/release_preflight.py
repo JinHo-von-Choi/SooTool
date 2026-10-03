@@ -25,7 +25,7 @@ OWNER   = "JinHo-von-Choi"
 REPO    = "SooTool"
 CI_NAME = "CI"
 
-# GitHub API 베이스 URL — https 스킴 전용, file: 허용 없음
+# GitHub API 베이스 URL, https 스킴 전용, file: 허용 없음
 _GITHUB_API_BASE = "https://api.github.com"
 
 # 지수 백오프 재시도 설정

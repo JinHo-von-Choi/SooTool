@@ -5,7 +5,7 @@
   FV = PV * (1 + r)^n
 
 자료형: pure Decimal (ADR-008 finance = Decimal path)
-반올림 정책: HALF_EVEN (기본) — 금융 계산 표준
+반올림 정책: HALF_EVEN (기본), 금융 계산 표준
 
 작성자: 최진호
 작성일: 2026-04-22

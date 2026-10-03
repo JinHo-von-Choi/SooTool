@@ -1,13 +1,13 @@
-"""Earned Schedule (ES) — time-based complement to EVM.
+"""Earned Schedule (ES), time-based complement to EVM.
 
 내부 자료형 (ADR-008): 전 구간 Decimal (시간 단위 동일).
 
 핵심 식:
 - ES(t): EV 를 기준선에서 처음으로 달성한 시점 (PV 타임라인 역산).
 - SPI(t) = ES / AT  (시간 기반 SPI, 단위 없음)
-- TSPI  = (BAC - EV) / (BAC - EV_at_AT)  — 표준 정의를 단순화해 남은 작업 대비 남은 시간 효율성 지표로 사용하지 않고,
+- TSPI  = (BAC - EV) / (BAC - EV_at_AT), 표준 정의를 단순화해 남은 작업 대비 남은 시간 효율성 지표로 사용하지 않고,
           여기서는 시간 기반 TSPI(t) = (PD - ES) / (PD - AT) 를 사용 (Lipke 2003).
-- IEAC(t) = PD / SPI(t)  — Lipke. PD=Planned Duration.
+- IEAC(t) = PD / SPI(t), Lipke. PD=Planned Duration.
 
 PV 타임라인은 step-function 또는 부분 선형으로 가정: (시간, 누적 PV) 쌍 리스트.
 
@@ -96,7 +96,7 @@ def earned_schedule(
         pv_timeline:      List of {"time": Decimal str, "cumulative_pv": Decimal str}, ascending.
         earned_value:     Current EV (Decimal string).
         actual_time:      Elapsed time AT (Decimal string, same unit as pv_timeline.time).
-        planned_duration: PD — planned total duration (Decimal string).
+        planned_duration: PD, planned total duration (Decimal string).
 
     Returns:
         {es, spi_t, tspi_t, ieac_t, trace}

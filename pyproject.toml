@@ -97,7 +97,7 @@ ignore = ["E501", "S101"]
 [tool.ruff.lint.per-file-ignores]
 # scripts/ 는 개발·운영 유틸로 subprocess 와 하드코딩 토큰이 로컬 스모크 테스트 용도로 필요하다.
 "scripts/*" = ["S105", "S603", "S607"]
-# tests/bench/ 는 벤치마크 팀 소유 영역 — import 정렬은 해당 팀이 추후 정리한다.
+# tests/bench/ 는 벤치마크 팀 소유 영역, import 정렬은 해당 팀이 추후 정리한다.
 "tests/bench/*" = ["I001"]
 
 [tool.mypy]
@@ -107,9 +107,9 @@ disallow_untyped_defs = false
 ignore_missing_imports = true
 exclude               = ["tests/"]
 # NOTE: deliberate relaxations from full strict mode:
-#   disallow_untyped_defs=false — pint/mpmath lack py.typed; function signatures
+#   disallow_untyped_defs=false, pint/mpmath lack py.typed; function signatures
 #     throughout units.py/cast.py use runtime Quantity objects that mypy cannot type.
-#   ignore_missing_imports=true — pint, mpmath, mcp have no bundled stubs.
+#   ignore_missing_imports=true, pint, mpmath, mcp have no bundled stubs.
 #   __main__.py FastMCP.run kwargs (host/port) are not in the mcp package's type stubs.
 # Deviation documented: ADR-011 (tooling gates).
 

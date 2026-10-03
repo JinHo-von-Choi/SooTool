@@ -21,7 +21,7 @@ from sootool.core.errors import (
 )
 
 # ---------------------------------------------------------------------------
-# whitelist — 50+ malicious inputs
+# whitelist, 50+ malicious inputs
 # ---------------------------------------------------------------------------
 
 _MALICIOUS_CASES: list[tuple[str, type[Exception]]] = [

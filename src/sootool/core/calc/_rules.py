@@ -64,7 +64,7 @@ _TRANSCENDENTAL_FUNCTIONS: frozenset[str] = frozenset({
 })
 
 
-# 명시적 차단 노드 — 에러 메시지를 구체화하기 위해 별도 테이블 유지.
+# 명시적 차단 노드, 에러 메시지를 구체화하기 위해 별도 테이블 유지.
 _EXPLICITLY_DENIED: dict[type[ast.AST], str] = {
     ast.Attribute:     "attribute access",
     ast.Subscript:     "subscript access",

@@ -146,7 +146,7 @@ def test_batch_deterministic_wall_clock_bounded_by_max_item(monkeypatch: pytest.
     # 전부 성공
     assert out["count_ok"] == 10
     # 순차 수집 대비 단축: 느슨한 상한(0.6s). 순차였다면 >= 0.75s.
-    assert wall < 0.6, f"wall-clock {wall:.3f}s > 0.6s — 순차 수집 회귀 가능성"
+    assert wall < 0.6, f"wall-clock {wall:.3f}s > 0.6s, 순차 수집 회귀 가능성"
 
 
 def test_batch_deterministic_order_independent_of_completion() -> None:

@@ -3,7 +3,7 @@
 Strategy:
 - Spin up the SSE app via uvicorn in a background thread.
 - Use urllib/httpx with short timeouts to probe endpoints.
-- Avoid streaming the infinite SSE body — just check the status code and headers.
+- Avoid streaming the infinite SSE body, just check the status code and headers.
 """
 from __future__ import annotations
 
@@ -93,7 +93,7 @@ def test_healthz_skips_auth() -> None:
 
 
 # ---------------------------------------------------------------------------
-# /sse endpoint tests — status code + headers only (no body consumption)
+# /sse endpoint tests, status code + headers only (no body consumption)
 # ---------------------------------------------------------------------------
 
 def test_sse_endpoint_exists_no_auth() -> None:
@@ -188,7 +188,7 @@ def test_messages_endpoint_exists() -> None:
         try:
             urllib.request.urlopen(req, timeout=5)  # noqa: S310
         except urllib.error.HTTPError as exc:
-            assert exc.code != 404, "/messages returned 404 — endpoint missing"
+            assert exc.code != 404, "/messages returned 404, endpoint missing"
         except Exception:  # noqa: BLE001, S110
             pass  # connection closed by server is also acceptable
     finally:

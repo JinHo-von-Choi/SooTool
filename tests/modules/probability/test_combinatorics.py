@@ -121,7 +121,7 @@ class TestNPr:
 
 
 class TestCombinatoricsBatchRaceFree:
-    """Verify thread safety — concurrent calls must not corrupt each other."""
+    """Verify thread safety, concurrent calls must not corrupt each other."""
 
     def test_probability_batch_race_free(self) -> None:
         inputs = [(52, 5), (10, 3), (6, 2), (8, 4), (12, 6)]

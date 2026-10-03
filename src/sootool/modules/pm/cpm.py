@@ -65,9 +65,9 @@ def critical_path(
 
     Args:
         tasks: List of task dicts, each with:
-               - id:           str   — unique task identifier.
-               - duration:     str   — Decimal duration (same unit for all).
-               - predecessors: list[str] — task IDs that must finish before this starts.
+               - id:           str, unique task identifier.
+               - duration:     str, Decimal duration (same unit for all).
+               - predecessors: list[str], task IDs that must finish before this starts.
 
     Returns:
         {critical_path: list[str], total_duration: str,

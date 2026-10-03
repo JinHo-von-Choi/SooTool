@@ -5,7 +5,7 @@ Tools:
   - bending_stress          : 휨응력 σ = M c / I
   - shear_stress            : 전단응력 τ = V Q / (I b) (직사각형은 1.5 V/A)
   - euler_buckling          : 오일러 좌굴 한계하중 P_cr = π² E I / (K L)²
-  - section_moment_inertia  : 단면 이차모멘트 — 직사각형·원형·I형
+  - section_moment_inertia  : 단면 이차모멘트, 직사각형·원형·I형
 
 ADR-001 Decimal 의무, ADR-003 감사 로그, ADR-007 stateless.
 π·√ 등 초월·비정수 멱은 mpmath workdps(50) → mpmath_to_decimal(digits=30).

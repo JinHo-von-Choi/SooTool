@@ -55,7 +55,7 @@ def test_stage2_missing_required_field() -> None:
 
 
 def test_stage3_schema_validation_error() -> None:
-    # brackets has non-None upper on last bracket — schema error
+    # brackets has non-None upper on last bracket, schema error
     import hashlib
     body = (
         'sha256: "PLACEHOLDER"\n'

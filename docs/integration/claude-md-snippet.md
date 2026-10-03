@@ -1,4 +1,4 @@
-# SooTool — Claude Code CLAUDE.md 삽입용 스니펫
+# SooTool, Claude Code CLAUDE.md 삽입용 스니펫
 
 아래 내용을 `CLAUDE.md`에 복사하면 Claude Code가 SooTool 도구를 자동 호출한다.
 
@@ -9,7 +9,7 @@
 ### 세션 시작 시
 - 반드시 `sootool.skill_guide()` 를 호출하여 트리거 테이블을 숙지한다.
 
-### 트리거 — 아래 신호 감지 시 즉시 해당 도구 호출 (직접 산술 금지)
+### 트리거, 아래 신호 감지 시 즉시 해당 도구 호출 (직접 산술 금지)
 
 | 감지 신호 | 즉시 호출 도구 |
 |-|-|

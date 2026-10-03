@@ -321,7 +321,7 @@ def lunar_to_solar(
 
 
 # ---------------------------------------------------------------------------
-# 24 solar terms (二十四節氣) — approximate (±1 day) using Meeus-style lookup
+# 24 solar terms (二十四節氣), approximate (±1 day) using Meeus-style lookup
 # ---------------------------------------------------------------------------
 
 # 24 절기 순서. 각 절기는 태양 황경(λ_☉) 기준:

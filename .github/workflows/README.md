@@ -1,12 +1,12 @@
 # GitHub Actions Workflows
 
-## `ci.yml` — 지속 통합
+## `ci.yml`, 지속 통합
 
 트리거: `master`/`main` 푸시 및 PR.
 
 실행 단계: uv sync → ruff → mypy → pytest → MCP stdio 스모크 → uv build → `__version__` 검증.
 
-## `publish-pypi.yml` — PyPI 배포
+## `publish-pypi.yml`, PyPI 배포
 
 트리거:
 - GitHub Release 발행 시 자동 (`release: types: [published]`) → PyPI 공개 업로드

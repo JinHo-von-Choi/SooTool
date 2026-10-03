@@ -51,9 +51,9 @@ def bayes(
     P(A|B)    = P(A)  * P(B|A)    / P(B)
 
     Args:
-        prior:      P(A)    — prior probability of the hypothesis (Decimal string in [0,1]).
-        likelihood: P(B|A)  — probability of evidence given hypothesis (Decimal string in [0,1]).
-        marginal:   P(B)    — total probability of evidence (Decimal string in (0,1]).
+        prior:      P(A), prior probability of the hypothesis (Decimal string in [0,1]).
+        likelihood: P(B|A), probability of evidence given hypothesis (Decimal string in [0,1]).
+        marginal:   P(B), total probability of evidence (Decimal string in (0,1]).
 
     Returns:
         {posterior: str, trace}

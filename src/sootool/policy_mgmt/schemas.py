@@ -23,7 +23,7 @@ class PolicyHeader(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Tax — income / capital gains / withholding
+# Tax, income / capital gains / withholding
 # ---------------------------------------------------------------------------
 
 class TaxBracket(BaseModel):

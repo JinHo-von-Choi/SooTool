@@ -1,5 +1,5 @@
 """
-core/locale_kr.py — Korean locale financial types.
+core/locale_kr.py, Korean locale financial types.
 
 KRWMoney is a composition class (NOT a Decimal subclass) that enforces
 KRW-specific rounding: amounts are always stored as Decimal, rounded to
@@ -13,14 +13,14 @@ Design note (ADR-008):
   Arithmetic follows the "re-round after each operation" model with LHS
   policy propagation. For example:
     a = KRWMoney("123", HALF_UP, 10)  # stored: 120 (after rounding on construction)
-    Wait — each is rounded on construction first, then re-rounded after add.
+    Wait, each is rounded on construction first, then re-rounded after add.
     a = KRWMoney("123", HALF_UP, 10)  # 123 HALF_UP to 10 -> 120
     b = KRWMoney("456", HALF_UP, 10)  # 456 HALF_UP to 10 -> 460
     c = KRWMoney("789", HALF_UP, 10)  # 789 HALF_UP to 10 -> 790
     (a + b) = (120 + 460) = 580, re-round HALF_UP 10 -> 580
     (a + b + c) = (580 + 790) = 1370, re-round HALF_UP 10 -> 1370
 
-  But wait — the spec says the expected answer for 123+456+789=1368 -> 1370.
+  But wait, the spec says the expected answer for 123+456+789=1368 -> 1370.
   This requires that the _raw_ (un-rounded) amounts be summed, not the
   already-rounded stored values.
 
@@ -57,9 +57,9 @@ class KRWMoney:
 
     Parameters
     ----------
-    amount   : Decimal or str — raw monetary amount before rounding.
-    rounding : RoundingPolicy — rounding mode applied on construction and after each operation.
-    unit     : int — granularity unit (e.g. 1 = won, 10 = 10-won, 100 = 100-won).
+    amount   : Decimal or str, raw monetary amount before rounding.
+    rounding : RoundingPolicy, rounding mode applied on construction and after each operation.
+    unit     : int, granularity unit (e.g. 1 = won, 10 = 10-won, 100 = 100-won).
                      The stored amount is rounded to the nearest `unit`.
     """
 
@@ -113,7 +113,7 @@ class KRWMoney:
         return str(self._amount)
 
     # ------------------------------------------------------------------
-    # Arithmetic — LHS policy propagates, result is re-rounded
+    # Arithmetic, LHS policy propagates, result is re-rounded
     # ------------------------------------------------------------------
 
     def __add__(self, other: KRWMoney) -> KRWMoney:

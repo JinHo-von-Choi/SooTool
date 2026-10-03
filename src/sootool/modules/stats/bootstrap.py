@@ -3,7 +3,7 @@
 Author: 최진호
 Date: 2026-04-23
 
-Deterministic: numpy.random.default_rng(seed) — 동일 seed/데이터면 동일 결과.
+Deterministic: numpy.random.default_rng(seed), 동일 seed/데이터면 동일 결과.
 """
 from __future__ import annotations
 

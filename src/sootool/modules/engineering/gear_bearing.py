@@ -191,7 +191,7 @@ def bearing_life_l10(
     ratio = div(c_d, p_d)
     if bearing_type == "ball":
         exponent = Decimal("3")
-        # integer exponent — use direct Decimal power for exactness
+        # integer exponent, use direct Decimal power for exactness
         life = mul(mul(ratio, ratio), ratio)
     else:
         exponent = div(Decimal("10"), Decimal("3"))

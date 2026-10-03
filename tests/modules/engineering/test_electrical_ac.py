@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-import sootool.modules.engineering  # noqa: F401 — triggers REGISTRY auto-registration
+import sootool.modules.engineering  # noqa: F401, triggers REGISTRY auto-registration
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 

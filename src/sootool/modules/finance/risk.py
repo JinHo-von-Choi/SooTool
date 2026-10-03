@@ -190,7 +190,7 @@ def finance_var_parametric(
     sigma  = _stdev_decimal(arr, mu, ddof=1)
     alpha  = Decimal("1") - conf
 
-    # z value via scipy (float OK — confidence level is not user data)
+    # z value via scipy (float OK, confidence level is not user data)
     z      = float(stats.norm.ppf(float(alpha)))
     z_d    = D(str(z))
     var    = -(mu + z_d * sigma)

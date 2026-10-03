@@ -2,7 +2,7 @@
 
 설계:
 - 표현식 입력은 core.calc._parse + _count_and_validate 로 AST 화이트리스트 선행 검증.
-- 화이트리스트 통과 후에만 sympy.sympify(locals={}, rational=False) 호출 — 코드 실행 경로 봉쇄.
+- 화이트리스트 통과 후에만 sympy.sympify(locals={}, rational=False) 호출, 코드 실행 경로 봉쇄.
 - sympy 결과는 evalf(mpmath 기반) → mpmath.mpf → Decimal 문자열로 직렬화.
 - 전체 sympy 연산은 시간 제한(5초) 안에서 수행. 초과 시 DomainConstraintError.
 
@@ -72,7 +72,7 @@ def _validate_expression(expression: str, label: str = "expression") -> None:
 def _validate_var(var: str) -> None:
     if not isinstance(var, str) or not var:
         raise DomainConstraintError("var must be a non-empty string")
-    # AST 평가를 통해 단일 식별자인지 확인 — 단순 정규식보다 안전.
+    # AST 평가를 통해 단일 식별자인지 확인, 단순 정규식보다 안전.
     tree = _parse(var)
     import ast
 
@@ -122,7 +122,7 @@ def _time_limit(seconds: int) -> Any:
     try:
         previous = signal.signal(signal.SIGALRM, _handler)
     except (ValueError, OSError):
-        # 메인 스레드 외에서는 signal.signal 이 실패 — 보호 없이 진행.
+        # 메인 스레드 외에서는 signal.signal 이 실패, 보호 없이 진행.
         yield
         return
     try:

@@ -79,7 +79,7 @@ def stats_cohens_d(
     pooled_var = ((n_a - 1) * var_a + (n_b - 1) * var_b) / (n_a + n_b - 2)
     s_pooled   = float(np.sqrt(pooled_var))
     if s_pooled == 0.0:
-        raise InvalidInputError("풀드 표준편차가 0입니다 — d 계산 불가.")
+        raise InvalidInputError("풀드 표준편차가 0입니다, d 계산 불가.")
 
     d = (mean_a - mean_b) / s_pooled
     # Hedges correction factor J

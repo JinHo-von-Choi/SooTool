@@ -177,7 +177,7 @@ class ToolRegistry:
         # Capture the inputs for the integrity stamp before the tool runs and
         # restore the previous context on exit. Stack-style save/restore is
         # required because batch/pipeline tools recursively invoke() other
-        # tools — a naive reset would clobber the outer frame's context.
+        # tools, a naive reset would clobber the outer frame's context.
         from sootool.core.audit import _INTEGRITY_CTX, set_current_inputs
         prev_inputs = _INTEGRITY_CTX.inputs
         prev_policy = _INTEGRITY_CTX.policy_meta

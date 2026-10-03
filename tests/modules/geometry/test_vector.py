@@ -146,7 +146,7 @@ class TestVectorNorm:
 
     def test_norm_linf_approximation(self) -> None:
         # L-infinity approximated by large p: max(3, 4) = 4
-        # Use p=1000 as approximation — should be very close to 4
+        # Use p=1000 as approximation, should be very close to 4
         result = _norm(["3", "4"], p=1000)
         assert abs(Decimal(result["result"]) - Decimal("4")) < Decimal("0.01")
 

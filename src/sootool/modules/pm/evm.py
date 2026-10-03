@@ -60,10 +60,10 @@ def evm(
     """Compute Earned Value Management metrics.
 
     Args:
-        pv:  Planned Value — budgeted cost of scheduled work (Decimal string).
-        ev:  Earned Value  — budgeted cost of work performed (Decimal string).
-        ac:  Actual Cost   — actual cost of work performed (Decimal string).
-        bac: Budget at Completion — total approved budget (Decimal string, positive).
+        pv:  Planned Value, budgeted cost of scheduled work (Decimal string).
+        ev:  Earned Value, budgeted cost of work performed (Decimal string).
+        ac:  Actual Cost, actual cost of work performed (Decimal string).
+        bac: Budget at Completion, total approved budget (Decimal string, positive).
 
     Returns:
         {spi, cpi, sv, cv, eac, etc_, vac, trace}

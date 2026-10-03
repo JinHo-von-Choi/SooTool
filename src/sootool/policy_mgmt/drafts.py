@@ -1,4 +1,4 @@
-"""Draft lifecycle management — propose, update, gc, and promote policy drafts.
+"""Draft lifecycle management, propose, update, gc, and promote policy drafts.
 
 Author: 최진호
 Date: 2026-04-23

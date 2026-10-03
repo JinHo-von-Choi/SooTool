@@ -1,5 +1,5 @@
 """
-Tests for core/determinism.py — deterministic RNG and sort helpers.
+Tests for core/determinism.py, deterministic RNG and sort helpers.
 
 작성자: 최진호
 작성일: 2026-04-22

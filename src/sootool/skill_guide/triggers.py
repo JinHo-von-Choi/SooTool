@@ -1,4 +1,4 @@
-"""Trigger table data for skill_guide — maps detection signals to tools."""
+"""Trigger table data for skill_guide, maps detection signals to tools."""
 from __future__ import annotations
 
 from typing import Any
@@ -7,12 +7,12 @@ _TRIGGERS_KO: list[dict[str, Any]] = [
     {
         "signal": "숫자 두 개 이상 사칙연산",
         "tool": "core.add / core.sub / core.mul / core.div 또는 core.batch",
-        "reason": "확률 추론 회피 — LLM 직접 산수는 오차 발생 가능",
+        "reason": "확률 추론 회피, LLM 직접 산수는 오차 발생 가능",
     },
     {
         "signal": '"세액", "소득세", "양도세", "취득세" 포함',
         "tool": "tax.kr_income / tax.capital_gains_kr / realestate.kr_acquisition_tax",
-        "reason": "세율표 버전 고정 — 연도별 정책 YAML 사용",
+        "reason": "세율표 버전 고정, 연도별 정책 YAML 사용",
     },
     {
         "signal": '"부가세", "공급가액" 포함',
@@ -22,7 +22,7 @@ _TRIGGERS_KO: list[dict[str, Any]] = [
     {
         "signal": '"현재가치", "NPV", "IRR", "할인율" 포함',
         "tool": "finance.pv / finance.fv / finance.npv / finance.irr",
-        "reason": "Decimal 복리 정확도 — float 오차 누적 방지",
+        "reason": "Decimal 복리 정확도, float 오차 누적 방지",
     },
     {
         "signal": '"감가상각", "정액법", "정률법" 포함',
@@ -62,12 +62,12 @@ _TRIGGERS_KO: list[dict[str, Any]] = [
     {
         "signal": "복수 시나리오 비교 요청",
         "tool": "core.batch",
-        "reason": "왕복 비용 절감 — N개 독립 연산 병렬 실행",
+        "reason": "왕복 비용 절감, N개 독립 연산 병렬 실행",
     },
     {
         "signal": "이전 계산 결과를 다음 계산 입력으로 사용",
         "tool": "core.pipeline",
-        "reason": "결정론 체인 보장 — 수동 중계 오류 방지",
+        "reason": "결정론 체인 보장, 수동 중계 오류 방지",
     },
     {
         "signal": '"채권 수익률", "듀레이션" 포함',
@@ -82,17 +82,17 @@ _TRIGGERS_KO: list[dict[str, Any]] = [
     {
         "signal": '"세법 개정", "고시문", "세율 변경" 포함',
         "tool": "sootool.policy_propose / sootool.policy_activate",
-        "reason": "정책 YAML 갱신 워크플로우 — validate → propose → activate 순서 준수",
+        "reason": "정책 YAML 갱신 워크플로우, validate → propose → activate 순서 준수",
     },
     {
         "signal": '"정책 롤백", "이전 세율", "원상 복구" 포함',
         "tool": "sootool.policy_rollback",
-        "reason": "override 정책 제거 후 패키지 기본값 복원 — 감사 로그 자동 기록",
+        "reason": "override 정책 제거 후 패키지 기본값 복원, 감사 로그 자동 기록",
     },
     {
         "signal": '"음력", "설날", "추석", "절기", "24절기" 포함',
         "tool": "datetime.solar_to_lunar / datetime.lunar_to_solar / datetime.lunar_holiday / datetime.solar_terms",
-        "reason": "KASI 조견표 기반 음력↔양력 정밀 변환 — 연도별 윤달 자동 반영",
+        "reason": "KASI 조견표 기반 음력↔양력 정밀 변환, 연도별 윤달 자동 반영",
     },
     {
         "signal": '"회계연도", "fiscal year", "과세기간", "월급 정산일" 포함',
@@ -112,7 +112,7 @@ _TRIGGERS_KO: list[dict[str, Any]] = [
     {
         "signal": '"Nernst", "전기분해", "패러데이", "스넬", "브래그", "렌즈" 포함',
         "tool": "science.nernst / science.faraday_electrolysis / science.snell_law / science.bragg / science.thin_lens",
-        "reason": "물리·화학 공식 Decimal 경계 계산 — 삼각/로그는 mpmath",
+        "reason": "물리·화학 공식 Decimal 경계 계산, 삼각/로그는 mpmath",
     },
     {
         "signal": '"에너지 단위", "압력 단위", "MB/MiB", "ms/us/ns" 포함',
@@ -132,17 +132,17 @@ _TRIGGERS_KO: list[dict[str, Any]] = [
     {
         "signal": '"월급", "실수령", "4대보험", "급여명세", "세후 월급" 포함',
         "tool": "payroll.kr_salary",
-        "reason": "4대보험(국민연금·건강·장기요양·고용)과 간이 소득세를 연도별 정책 YAML 기반으로 일괄 공제 — LLM 수치 계산 금지",
+        "reason": "4대보험(국민연금·건강·장기요양·고용)과 간이 소득세를 연도별 정책 YAML 기반으로 일괄 공제, LLM 수치 계산 금지",
     },
     {
         "signal": '"저항", "옴의 법칙", "레이놀즈수", "SI 접두사", "병렬 저항" 포함',
         "tool": "engineering.electrical_ohm / engineering.resistor_parallel / engineering.fluid_reynolds / engineering.si_prefix_convert",
-        "reason": "공학 결정론 공식 — 단위·유효숫자 보존, LLM 암산 대체",
+        "reason": "공학 결정론 공식, 단위·유효숫자 보존, LLM 암산 대체",
     },
     {
         "signal": '"DSR", "DTI", "LTV", "주담대 한도", "전세자금대출" 포함',
         "tool": "realestate.kr_dsr / realestate.kr_dti / realestate.kr_ltv",
-        "reason": "감독규정 고시 기반 한도 계산 — 연도별 YAML 정책 고정",
+        "reason": "감독규정 고시 기반 한도 계산, 연도별 YAML 정책 고정",
     },
 ]
 
@@ -150,12 +150,12 @@ _TRIGGERS_EN: list[dict[str, Any]] = [
     {
         "signal": "Two or more numbers with arithmetic operations",
         "tool": "core.add / core.sub / core.mul / core.div or core.batch",
-        "reason": "Avoid probabilistic reasoning — LLM direct arithmetic may produce errors",
+        "reason": "Avoid probabilistic reasoning, LLM direct arithmetic may produce errors",
     },
     {
         "signal": '"income tax", "capital gains tax", "acquisition tax"',
         "tool": "tax.kr_income / tax.capital_gains_kr / realestate.kr_acquisition_tax",
-        "reason": "Policy version pinning — uses per-year YAML",
+        "reason": "Policy version pinning, uses per-year YAML",
     },
     {
         "signal": '"VAT", "supply amount", "tax-inclusive price"',
@@ -165,7 +165,7 @@ _TRIGGERS_EN: list[dict[str, Any]] = [
     {
         "signal": '"present value", "NPV", "IRR", "discount rate"',
         "tool": "finance.pv / finance.fv / finance.npv / finance.irr",
-        "reason": "Decimal compound interest precision — prevents float drift",
+        "reason": "Decimal compound interest precision, prevents float drift",
     },
     {
         "signal": '"depreciation", "straight-line", "declining balance"',
@@ -205,12 +205,12 @@ _TRIGGERS_EN: list[dict[str, Any]] = [
     {
         "signal": "Multiple scenario comparison",
         "tool": "core.batch",
-        "reason": "Reduce round-trips — N independent operations in parallel",
+        "reason": "Reduce round-trips, N independent operations in parallel",
     },
     {
         "signal": "Previous result fed into next calculation",
         "tool": "core.pipeline",
-        "reason": "Determinism chain guarantee — prevents manual relay errors",
+        "reason": "Determinism chain guarantee, prevents manual relay errors",
     },
     {
         "signal": '"bond yield", "duration"',
@@ -225,12 +225,12 @@ _TRIGGERS_EN: list[dict[str, Any]] = [
     {
         "signal": '"tax law amendment", "official notice", "gazette", "rate change"',
         "tool": "sootool.policy_propose / sootool.policy_activate",
-        "reason": "Policy YAML update workflow — validate → propose → activate sequence",
+        "reason": "Policy YAML update workflow, validate → propose → activate sequence",
     },
     {
         "signal": '"policy rollback", "previous rate", "revert policy"',
         "tool": "sootool.policy_rollback",
-        "reason": "Remove override and restore package default — audit log auto-recorded",
+        "reason": "Remove override and restore package default, audit log auto-recorded",
     },
     {
         "signal": '"lunar", "Seollal", "Chuseok", "solar term", "24 solar terms"',
@@ -245,7 +245,7 @@ _TRIGGERS_EN: list[dict[str, Any]] = [
     {
         "signal": '"numerical integration", "Simpson", "Gauss-Legendre", "spline", "FFT"',
         "tool": "math.integrate_simpson / math.integrate_gauss_legendre / math.interpolate_* / math.fft",
-        "reason": "core.calc safe AST + mpmath/numpy numerical analysis — avoid LLM integration errors",
+        "reason": "core.calc safe AST + mpmath/numpy numerical analysis, avoid LLM integration errors",
     },
     {
         "signal": '"CHA2DS2-VASc", "HAS-BLED", "Framingham", "QT correction"',
@@ -275,7 +275,7 @@ _TRIGGERS_EN: list[dict[str, Any]] = [
     {
         "signal": '"monthly salary", "net pay", "Korean 4 insurances", "payroll", "take-home"',
         "tool": "payroll.kr_salary",
-        "reason": "Applies per-year 4-insurance YAML (pension, health, LTC, employment) plus simplified income tax — never compute by hand",
+        "reason": "Applies per-year 4-insurance YAML (pension, health, LTC, employment) plus simplified income tax, never compute by hand",
     },
     {
         "signal": '"resistor", "Ohm\'s law", "Reynolds number", "SI prefix", "parallel resistor"',

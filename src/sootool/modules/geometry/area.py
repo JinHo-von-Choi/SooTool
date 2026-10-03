@@ -184,7 +184,7 @@ def area_polygon(vertices: list[list[str]]) -> AreaPolygonResult:
                   Minimum 3 vertices required.
 
     Returns:
-        {area: str, trace} — area is always non-negative.
+        {area: str, trace}, area is always non-negative.
     """
     trace = CalcTrace(
         tool="geometry.area_polygon",

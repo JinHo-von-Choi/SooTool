@@ -35,7 +35,7 @@ class TestHaversine:
         result = _haversine("37.5665", "126.9780", "35.1796", "129.0756")
         dist = Decimal(result["distance_km"])
         assert Decimal("310") < dist < Decimal("340"), (
-            f"Seoul–Busan distance expected ~325 km, got {dist}"
+            f"Seoul-Busan distance expected ~325 km, got {dist}"
         )
 
     def test_equator_10_degrees_longitude(self) -> None:

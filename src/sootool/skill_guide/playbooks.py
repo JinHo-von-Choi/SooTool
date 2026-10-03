@@ -1,4 +1,4 @@
-"""Playbook definitions for skill_guide — complex multi-step recipes."""
+"""Playbook definitions for skill_guide, complex multi-step recipes."""
 from __future__ import annotations
 
 from typing import Any
@@ -101,7 +101,7 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
     {
         "id": "policy_hotfix_rollback",
         "scenario": "오적용된 override 정책 즉시 롤백 → 패키지 기본값 복원",
-        "title": "긴급 롤백 — 오적용된 정책 원상 복구",
+        "title": "긴급 롤백, 오적용된 정책 원상 복구",
         "description": "잘못 활성화된 override 정책을 즉시 롤백하여 패키지 기본값으로 복원한다.",
         "steps": [
             {"id": "history",  "tool": "sootool.policy_history",  "args": {"domain": "<도메인>", "name": "<정책명>"}},
@@ -146,7 +146,7 @@ _PLAYBOOKS_KO: list[dict[str, Any]] = [
             {"id": "cha",  "tool": "medical.cha2ds2_vasc",        "args": {"age": "<나이>", "female": "<bool>", "hypertension": "<bool>", "diabetes": "<bool>", "stroke_or_tia": "<bool>"}},
         ],
         "expected_output": {"dose": "계산 용량", "qtc": "보정 QTc ms", "cha": "CHA2DS2-VASc 점수"},
-        "caveats": ["QT/RR 단위 일치 필수 (기본 ms)", "CHA 점수 ≥2 이면 항응고 고려 — 임상 판단 필요"],
+        "caveats": ["QT/RR 단위 일치 필수 (기본 ms)", "CHA 점수 ≥2 이면 항응고 고려, 임상 판단 필요"],
     },
     {
         "id": "math_integration_npv",
@@ -291,7 +291,7 @@ _PLAYBOOKS_EN: list[dict[str, Any]] = [
     {
         "id": "policy_hotfix_rollback",
         "scenario": "Revert misapplied override policy -> restore package default",
-        "title": "Emergency Rollback — Revert Misapplied Policy",
+        "title": "Emergency Rollback, Revert Misapplied Policy",
         "description": "Immediately roll back a wrongly activated override policy to restore the package default.",
         "steps": [
             {"id": "history",  "tool": "sootool.policy_history",  "args": {"domain": "<domain>", "name": "<policy>"}},

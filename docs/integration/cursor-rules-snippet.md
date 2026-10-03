@@ -1,4 +1,4 @@
-# SooTool — Cursor .cursorrules 삽입용 스니펫
+# SooTool, Cursor .cursorrules 삽입용 스니펫
 
 아래 내용을 `.cursorrules` 파일에 복사한다.
 
@@ -8,7 +8,7 @@
 
 At session start: call `sootool.skill_guide()` to load the trigger table.
 
-### Trigger table — call the tool immediately on these signals (no inline arithmetic)
+### Trigger table, call the tool immediately on these signals (no inline arithmetic)
 
 | Signal | Tool |
 |-|-|

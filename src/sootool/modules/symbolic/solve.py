@@ -1,4 +1,4 @@
-"""symbolic.solve — 방정식 기호 풀이 후 Decimal 재평가 브릿지 (ADR-022).
+"""symbolic.solve, 방정식 기호 풀이 후 Decimal 재평가 브릿지 (ADR-022).
 
 핵심 경계:
 - equation 입력은 `lhs = rhs` 또는 단일식(= 0 가정) 모두 허용.

@@ -92,10 +92,10 @@ uv run python bench/run_benchmark.py --skip-llm
 
 각 LLM 응답은 다음 4분류로 기록된다.
 
-- exact — 문자열 정규화 후 정확 일치
-- approx — 상대오차 `|llm - expected| / |expected| <= 1e-4`
-- wrong — 위 두 조건 모두 실패
-- no_answer — 응답에서 숫자 추출 실패
+- exact, 문자열 정규화 후 정확 일치
+- approx, 상대오차 `|llm - expected| / |expected| <= 1e-4`
+- wrong, 위 두 조건 모두 실패
+- no_answer, 응답에서 숫자 추출 실패
 
 SooTool 은 `REGISTRY.invoke` 결과 Decimal 을 그대로 비교하므로 원칙적으로 exact
 를 유지해야 한다. 불일치 발생 시 `cases.yaml` 의 `expected_decimal_string`

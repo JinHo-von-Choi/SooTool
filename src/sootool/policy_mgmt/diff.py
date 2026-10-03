@@ -1,4 +1,4 @@
-"""Semantic diff for policy files — bracket-level rate change comparison.
+"""Semantic diff for policy files, bracket-level rate change comparison.
 
 Author: 최진호
 Date: 2026-04-23

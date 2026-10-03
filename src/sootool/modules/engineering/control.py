@@ -311,7 +311,7 @@ def pid_discrete_output(
     error_prev2:  str,
     output_prev:  str,
 ) -> PidDiscreteOutputResult:
-    """Velocity-form discrete PID — returns the new output u_k."""
+    """Velocity-form discrete PID, returns the new output u_k."""
     trace = CalcTrace(
         tool="engineering.pid_discrete_output",
         formula="u_k = u_{k-1} + Kp Δe + Ki e Ts + Kd (Δe − Δe_prev)/Ts",

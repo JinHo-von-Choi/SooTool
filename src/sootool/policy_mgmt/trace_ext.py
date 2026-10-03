@@ -87,5 +87,5 @@ def _resolve_audit_id(source: str, policy_version: dict[str, Any]) -> str | None
     """For override policies, look up the most recent activate audit entry."""
     if source != "override":
         return None
-    # We don't cache the audit lookup — it's a one-time read per response
+    # We don't cache the audit lookup, it's a one-time read per response
     return None  # Filled in by tools that have the draft_id available

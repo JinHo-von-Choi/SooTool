@@ -182,8 +182,8 @@ def rlc_time_constant(
     Args:
         mode:        'rc' | 'rl' | 'rlc'
         resistance:  R (Ω, > 0)
-        inductance:  L (H, > 0) — required for rl/rlc
-        capacitance: C (F, > 0) — required for rc/rlc
+        inductance:  L (H, > 0), required for rl/rlc
+        capacitance: C (F, > 0), required for rc/rlc
 
     Returns:
         - rc  : {tau, trace}

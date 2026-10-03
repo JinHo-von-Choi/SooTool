@@ -117,7 +117,7 @@ def crt(residues: list[str], moduli: list[str]) -> CrtResult:
 
     for i, m in enumerate(m_list):
         if m <= 0:
-            raise DomainConstraintError(f"moduli[{i}]={m} — 양의 정수여야 합니다.")
+            raise DomainConstraintError(f"moduli[{i}]={m}, 양의 정수여야 합니다.")
 
     # Pairwise coprimality
     for i in range(len(m_list)):
@@ -151,7 +151,7 @@ def crt(residues: list[str], moduli: list[str]) -> CrtResult:
 def _factorize(n: int) -> dict[int, int]:
     """Trial-division factorization for n >= 2. Returns {prime: exponent}."""
     if n < 2:
-        raise DomainConstraintError(f"n={n} — 2 이상의 정수가 필요합니다.")
+        raise DomainConstraintError(f"n={n}, 2 이상의 정수가 필요합니다.")
     factors: dict[int, int] = {}
     # 2 separately
     while n % 2 == 0:
