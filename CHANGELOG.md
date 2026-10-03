@@ -29,6 +29,7 @@ REGISTRY 수치: 18 domains, 255 base tools, 10 admin policy-management tools (0
 ### Changed
 
 - scipy.stats, scipy.interpolate, statsmodels를 해당 도구의 첫 호출 시점에 불러온다. 전체 모듈 로드 기동 시간이 약 4.2~4.7초에서 약 2.2~2.6초로, 기동 직후 메모리가 약 209MB에서 약 92MB로 줄었다(측정 환경 기준).
+- `core.batch`와 `core.pipeline`이 읽기 전용으로 선언된 도구만 실행한다(`ToolRegistry.invoke_read_only`). 두 도구의 `readOnlyHint` 선언과 `sootool.call`의 읽기 전용 제한이 중첩 호출에도 일관되게 적용된다.
 - 설명이 짧던 도구 23종의 설명을 입력 형식, 단위, 반환 필드까지 보강했다.
 - `cryptography`를 직접 의존성으로 선언했다. 서명 검증은 잘못된 키·서명 입력을 `SignatureVerificationError`로, 잘못된 개인 키를 `InvalidInputError`로 반환한다.
 - MCP 노출 경로가 `REGISTRY.invoke`를 거치도록 정리했다. 모든 MCP 응답에 `_meta.integrity`와 `_meta.hints`가 일관되게 포함된다.

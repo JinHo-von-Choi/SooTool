@@ -244,7 +244,7 @@ class PipelineExecutor:
                 try:
                     resolved_args = _resolve_refs(step.get("args", {}), completed)
                     t0 = time.monotonic()
-                    fut = pool.submit(self.registry.invoke, step["tool"], **resolved_args)
+                    fut = pool.submit(self.registry.invoke_read_only, step["tool"], **resolved_args)
                     try:
                         res = fut.result(timeout=self.step_timeout_s)
                     except FuturesTimeout:

@@ -42,7 +42,7 @@ class BatchExecutor:
             futures: dict[Future[Any], str] = {}
             for it in items:
                 submit_t0 = time.monotonic()
-                fut = pool.submit(self.registry.invoke, it["tool"], **it.get("args", {}))
+                fut = pool.submit(self.registry.invoke_read_only, it["tool"], **it.get("args", {}))
                 futures[fut] = it["id"]
                 item_started_at[it["id"]] = submit_t0
 

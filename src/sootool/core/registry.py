@@ -7,7 +7,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-log = logging.getLogger("sootool.core.registry")
+from sootool.core.errors import InvalidInputError
+
+log =logging.getLogger("sootool.core.registry")
 
 PostProcessor = Callable[[dict[str, Any], str], dict[str, Any]]
 
@@ -98,6 +100,21 @@ class ToolRegistry:
         Signature: fn(response: dict, tool_name: str) -> dict
         """
         self._post_processors.append(fn)
+
+    def invoke_read_only(self, full_name: str, **kwargs: Any) -> Any:
+        """읽기 전용으로 선언된 도구만 실행한다.
+
+        다른 도구를 이름으로 호출하는 도구(core.batch, core.pipeline)가 쓰기 도구를 우회 실행하지
+        못하게 하는 경계다. 이 경계가 있어 두 도구의 readOnlyHint 선언이 사실과 일치한다.
+        """
+        entry = self._tools.get(full_name)
+        if entry is None:
+            raise KeyError(full_name)
+        if not entry.read_only:
+            raise InvalidInputError(
+                f"{full_name} 은(는) 읽기 전용이 아니어서 다른 도구 안에서 실행할 수 없습니다."
+            )
+        return self.invoke(full_name, **kwargs)
 
     def invoke(self, full_name: str, **kwargs: Any) -> Any:
         if full_name not in self._tools:
