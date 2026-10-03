@@ -11,3 +11,6 @@ build/
 *.egg-info/
 .env
 .serena/
+
+# AI 작업 계획서(저장소에 올리지 않는다)
+docs/plans/
