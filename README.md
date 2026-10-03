@@ -160,6 +160,20 @@ cd SooTool
 claude mcp add sootool -- uv run python -m sootool
 ```
 
+## 라이브러리로 쓰기 (코드 실행 환경)
+
+MCP 서버 없이 같은 도구를 파이썬 함수로 호출한다. 결과 구조, 영수증, 정책 시점(`as_of`)이 MCP 와 같고 결과 타입이 선언되어 있어 타입 검사가 된다. 도메인 하나를 쓰는 데 약 0.5초가 든다.
+
+```python
+from sootool.sdk import tax
+
+out = tax.kr_income(taxable_income=50_000_000, year=2026)
+out["tax"]                              # "6240000"
+out["_meta"]["integrity"]["input_hash"]  # 재실행 검증용 영수증
+```
+
+자세한 내용과 샌드박스 레시피는 `docs/sdk.md`, 호환 약속과 폐기 절차는 `docs/stability.md`.
+
 ## 도구 카탈로그 (271개 기본 + 10개 admin, 18 계산 도메인 + sootool 운영 도구)
 
 |Namespace|Count|대표 도구|
