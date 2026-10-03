@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import subprocess
 import sys
@@ -58,7 +59,7 @@ def _load_registry_snapshot() -> dict[str, Any]:
         "policy_import",
     }
     # 모듈 소스에서 admin 게이트를 실제 콜하는지 정적 검증 (방어 로직)
-    src = policy_tools.__loader__.get_source(policy_tools.__name__)
+    src = inspect.getsource(policy_tools)
     verified_admin: set[str] = set()
     if src:
         lines = src.splitlines()
