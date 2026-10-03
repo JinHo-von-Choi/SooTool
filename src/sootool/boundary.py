@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import contextvars
+import copy
 import functools
 import inspect
 import logging
@@ -28,6 +29,7 @@ from typing import Annotated, Any
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 from mcp.types import CallToolResult, InputRequiredResult, TextContent
+from mcp.types import Tool as MCPTool
 from pydantic import BeforeValidator, ValidationError, ValidationInfo
 
 from sootool.core.errors import InvalidArgumentsError, SooToolError, UnknownToolError
@@ -166,6 +168,61 @@ def with_error_contract(
     return bound
 
 
+# 모든 도구 응답에 공통으로 붙는 외피 필드. 공개 스키마에서는 형태만 알리고 세부 구조는 생략한다.
+# 세부 구조(영수증, 정책 출처)는 도구마다 반복되어 tools/list 응답을 수 MB 로 키우기 때문이다.
+_ENVELOPE_PROPERTIES: dict[str, dict[str, Any]] = {
+    "_meta":            {"type": "object", "description": "서버가 붙이는 영수증(integrity), 엔진, 힌트"},
+    "trace":            {"type": "object", "description": "계산 근거(tool, formula, inputs, steps, output)"},
+    "policy_version":   {"type": "object", "description": "적용된 정책 문서의 식별 정보"},
+    "policy_citations": {"type": "array", "items": {"type": "object"}, "description": "정책의 근거 조문"},
+}
+
+
+def _strip_titles(node: Any) -> Any:
+    if isinstance(node, dict):
+        return {k: _strip_titles(v) for k, v in node.items() if not (k == "title" and isinstance(v, str))}
+    if isinstance(node, list):
+        return [_strip_titles(v) for v in node]
+    return node
+
+
+def _collect_refs(node: Any, found: set[str]) -> None:
+    if isinstance(node, dict):
+        for key, value in node.items():
+            if key == "$ref" and isinstance(value, str):
+                found.add(value.rsplit("/", 1)[-1])
+            else:
+                _collect_refs(value, found)
+    elif isinstance(node, list):
+        for value in node:
+            _collect_refs(value, found)
+
+
+def compact_output_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """공개용 결과 스키마를 줄인다: 공통 외피 필드를 형태만 남기고, 쓰이지 않는 정의와 title 을 지운다."""
+    compact    = copy.deepcopy(schema)
+    properties = compact.get("properties", {})
+    for name, replacement in _ENVELOPE_PROPERTIES.items():
+        if name in properties:
+            properties[name] = dict(replacement)
+    definitions = compact.get("$defs", {})
+    while definitions:
+        reachable: set[str] = set()
+        _collect_refs({k: v for k, v in compact.items() if k != "$defs"}, reachable)
+        for name in list(reachable):
+            if name in definitions:
+                _collect_refs(definitions[name], reachable)
+        unused = [name for name in definitions if name not in reachable]
+        if not unused:
+            break
+        for name in unused:
+            del definitions[name]
+    if not definitions:
+        compact.pop("$defs", None)
+    result: dict[str, Any] = _strip_titles(compact)
+    return result
+
+
 def _validation_problems(exc: ValidationError) -> list[dict[str, str]]:
     """pydantic 오류에서 필드 경로와 메시지만 추린다. 거부된 입력값은 되돌려주지 않는다."""
     return [
@@ -182,6 +239,14 @@ class SooToolServer(MCPServer):
     선언되지 않은 인자는 SDK 가 조용히 버리므로 여기서 거부한다. 오타 난 선택 인자(예: 반올림
     정책)가 무시되어 기본값으로 계산되는 일을 막기 위해서다.
     """
+
+    async def list_tools(self) -> list[MCPTool]:
+        """도구 목록. 결과 스키마는 공통 외피를 줄여 목록 응답 크기를 제한한다."""
+        tools = await super().list_tools()
+        for tool in tools:
+            if tool.output_schema:
+                tool.output_schema = compact_output_schema(tool.output_schema)
+        return tools
 
     async def call_tool(
         self,

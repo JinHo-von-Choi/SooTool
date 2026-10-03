@@ -50,3 +50,24 @@ def test_typed_tools_publish_a_specific_output_schema():
         if not (schemas.get(e.full_name) or {}).get("properties")
     ]
     assert not generic, generic
+
+
+_FULL_LIST_BYTES_LIMIT = 600_000
+
+
+def test_full_profile_tool_list_stays_small_enough_for_streaming_clients():
+    """tools/list 응답이 SSE 클라이언트의 이벤트 크기 한도(1 MiB)에 한참 못 미친다."""
+    import json
+
+    mcp   = server.build_server("full")
+    tools = asyncio.run(mcp.list_tools())
+    size  = sum(len(json.dumps(t.model_dump(by_alias=True, exclude_none=True), ensure_ascii=False)) for t in tools)
+    assert size < _FULL_LIST_BYTES_LIMIT, size
+
+
+def test_compacted_schemas_keep_tool_specific_fields():
+    mcp     = server.build_server("full")
+    schemas = {t.name: t.output_schema for t in asyncio.run(mcp.list_tools())}
+    props   = schemas["tax.kr_income"]["properties"]
+    assert {"tax", "effective_rate", "marginal_rate", "breakdown"} <= set(props)
+    assert props["_meta"] == {"type": "object", "description": props["_meta"]["description"]}
