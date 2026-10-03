@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-04
+
 REGISTRY 수치: 18 domains, 272 base tools, 10 admin policy-management tools (0.1.4 대비 base 18개 증가: sootool.verify_receipt, core.solve_for, core.compare, core.explain, payroll.kr_gross_from_net, tax_us.fica, tax.kr_eitc, tax.kr_securities_transaction, tax.kr_pension_income, tax.kr_vehicle_tax, tax.kr_registration_license_tax, realestate.kr_subscription_score, payroll.kr_overtime_pay, payroll.kr_weekly_holiday_pay, payroll.kr_minimum_wage_check, payroll.kr_national_pension_benefit, payroll.kr_health_income_premium, tax.kr_comprehensive_income_tax).
 
 ### Added
@@ -118,6 +120,7 @@ Release quality uplift. `docs/plans/2026-04-24-release-quality-improvements.md` 
 ### Notes
 - branch protection rule에 required status checks로 `Test (Python 3.12 / extras=none)`, `Test (Python 3.12 / extras=symbolic)`, `Test (Python 3.12 / extras=all)` 세 개를 GitHub UI에서 추가하는 것이 ADR-023 R1 완성의 마지막 수동 조치. 코드 변경으로는 불가.
 
+[0.2.0]: https://github.com/JinHo-von-Choi/SooTool/releases/tag/v0.2.0
 [0.1.4]: https://github.com/JinHo-von-Choi/SooTool/releases/tag/v0.1.4
 
 ## [0.1.3] - 2026-04-24
