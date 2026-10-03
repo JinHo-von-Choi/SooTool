@@ -87,12 +87,29 @@ def _imported_roots(tree: ast.AST) -> set[str]:
 
 
 @functools.cache
-def _engine_of_module(module_name: str) -> str:
+def _roots_of_module(module_name: str) -> frozenset[str]:
+    """모듈이 임포트하는 최상위 패키지. 같은 패키지의 비공개 형제 모듈(``_common`` 등)의 임포트도 포함한다."""
     spec = importlib.util.find_spec(module_name)
     if spec is None or not spec.origin or not spec.origin.endswith(".py"):
-        return DECIMAL
+        return frozenset()
     tree  = ast.parse(Path(spec.origin).read_text(encoding="utf-8"))
-    roots = _imported_roots(tree)
+    roots = set(_imported_roots(tree))
+    package = module_name.rpartition(".")[0]
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.level == 0
+            and node.module
+            and node.module.startswith(f"{package}._")
+            and node.module != module_name
+        ):
+            roots |= _roots_of_module(node.module)
+    return frozenset(roots)
+
+
+@functools.cache
+def _engine_of_module(module_name: str) -> str:
+    roots = _roots_of_module(module_name)
     if roots & _FLOAT_PACKAGES:
         return FLOAT64
     if roots & _MP_PACKAGES:

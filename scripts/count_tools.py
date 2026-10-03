@@ -30,7 +30,8 @@ OPERATIONAL_NAMESPACES: frozenset[str] = frozenset({"core", "sootool"})
 
 
 def _load_registry_snapshot() -> dict[str, Any]:
-    from sootool.policy_mgmt import tools as policy_tools
+    from sootool.policy_mgmt import tools as _policy_tools  # noqa: F401  (도구 등록)
+    from sootool.policy_mgmt import tools_write as policy_tools
     from sootool.server import _load_modules
 
     _load_modules()
@@ -48,7 +49,7 @@ def _load_registry_snapshot() -> dict[str, Any]:
     ]
     policy_tools_count = len(policy_tool_entries)
 
-    # admin-gated 정책 도구: policy_mgmt.tools 모듈에서 _require_admin() 호출이
+    # admin-gated 정책 도구: policy_mgmt.tools_write 모듈에서 _require_admin() 호출이
     # 존재하는 함수와 REGISTRY 등록 이름을 교차해 판정한다.
     admin_names = {
         "policy_propose",
@@ -57,7 +58,7 @@ def _load_registry_snapshot() -> dict[str, Any]:
         "policy_import",
     }
     # 모듈 소스에서 admin 게이트를 실제 콜하는지 정적 검증 (방어 로직)
-    src = policy_tools.__loader__.get_source(policy_tools.__name__)  # type: ignore[union-attr]
+    src = policy_tools.__loader__.get_source(policy_tools.__name__)
     verified_admin: set[str] = set()
     if src:
         lines = src.splitlines()
