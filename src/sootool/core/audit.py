@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
+from sootool.core.result_types import Trace, TraceStep
+
 
 def _normalize(v: Any) -> Any:
     if isinstance(v, Decimal):
@@ -23,7 +25,7 @@ class CalcTrace:
     tool:         str
     formula:      str              = ""
     inputs:       dict[str, Any]   = field(default_factory=dict)
-    steps:        list[dict[str, Any]] = field(default_factory=list)
+    steps:        list[TraceStep]  = field(default_factory=list)
     output_value: Any              = None
 
     def input(self, name: str, value: Any) -> None:
@@ -35,7 +37,7 @@ class CalcTrace:
     def output(self, value: Any) -> None:
         self.output_value = _normalize(value)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Trace:
         return {
             "tool":    self.tool,
             "formula": self.formula,

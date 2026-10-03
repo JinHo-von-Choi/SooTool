@@ -13,7 +13,9 @@ import typing
 from collections.abc import Callable
 from typing import Any, NotRequired, TypedDict
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, with_config
+
+_OPEN = with_config(ConfigDict(extra="allow"))
 
 
 class Hint(TypedDict):
@@ -24,10 +26,9 @@ class Hint(TypedDict):
     recommended_tool: str | None
 
 
+@_OPEN
 class Integrity(TypedDict):
     """입력과 결과의 해시, 도구 버전, 정책 출처를 묶은 영수증."""
-
-    __pydantic_config__ = ConfigDict(extra="allow")  # type: ignore[misc]
 
     tool:            str
     input_hash:      str
@@ -38,10 +39,9 @@ class Integrity(TypedDict):
     key_id:          NotRequired[str]
 
 
+@_OPEN
 class Meta(TypedDict):
     """서버가 응답에 붙이는 부가 정보. 계산 결과와 해시 대상에서 제외된다."""
-
-    __pydantic_config__ = ConfigDict(extra="allow")  # type: ignore[misc]
 
     integrity:     NotRequired[Integrity]
     engine:        NotRequired[str]
@@ -64,19 +64,17 @@ class Trace(TypedDict):
     output:  Any
 
 
+@_OPEN
 class Citation(TypedDict):
-    __pydantic_config__ = ConfigDict(extra="allow")  # type: ignore[misc]
-
     law:     str
     article: NotRequired[str]
     url:     NotRequired[str]
     note:    NotRequired[str]
 
 
+@_OPEN
 class PolicyVersion(TypedDict):
     """적용된 정책 문서의 식별 정보."""
-
-    __pydantic_config__ = ConfigDict(extra="allow")  # type: ignore[misc]
 
     year:           int
     sha256:         str
@@ -90,20 +88,21 @@ class PolicyVersion(TypedDict):
     reviewed_by:    list[str]
 
 
+@_OPEN
 class ToolResult(TypedDict):
     """모든 도구 결과의 기반. 후처리가 더하는 ``_meta`` 만 공통이다."""
-
-    __pydantic_config__ = ConfigDict(extra="allow")  # type: ignore[misc]
 
     _meta: NotRequired[Meta]
 
 
+@_OPEN
 class TracedResult(ToolResult):
     """``trace`` 를 포함하는 계산 도구의 결과 기반."""
 
     trace: Trace
 
 
+@_OPEN
 class PolicyResult(TracedResult):
     """정책 문서를 읽는 도구의 결과 기반. 정책 출처가 평탄화되어 함께 반환된다."""
 
