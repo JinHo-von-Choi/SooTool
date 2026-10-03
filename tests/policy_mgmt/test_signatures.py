@@ -105,12 +105,26 @@ def _admin_env(tmp_path, monkeypatch) -> None:
 
 
 def _signed_bundle(private_b64: str) -> dict:
+    import os
+    import tempfile
+
     from sootool.policy_mgmt.tools import policy_export
 
-    return policy_export(
-        domain="tax", name="kr_income", year=2026,
-        include_signature=True, private_key_b64=private_b64,
-    )["bundle"]
+    fd, key_path = tempfile.mkstemp(prefix="sootool-test-key-")
+    try:
+        with os.fdopen(fd, "w", encoding="ascii") as handle:
+            handle.write(private_b64)
+        previous = os.environ.get("SOOTOOL_POLICY_KEY_FILE")
+        os.environ["SOOTOOL_POLICY_KEY_FILE"] = key_path
+        try:
+            return policy_export(domain="tax", name="kr_income", year=2026, include_signature=True)["bundle"]
+        finally:
+            if previous is None:
+                os.environ.pop("SOOTOOL_POLICY_KEY_FILE", None)
+            else:
+                os.environ["SOOTOOL_POLICY_KEY_FILE"] = previous
+    finally:
+        os.unlink(key_path)
 
 
 def test_import_accepts_correctly_signed_bundle(tmp_path, monkeypatch):
@@ -155,3 +169,33 @@ def test_import_requires_signature_when_environment_demands_it(tmp_path, monkeyp
     unsigned = policy_export(domain="tax", name="kr_income", year=2026)["bundle"]
     result   = policy_import(unsigned)
     assert result["error"] == "signature_required"
+
+
+def test_export_requires_a_configured_key_file_when_signing(monkeypatch):
+    from sootool.policy_mgmt.tools import policy_export
+
+    monkeypatch.delenv("SOOTOOL_POLICY_KEY_FILE", raising=False)
+    with pytest.raises(InvalidInputError):
+        policy_export(domain="tax", name="kr_income", year=2026, include_signature=True)
+
+
+def test_export_rejects_a_key_file_readable_by_others(tmp_path, monkeypatch):
+    import os
+
+    from sootool.policy_mgmt.tools import policy_export
+
+    private_b64, _ = _keypair()
+    key_file = tmp_path / "policy.key"
+    key_file.write_text(private_b64, encoding="ascii")
+    os.chmod(key_file, 0o644)
+    monkeypatch.setenv("SOOTOOL_POLICY_KEY_FILE", str(key_file))
+    with pytest.raises(InvalidInputError):
+        policy_export(domain="tax", name="kr_income", year=2026, include_signature=True)
+
+
+def test_export_does_not_accept_a_key_argument():
+    import inspect
+
+    from sootool.policy_mgmt.tools import policy_export
+
+    assert "private_key_b64" not in inspect.signature(policy_export).parameters

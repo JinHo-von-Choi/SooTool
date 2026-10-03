@@ -214,7 +214,9 @@ When `policy_source == "override"`, a hint is added to `_meta.hints`:
 ## Bundle Signing (Optional)
 
 `policy_export` can optionally include an ed25519 signature when
-`include_signature=True` and `private_key_b64` is provided.
+`include_signature=True`. The signing key is read from the file named by the
+`SOOTOOL_POLICY_KEY_FILE` environment variable (base64 raw private key, file mode
+0600). The key is never passed as a tool argument, so it does not appear in call logs.
 
 `policy_import` verifies signatures when `require_signature=True` or
 when `SOOTOOL_POLICY_REQUIRE_SIGNATURE=1` is set.

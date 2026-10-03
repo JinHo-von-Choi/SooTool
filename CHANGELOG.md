@@ -55,6 +55,8 @@ REGISTRY 수치: 18 domains, 271 base tools, 10 admin policy-management tools (0
 - `D()`와 `core.div`가 비숫자 입력과 0 나눗셈에 `InvalidNumberError`, `DivisionByZeroError`를 낸다(`decimal.InvalidOperation`, `ZeroDivisionError`도 함께 상속).
 - 정책 쓰기 도구는 로컬 전송(stdio, unix)에만 노출한다. 네트워크 전송에 노출하려면 `--admin --remote-admin --admin-token`이 필요하다.
 
+- `sootool.policy_export` 의 `private_key_b64` 인자를 없앴다. 서명 키는 환경변수 `SOOTOOL_POLICY_KEY_FILE` 이 가리키는 파일(권한 0600)에서 읽는다. 서명 키가 도구 호출 기록에 남지 않게 하기 위해서다. `include_signature` 가 참인데 키 파일이 없으면 오류를 낸다(이전에는 서명 없이 내보냈다).
+
 ### Changed
 
 - 선형회귀(`stats.regression_linear`)를 statsmodels 대신 numpy/scipy 로 계산한다(교차 시험으로 같은 결과 확인). 기본 의존성에서 statsmodels(pandas 포함)와 사용하지 않던 workalendar, numpy-financial 을 뺐다. statsmodels 는 교차 시험용 dev 의존성이다.

@@ -10,6 +10,7 @@ from typing import cast
 
 import yaml
 
+from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyVersion
 from sootool.policy_mgmt import audit, drafts, loader
@@ -24,6 +25,8 @@ from sootool.policy_mgmt.tool_types import (
     PolicyValidateResult,
 )
 from sootool.policy_mgmt.validators import validate_policy
+
+POLICY_KEY_ENV = "SOOTOOL_POLICY_KEY_FILE"
 
 
 @REGISTRY.tool(
@@ -156,7 +159,7 @@ def policy_validate(
     name="policy_export",
     description=(
         "정책 하나를 이식 가능한 묶음(원본 YAML과 메타데이터)으로 내보낸다. domain, name, year 로 지정하고 as_of, "
-        "include_proposed 로 버전을 고른다. include_signature 가 참이고 private_key_b64 가 있으면 ed25519 서명을 붙인다. "
+        "include_proposed 로 버전을 고른다. include_signature 가 참이면 환경변수 SOOTOOL_POLICY_KEY_FILE 이 가리키는 키 파일(권한 0600)로 ed25519 서명을 붙인다. "
         "묶음은 sootool.policy_import 가 받는다."
     ),
     version="1.0.0",
@@ -167,7 +170,6 @@ def policy_export(
     name:             str,
     year:             int,
     include_signature: bool = False,
-    private_key_b64:  str | None = None,
 ) -> PolicyExportResult:
     """Bundle a policy for sharing or import."""
     doc = loader.load(domain, name, year)
@@ -189,10 +191,16 @@ def policy_export(
         "metadata":     metadata,
     })
 
-    if include_signature and private_key_b64:
-        from sootool.policy_mgmt.signatures import bundle_payload_bytes, sign_bundle
+    if include_signature:
+        import os
+
+        from sootool.core.signing import load_private_key_file, sign_with
+        from sootool.policy_mgmt.signatures import bundle_payload_bytes
+
+        key_file = os.environ.get(POLICY_KEY_ENV, "").strip()
+        if not key_file:
+            raise InvalidInputError(f"서명하려면 환경변수 {POLICY_KEY_ENV} 에 키 파일 경로를 설정해야 합니다.")
         payload = bundle_payload_bytes(yaml_content, metadata)
-        sig = sign_bundle(payload, private_key_b64)
-        bundle["signature"] = sig
+        bundle["signature"] = sign_with(load_private_key_file(key_file), payload)
 
     return {"bundle": bundle}

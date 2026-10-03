@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import stat
+from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives import serialization
@@ -32,6 +34,22 @@ def load_private_key(private_key_b64: str) -> Ed25519PrivateKey:
         return Ed25519PrivateKey.from_private_bytes(base64.b64decode(private_key_b64, validate=True))
     except ValueError as exc:
         raise InvalidInputError("private_key_b64 is not a valid base64 ed25519 private key") from exc
+
+
+def load_private_key_file(path: str) -> Ed25519PrivateKey:
+    """파일에서 base64 개인 키를 읽는다. 소유자 외에 읽기 권한이 있는 파일은 거부한다.
+
+    서명 키를 도구 인자로 넘기면 호출 기록에 남으므로 파일 경로로만 받는다.
+    """
+    key_path = Path(path)
+    try:
+        mode = key_path.stat().st_mode
+        text = key_path.read_text(encoding="ascii").strip()
+    except (OSError, UnicodeDecodeError) as exc:
+        raise InvalidInputError(f"서명 키 파일을 읽을 수 없습니다: {path}") from exc
+    if mode & (stat.S_IRWXG | stat.S_IRWXO):
+        raise InvalidInputError(f"서명 키 파일의 권한이 너무 넓습니다(0600 필요): {path}")
+    return load_private_key(text)
 
 
 def key_id(private_key: Ed25519PrivateKey) -> str:
