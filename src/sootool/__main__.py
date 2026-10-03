@@ -257,6 +257,18 @@ async def _run(transports: list[str], args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    """서브커맨드(call, tools 등)가 있으면 CLI 로, 없으면 서버로 기동한다."""
+    from sootool.cli.main import SUBCOMMANDS, run
+
+    argv = sys.argv[1:]
+    if argv and argv[0] in SUBCOMMANDS:
+        sys.exit(run(argv))
+    if argv and argv[0] == "serve":
+        sys.argv = [sys.argv[0], *argv[1:]]
+    serve()
+
+
+def serve() -> None:
     parser = _build_parser()
     args = parser.parse_args()
 

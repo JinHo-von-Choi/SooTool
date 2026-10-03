@@ -11,6 +11,7 @@ REGISTRY 수치: 18 domains, 259 base tools, 10 admin policy-management tools (0
 
 ### Added
 
+- 명령줄 서브커맨드(ADR-027): `sootool call|tools|batch|pipeline|receipt verify|policy|skill-guide|version`. 서브커맨드가 없으면 기존처럼 서버로 기동한다. MCP와 같은 레지스트리 경로, 같은 인자 검증과 오류 계약을 쓰며 종료 코드는 0, 1(도구 오류), 2(입력 오류), 3(관리자 모드 필요), 70(내부 오류)이다. 출력 형식은 `pretty`, `json`, `raw`, `trace`다.
 - 분석 도구 3종과 역산 도구: `core.solve_for`(읽기 전용 도구의 결과 필드가 목표값이 되는 숫자 입력을 Decimal 이분법으로 역산), `core.compare`(기준안 대비 시나리오 값과 차이), `core.explain`(수식, 입력, 계산 단계, 결과, 적용 정책과 근거 조문을 한국어·영어 평문으로 서술하며 수치는 바꾸지 않음), `payroll.kr_gross_from_net`(세후 월급에서 세전 월급을 구한다. 실수령액이 목표 이상이 되는 가장 작은 원 단위 월급과 달성 실수령액, 잔차를 반환). 모두 결정적이며 영수증 재실행 검증이 가능하고 정책 도구의 `as_of`를 따른다. `core.solver`는 순수 Decimal 이분법이다.
 - 요청 단위 컨텍스트(`sootool.core.request_context`)와 `RequestContextMiddleware`: 요청마다 Accept-Language 로케일, 무상태 표식, 인증 범위를 설정한다. Accept-Language 가 `sootool.skill_guide`의 로케일에 실제로 반영된다.
 - 인증 범위: `SOOTOOL_AUTH_TOKEN`은 `read`, `SOOTOOL_ADMIN_TOKEN`(또는 `--admin-token`)은 `read`와 `policy-write` 범위를 부여한다. 정책 쓰기는 관리자 모드와 `policy-write` 범위를 모두 요구한다. `--admin` 플래그를 추가했다.

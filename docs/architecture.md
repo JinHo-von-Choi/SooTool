@@ -345,3 +345,20 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 - 테스트: `tests/policy_mgmt/test_policy_versions.py`, `tests/policy_mgmt/test_policy_schema_v2.py`, `tests/core/test_policy_tools.py`
 - 문서: `docs/policy_management.md`
 - 계획: `docs/plans/2026-10-03-enhancement-roadmap.md` 4.2
+
+
+## ADR-027: 명령줄 인터페이스와 공유 레지스트리
+
+결정:
+- 서브커맨드 체계(`call`, `tools`, `batch`, `pipeline`, `receipt`, `policy`, `skill-guide`, `version`)를 `src/sootool/cli/` 에 둔다. 서브커맨드가 없거나 `serve` 이면 서버로 기동하며 기존 서버 플래그는 그대로다.
+- 모든 도구 호출은 `REGISTRY.invoke` 단일 경로를 거친다. 인자 검증은 MCP 경계와 같은 규칙을 쓴다(`cli/binder.py`: `boundary._coercible` 기반 숫자 허용, 같은 `invalid_arguments` 오류 계약). 숫자 문자열은 변환하지 않고 그대로 전달한다.
+- 쓰기 도구(`policy propose|activate|rollback|import`와 `call` 로 호출한 쓰기 도구)는 CLI 에서 관리자 모드를 먼저 확인하고(종료 코드 3), 레지스트리의 관리자 게이트를 다시 통과한다(이중 게이트). CLI 는 로컬 신뢰 컨텍스트라 요청 범위 검사를 하지 않는다.
+- 종료 코드: 0 성공, 1 도구 오류, 2 입력 오류, 3 관리자 모드 필요, 70 내부 오류. 오류는 표준에러에 오류 계약 JSON 으로 낸다.
+- 의존성을 늘리지 않는다: 대화형 REPL(prompt_toolkit)과 셸 자동완성(argcomplete)은 도입하지 않는다. 인자는 `--arg 이름=값` 반복과 `--arg-json` 으로 받으며 CSV 간편 입력은 두지 않는다(엄격한 JSON 유지). 설정 파일은 두지 않는다.
+
+상태: 제안됨(Proposed). 2026-10-03.
+
+관련 아티팩트:
+- 구현: `src/sootool/cli/`, `src/sootool/__main__.py`
+- 테스트: `tests/cli/test_cli.py`
+- 계획: `docs/plans/2026-04-24-cli-subcommand-support.md`, `docs/plans/2026-10-03-enhancement-roadmap.md` D6

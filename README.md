@@ -128,6 +128,25 @@ uv run python -m sootool --profile lean   # sootool.search, describe, call, skil
 
 `lean`은 전체 도구 정의를 컨텍스트에 싣지 않는다. 에이전트는 `sootool.search`로 도구를 찾고 `sootool.describe`로 파라미터를 확인한 뒤 `sootool.call`로 실행한다. 호출 결과의 trace와 `_meta.integrity`는 도구를 직접 호출한 결과와 같다. `sootool.call`은 읽기 전용 도구만 실행하며 정책 쓰기 도구는 `full`에서 사용한다.
 
+## 명령줄
+
+서브커맨드 없이 실행하면 서버로 기동하고, 서브커맨드를 주면 같은 도구를 터미널에서 직접 실행한다. 모든 호출은 MCP와 같은 레지스트리 경로를 거쳐 같은 결과, 영수증, 오류 코드를 낸다.
+
+```
+uv run sootool call core.add --arg 'operands=["1.5","2.5"]'
+uv run sootool call tax.kr_income --arg taxable_income=50000000 --arg year=2026 --arg as_of=2026-06-01
+uv run sootool call payroll.kr_gross_from_net --arg net_monthly=3000000 --arg year=2026 --format raw
+uv run sootool call finance.npv --arg-json '{"rate":"0.1","cashflows":["-100","50","60","70"]}'
+uv run sootool tools list --search 양도세             # 별칭 포함 검색
+uv run sootool tools describe tax.kr_income          # 파라미터와 정책 인자(as_of 등)
+uv run sootool batch -f items.json                   # - 는 표준입력
+uv run sootool receipt verify --tool finance.fv --arguments '{"present_value":"1000","rate":"0.05","periods":10}' --receipt receipt.json
+uv run sootool policy show --arg domain=tax --arg name=kr_income --arg year=2026
+uv run sootool version
+```
+
+`--format`은 `pretty`(기본), `json`(전체), `raw`(trace와 `_meta` 제외), `trace`다. 결과는 표준출력에, 오류는 표준에러에 JSON으로 나온다. 종료 코드: 0 성공, 1 도구 오류(도메인 제약, 정책 없음, 한도 초과, 영수증 불일치), 2 입력 오류(인자 형식, 알 수 없는 도구), 3 관리자 모드 필요(`policy propose|activate|rollback|import`와 쓰기 도구, `SOOTOOL_ADMIN_MODE=1`), 70 내부 오류. 문자열 파라미터의 `--arg 이름=값`은 값을 그대로 문자열로 전달하고, 그 밖의 타입(정수, 불리언, 목록, 객체)은 JSON으로 읽는다. 숫자 문자열은 Decimal 경계를 위해 변환하지 않는다.
+
 ## Claude Code 연동
 
 user-scope로 글로벌 등록 (권장, 어느 디렉토리에서든 호출 가능):
