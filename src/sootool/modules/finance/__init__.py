@@ -7,6 +7,7 @@ Tools:
   finance.fv             - Future Value (TVM)
   finance.npv            - Net Present Value
   finance.irr            - Internal Rate of Return
+  finance.roi            - Return on Investment
   finance.loan_schedule  - Loan amortization schedule
   finance.bond_ytm       - Bond Yield-to-Maturity
   finance.bond_duration  - Macaulay & Modified Duration

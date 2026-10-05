@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+REGISTRY 수치: 18 domains, 273 base tools, 10 admin policy-management tools (0.2.0 대비 base 1개 증가: finance.roi).
+
+### Added
+
+- 재무 지표 도구 `finance.roi`(ADR 미신설, finance 모듈): ROI = 순이익 / 투자원가. 순이익은 손실이면 음수인 Decimal 문자열이고 투자원가는 0보다 커야 한다. 결과는 배수(0.25 = 25%)로 decimals(기본 4)자리와 rounding(기본 HALF_EVEN)을 따른다. 기간을 반영한 연환산 수익률은 아니다. NPV·IRR과 같은 TracedResult 기반이라 감사 트레이스를 그대로 남긴다.
+
 ## [0.2.0] - 2026-10-04
 
 REGISTRY 수치: 18 domains, 272 base tools, 10 admin policy-management tools (0.1.4 대비 base 18개 증가: sootool.verify_receipt, core.solve_for, core.compare, core.explain, payroll.kr_gross_from_net, tax_us.fica, tax.kr_eitc, tax.kr_securities_transaction, tax.kr_pension_income, tax.kr_vehicle_tax, tax.kr_registration_license_tax, realestate.kr_subscription_score, payroll.kr_overtime_pay, payroll.kr_weekly_holiday_pay, payroll.kr_minimum_wage_check, payroll.kr_national_pension_benefit, payroll.kr_health_income_premium, tax.kr_comprehensive_income_tax).

@@ -1,4 +1,4 @@
-"""Finance metrics tools: NPV and IRR.
+"""Finance metrics tools: NPV, IRR, and ROI.
 
 공식 출처: Brealey, Myers & Allen, "Principles of Corporate Finance", 13th ed.
   NPV = sum(CF_t / (1+r)^t) for t = 0..n
@@ -33,6 +33,10 @@ class IrrResult(TracedResult):
     converged:  bool
 
 
+class RoiResult(TracedResult):
+    roi: str
+
+
 def _parse_policy(rounding: str) -> RoundingPolicy:
     try:
         return RoundingPolicy(rounding)
@@ -62,6 +66,62 @@ def _dnpv_decimal(rate_d: Decimal, cashflows_d: list[Decimal]) -> Decimal:
         # d/dr [CF / (1+r)^t] = -t * CF / (1+r)^(t+1)
         total -= D(str(t)) * cf / power(one_pr, t + 1)
     return total
+
+
+@REGISTRY.tool(
+    namespace="finance",
+    name="roi",
+    description=(
+        "투자수익률(ROI)을 계산한다. ROI = net_profit / investment_cost. net_profit 은 손실이면 음수인 "
+        "Decimal 문자열이고 investment_cost 는 0보다 커야 한다. 결과는 배수(0.25 = 25%)이며 decimals(기본 4)자리로 "
+        "rounding(기본 HALF_EVEN) 처리한다. 기간을 반영한 연환산 수익률은 아니다."
+    ),
+    version="1.0.0",
+)
+def roi(
+    net_profit: str,
+    investment_cost: str,
+    rounding: str = "HALF_EVEN",
+    decimals: int = 4,
+) -> RoiResult:
+    """Compute return on investment as net profit divided by investment cost.
+
+    Args:
+        net_profit:      순이익. 손실은 음수인 Decimal 문자열.
+        investment_cost: 투자원가. 0보다 큰 Decimal 문자열.
+        rounding:        반올림 정책.
+        decimals:        반올림 소수점 자릿수.
+
+    Returns:
+        {roi: str, trace: dict}
+    """
+    trace = CalcTrace(
+        tool="finance.roi",
+        formula="ROI = net_profit / investment_cost",
+    )
+    policy = _parse_policy(rounding)
+    if decimals < 0:
+        raise InvalidInputError("decimals는 0 이상이어야 합니다.")
+
+    net_profit_d = D(net_profit)
+    investment_cost_d = D(investment_cost)
+    if investment_cost_d <= Decimal("0"):
+        raise InvalidInputError("investment_cost는 0보다 커야 합니다.")
+
+    trace.input("net_profit", net_profit)
+    trace.input("investment_cost", investment_cost)
+    trace.input("rounding", rounding)
+    trace.input("decimals", decimals)
+
+    roi_raw = div(net_profit_d, investment_cost_d)
+    trace.step("roi_raw", str(roi_raw))
+
+    roi_value = apply(roi_raw, decimals, policy)
+    trace.output(str(roi_value))
+    return {
+        "roi": str(roi_value),
+        "trace": trace.to_dict(),
+    }
 
 
 @REGISTRY.tool(

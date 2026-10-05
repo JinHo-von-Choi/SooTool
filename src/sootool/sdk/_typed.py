@@ -503,6 +503,9 @@ class _FinanceTools(Protocol):
     def pv(self, future_value: Num, rate: Num, periods: int, rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m40.PvResult:
         """미래 현금흐름의 현재가치를 계산한다. PV = FV / (1+r)^n. future_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."""
         ...
+    def roi(self, net_profit: Num, investment_cost: Num, rounding: Num = 'HALF_EVEN', decimals: int = 4) -> _m41.RoiResult:
+        """투자수익률(ROI)을 계산한다. ROI = net_profit / investment_cost. net_profit 은 손실이면 음수인 Decimal 문자열이고 investment_cost 는 0보다 커야 한다. 결과는 배수(0.25 = 25%)이며 decimals(기본 4)자리로 rounding(기본 HALF_EVEN) 처리한다. 기간을 반영한 연환산 수익률은 아니다."""
+        ...
     def sharpe_ratio(self, returns: list[Num], risk_free_rate: Num = '0', periods_per_year: int = 0) -> _m43.FinanceSharpeRatioResult:
         """샤프지수 = (평균수익률 - 무위험수익률) / 표본표준편차(n-1)를 계산한다. returns 는 기간 수익률 문자열 목록(2개 이상), risk_free_rate 는 같은 기간 단위(기본 0), periods_per_year 가 0 보다 크면 sqrt(periods_per_year)를 곱해 연환산한다. 표준편차가 0 이면 오류, 결과는 소수 8자리. 연 무위험수익률을 일간 수익률에서 그대로 빼지 않는다."""
         ...

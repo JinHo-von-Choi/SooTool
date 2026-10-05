@@ -11,6 +11,7 @@
 | finance.fv | 미래가치(FV) | tvm.py |
 | finance.npv | 순현재가치(NPV) | metrics.py |
 | finance.irr | 내부수익률(IRR) | metrics.py |
+| finance.roi | 투자수익률(ROI) | metrics.py |
 | finance.loan_schedule | 대출 상환 스케줄 | loan.py |
 | finance.bond_ytm | 채권 만기수익률(YTM) | bond.py |
 | finance.bond_duration | Macaulay/Modified Duration | bond.py |
