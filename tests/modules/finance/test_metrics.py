@@ -213,6 +213,73 @@ class TestCAGR:
         assert half_up["cagr"] == "0.063"
 
 
+class TestPaybackPeriod:
+    def test_fractional_recovery_period(self) -> None:
+        result = REGISTRY.invoke(
+            "finance.payback_period",
+            cashflows=["-1000", "300", "400", "500"],
+            rounding="HALF_EVEN",
+            decimals=4,
+        )
+
+        assert result["payback_period"] == "2.6000"
+        assert result["recovered"] is True
+        assert result["trace"]["output"] == "2.6000"
+
+    def test_exact_period_boundary(self) -> None:
+        result = REGISTRY.invoke(
+            "finance.payback_period",
+            cashflows=["-100", "40", "60", "25"],
+            decimals=2,
+        )
+
+        assert result["payback_period"] == "2.00"
+        assert result["recovered"] is True
+
+    def test_unrecovered_investment_returns_none(self) -> None:
+        result = REGISTRY.invoke(
+            "finance.payback_period",
+            cashflows=["-100", "30", "40"],
+        )
+
+        assert result["payback_period"] is None
+        assert result["recovered"] is False
+        assert result["trace"]["output"] == "not_recovered"
+
+    def test_honors_rounding_policy_at_precision_boundary(self) -> None:
+        half_even = REGISTRY.invoke(
+            "finance.payback_period",
+            cashflows=["-1", "8"],
+            rounding="HALF_EVEN",
+            decimals=2,
+        )
+        half_up = REGISTRY.invoke(
+            "finance.payback_period",
+            cashflows=["-1", "8"],
+            rounding="HALF_UP",
+            decimals=2,
+        )
+
+        assert half_even["payback_period"] == "0.12"
+        assert half_up["payback_period"] == "0.13"
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"cashflows": []},
+            {"cashflows": ["-100"]},
+            {"cashflows": ["0", "100"]},
+            {"cashflows": ["100", "-100"]},
+            {"cashflows": ["-100", "NaN"]},
+            {"cashflows": ["-100", "200"], "decimals": -1},
+            {"cashflows": ["-100", "200"], "rounding": "INVALID"},
+        ],
+    )
+    def test_invalid_inputs_raise(self, kwargs: dict[str, object]) -> None:
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("finance.payback_period", **kwargs)
+
+
 
 class TestIRR:
     def test_irr_simple(self) -> None:

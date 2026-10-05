@@ -12,7 +12,7 @@ Precision Calc MCP for LLM tool use.
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하고, 그 틀리는 작업을 한 번에 500건까지 결정적 병렬로 돌려 실무에 투입할 수 있게 만드는 정밀 계산 MCP 서버. Python 3.12 · Decimal 전용 커널 · 18개 계산 도메인 274개 기본 도구 + 10개 admin 정책 도구 · `core.batch` 500 items 병렬 · `core.pipeline` DAG 체인 · 감사 트레이스 · 정책 YAML 외부화 · 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE).
+LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하고, 그 틀리는 작업을 한 번에 500건까지 결정적 병렬로 돌려 실무에 투입할 수 있게 만드는 정밀 계산 MCP 서버. Python 3.12 · Decimal 전용 커널 · 18개 계산 도메인 275개 기본 도구 + 10개 admin 정책 도구 · `core.batch` 500 items 병렬 · `core.pipeline` DAG 체인 · 감사 트레이스 · 정책 YAML 외부화 · 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE).
 
 
 ## 왜 필요한가
@@ -175,14 +175,14 @@ out["_meta"]["integrity"]["input_hash"]  # 재실행 검증용 영수증
 
 자세한 내용과 샌드박스 레시피는 `docs/sdk.md`, 호환 약속과 폐기 절차는 `docs/stability.md`, 서명된 외부 정책 팩은 `docs/external_policy_packs.md`.
 
-## 도구 카탈로그 (274개 기본 + 10개 admin, 18 계산 도메인 + sootool 운영 도구)
+## 도구 카탈로그 (275개 기본 + 10개 admin, 18 계산 도메인 + sootool 운영 도구)
 
 
 |Namespace|Count|대표 도구|
 |-|-|-|
 |core|11|add, sub, mul, div, calc, batch, pipeline, pipeline_resume, solve_for(역산), compare(시나리오 비교), explain(설명)|
 |accounting|11|vat_extract, vat_add, balance, depreciation 3종, dupont 2종, ratios, income_statement, cashflow_operating|
-|finance|17|pv, fv, npv, irr, roi, cagr, loan_schedule, bond_ytm, bond_duration, black_scholes, var 2종, sharpe, sortino 외|
+|finance|18|pv, fv, npv, irr, roi, cagr, payback_period, loan_schedule, bond_ytm, bond_duration, black_scholes, var 2종, sharpe, sortino 외|
 
 |tax|17|progressive, kr_income, kr_withholding_simple(공식 간이세액표), capital_gains_kr, kr_gift, kr_inheritance, kr_corporate, kr_simplified_vat, kr_eitc(근로장려금), kr_comprehensive_income_tax(종합소득세 신고 흐름), kr_securities_transaction, kr_pension_income, kr_vehicle_tax, kr_registration_license_tax, 지방세 부가 3종|
 |tax_us|4|federal_income, capital_gains, state_tax, fica(급여세와 자영업자 세금)|

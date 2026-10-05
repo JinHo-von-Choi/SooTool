@@ -503,6 +503,9 @@ class _FinanceTools(Protocol):
     def option_payoff(self, option_type: Num, strike: Num, spot_path: list[Num], is_call: bool = True, barrier: Num | None = None, barrier_type: Num | None = None, digital_cash: Num = '1') -> _m40.FinanceOptionPayoffResult:
         """옵션의 만기 payoff 를 계산한다. option_type 은 vanilla, digital(현금 지급), asian(산술평균), barrier(up_in, up_out, down_in, down_out). spot_path 는 기초자산 가격 문자열 목록이며 vanilla 와 digital 은 마지막 값만 쓴다. barrier 유형은 barrier 와 barrier_type 이 필수이고 결과는 소수 8자리. 만기 가치일 뿐 프리미엄이 아니다."""
         ...
+    def payback_period(self, cashflows: list[Num], rounding: Num = 'HALF_EVEN', decimals: int = 6) -> _m39.PaybackPeriodResult:
+        """단순 투자회수기간을 계산한다. cashflows 의 index 0 은 음수인 초기 투자이고 이후 값은 기간별 현금흐름이다. 누적 현금흐름이 처음 0 이상이 되는 기간 안에서 선형 보간하며, 회수되지 않으면 payback_period=null 과 recovered=false 를 반환한다. 화폐의 시간가치는 반영하지 않으며 decimals(기본 6)자리로 rounding(기본 HALF_EVEN) 처리한다."""
+        ...
     def pv(self, future_value: Num, rate: Num, periods: int, rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m41.PvResult:
         """미래 현금흐름의 현재가치를 계산한다. PV = FV / (1+r)^n. future_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."""
         ...

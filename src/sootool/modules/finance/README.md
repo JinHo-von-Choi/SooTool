@@ -12,9 +12,8 @@
 | finance.npv | 순현재가치(NPV) | metrics.py |
 | finance.irr | 내부수익률(IRR) | metrics.py |
 | finance.roi | 투자수익률(ROI) | metrics.py |
-
 | finance.cagr | 복합연평균성장률(CAGR) | metrics.py |
-
+| finance.payback_period | 단순 투자회수기간 | metrics.py |
 | finance.loan_schedule | 대출 상환 스케줄 | loan.py |
 | finance.bond_ytm | 채권 만기수익률(YTM) | bond.py |
 | finance.bond_duration | Macaulay/Modified Duration | bond.py |
@@ -27,10 +26,11 @@
 - PV = FV / (1+r)^n
 - FV = PV * (1+r)^n
 
-### NPV / IRR
+### NPV / IRR / 투자회수기간
 - Brealey, Myers & Allen, "Principles of Corporate Finance", 13th ed., Ch. 5-6.
 - NPV = sum(CF_t / (1+r)^t, t=0..n)
 - IRR: NPV(r) = 0, Newton-Raphson + bisection fallback
+- Payback Period = 회수 직전 기간 + 회수 직전 미회수액 / 회수 기간 현금흐름
 
 ### 대출 상환
 - 금융감독원 표준 대출 상환 공식 (표준 금융상품 약관)
@@ -58,7 +58,7 @@
 | 도구 | 내부 연산 | 반환 |
 |-|-|-|
 | TVM (pv, fv) | pure Decimal | str |
-| NPV, IRR | pure Decimal | str |
+| NPV, IRR, ROI, CAGR, Payback Period | pure Decimal | str (Payback 미회수 시 null + recovered=false) |
 | 대출 스케줄 | pure Decimal | str |
 | 채권 (YTM, Duration) | pure Decimal | str |
 | Black-Scholes | mpmath (50 dps) | str via mpmath_to_decimal |

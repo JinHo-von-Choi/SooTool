@@ -4,7 +4,7 @@ scripts/gen_tool_catalog.py 가 레지스트리에서 생성한다. 직접 고�
 exact(Decimal), high_precision(mpmath, 지정 자릿수), approximate(float64 근사), depends_on_children(호출한 도구에 따름),
 not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as_of`)에 따라 정책 문서를 읽는다.
 
-총 284개 도구, 20개 네임스페이스.
+총 285개 도구, 20개 네임스페이스.
 
 
 ## accounting (11)
@@ -134,7 +134,7 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |torque_rotational_power|1.0.0|0.1.0|light|exact||예|회전 일률 P = τ·ω (W)를 계산한다. torque 는 N·m, angular_velocity 는 rad/s 이다. rpm 을 그대로 넣으면 틀리므로 ω …|
 |weibull_reliability|1.0.0|0.1.0|light|high_precision||예|2모수 와이블 분포의 신뢰도 R(t) = exp(−(t/η)^β)와 불신뢰도를 계산한다. shape β 와 scale η 는 0 초과, time 은 η 와 같은…|
 
-## finance (17)
+## finance (18)
 
 |도구|버전|since|비용|정확도|정책|읽기 전용|설명|
 |-|-|-|-|-|-|-|-|
@@ -149,6 +149,7 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |loan_schedule|1.0.0|0.1.0|heavy|exact||예|대출 상환 스케줄을 계산한다. method 는 EQUAL_PAYMENT(원리금균등, 기본) 또는 EQUAL_PRINCIPAL(원금균등). annual_rate …|
 |npv|1.0.0|0.1.0|light|exact||예|순현재가치를 계산한다. NPV = sum(CF_t / (1+r)^t). cashflows 의 index 0 은 t=0 시점이라 할인하지 않으며 초기 투자는 음수…|
 |option_payoff|1.0.0|0.1.0|light|high_precision||예|옵션의 만기 payoff 를 계산한다. option_type 은 vanilla, digital(현금 지급), asian(산술평균), barrier(up_in, …|
+|payback_period|1.0.0|0.2.0|light|exact||예|단순 투자회수기간을 계산한다. cashflows 의 index 0 은 음수인 초기 투자이고 이후 값은 기간별 현금흐름이다. 누적 현금흐름이 처음 0 이상이 되는…|
 |pv|1.0.0|0.1.0|light|exact||예|미래 현금흐름의 현재가치를 계산한다. PV = FV / (1+r)^n. future_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decima…|
 |roi|1.0.0|0.1.0|light|exact||예|투자수익률(ROI)을 계산한다. ROI = net_profit / investment_cost. net_profit 은 손실이면 음수인 Decimal 문자열이고…|
 |sharpe_ratio|1.0.0|0.1.0|light|approximate||예|샤프지수 = (평균수익률 - 무위험수익률) / 표본표준편차(n-1)를 계산한다. returns 는 기간 수익률 문자열 목록(2개 이상), risk_free_ra…|
