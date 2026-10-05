@@ -8,8 +8,8 @@ Tools:
   finance.npv            - Net Present Value
   finance.irr            - Internal Rate of Return
   finance.roi            - Return on Investment
-
   finance.cagr           - Compound Annual Growth Rate
+  finance.payback_period - Simple Payback Period
 
   finance.loan_schedule  - Loan amortization schedule
   finance.bond_ytm       - Bond Yield-to-Maturity

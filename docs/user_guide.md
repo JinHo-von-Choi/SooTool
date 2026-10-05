@@ -22,8 +22,7 @@ admin 정책 도구를 `sootool` 네임스페이스에 올린다. admin 도구�
 | tax | 11 | tax.kr_income, tax.capital_gains_kr, tax.progressive, tax.kr_local_income_tax, tax.kr_education_tax_add, tax.kr_rural_special_tax, tax.kr_simplified_vat | 한국 세목 누진세 + 지방세 부가분 + 간이과세자 + 범용 누진세 |
 | payroll | 9 | payroll.kr_salary, payroll.kr_severance_pay, payroll.kr_year_end_tax_settlement, payroll.kr_bonus_tax, payroll.hourly_to_monthly_net, payroll.kr_medical_deduction, payroll.kr_education_deduction, payroll.kr_donation_deduction, payroll.kr_housing_loan_deduction | 급여·퇴직금·연말정산·상여·시급환산 + 의료비·교육비·기부금·주택차입이자 공제 |
 | realestate | 9 | realestate.kr_acquisition_tax, realestate.kr_dsr, realestate.kr_comprehensive, realestate.kr_local_property | 취득·종부세·DSR/LTV/DTI·임대수익률 + 광역 계수 지방세 |
-| finance | 16 | finance.npv, finance.irr, finance.roi, finance.black_scholes, finance.var_historical | 현금흐름·옵션·채권·리스크 지표 |
-| finance | 17 | finance.npv, finance.irr, finance.roi, finance.cagr, finance.black_scholes, finance.var_historical | 현금흐름·옵션·채권·리스크 지표 |
+| finance | 18 | finance.npv, finance.irr, finance.roi, finance.cagr, finance.payback_period, finance.black_scholes, finance.var_historical | 현금흐름·옵션·채권·리스크 지표 |
 
 | probability | 30 | probability.normal_cdf, probability.poisson_pmf, probability.beta_ppf | 이산/연속 분포 pdf/cdf/ppf + 조합 |
 | stats | 14 | stats.ttest_two_sample, stats.anova_oneway, stats.regression_linear | 가설 검정·분산분석·회귀 |

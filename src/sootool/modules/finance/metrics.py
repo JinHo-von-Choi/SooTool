@@ -1,4 +1,4 @@
-"""Finance metrics tools: NPV, IRR, ROI, and CAGR.
+"""Finance metrics tools: NPV, IRR, ROI, CAGR, and payback period.
 
 공식 출처: Brealey, Myers & Allen, "Principles of Corporate Finance", 13th ed.
   NPV = sum(CF_t / (1+r)^t) for t = 0..n
@@ -40,6 +40,11 @@ class RoiResult(TracedResult):
 
 class CagrResult(TracedResult):
     cagr: str
+
+
+class PaybackPeriodResult(TracedResult):
+    payback_period: str | None
+    recovered: bool
 
 
 
@@ -181,6 +186,73 @@ def cagr(
     trace.output(str(cagr_value))
     return {
         "cagr": str(cagr_value),
+        "trace": trace.to_dict(),
+    }
+
+
+@REGISTRY.tool(
+    namespace="finance",
+    name="payback_period",
+    description=(
+        "단순 투자회수기간을 계산한다. cashflows 의 index 0 은 음수인 초기 투자이고 이후 값은 기간별 현금흐름이다. "
+        "누적 현금흐름이 처음 0 이상이 되는 기간 안에서 선형 보간하며, 회수되지 않으면 payback_period=null 과 "
+        "recovered=false 를 반환한다. 화폐의 시간가치는 반영하지 않으며 decimals(기본 6)자리로 "
+        "rounding(기본 HALF_EVEN) 처리한다."
+    ),
+    version="1.0.0",
+)
+def payback_period(
+    cashflows: list[str],
+    rounding: str = "HALF_EVEN",
+    decimals: int = 6,
+) -> PaybackPeriodResult:
+    """Compute the simple payback period with fractional-period interpolation."""
+    trace = CalcTrace(
+        tool="finance.payback_period",
+        formula="payback = prior_periods + unrecovered_balance / recovery_cashflow",
+    )
+    policy = _parse_policy(rounding)
+    if decimals < 0:
+        raise InvalidInputError("decimals는 0 이상이어야 합니다.")
+    if len(cashflows) < 2:
+        raise InvalidInputError("cashflows는 초기 투자를 포함해 최소 2개 이상이어야 합니다.")
+
+    cashflows_d = [D(cashflow) for cashflow in cashflows]
+    if any(not cashflow.is_finite() for cashflow in cashflows_d):
+        raise InvalidInputError("cashflows는 유한한 숫자여야 합니다.")
+    if cashflows_d[0] >= Decimal("0"):
+        raise InvalidInputError("cashflows[0]은 음수인 초기 투자여야 합니다.")
+
+    trace.input("cashflows", cashflows)
+    trace.input("rounding", rounding)
+    trace.input("decimals", decimals)
+
+    cumulative = cashflows_d[0]
+    for period, cashflow in enumerate(cashflows_d[1:], start=1):
+        previous = cumulative
+        cumulative = add(cumulative, cashflow)
+        if cumulative < Decimal("0"):
+            continue
+
+        fraction = div(-previous, cashflow)
+        raw_period = D(period - 1) + fraction
+        trace.step("cumulative_before_recovery", previous)
+        trace.step("recovery_cashflow", cashflow)
+        trace.step("fractional_period", fraction)
+
+        result = apply(raw_period, decimals, policy)
+        trace.output(str(result))
+        return {
+            "payback_period": str(result),
+            "recovered": True,
+            "trace": trace.to_dict(),
+        }
+
+    trace.step("ending_cumulative_cashflow", cumulative)
+    trace.output("not_recovered")
+    return {
+        "payback_period": None,
+        "recovered": False,
         "trace": trace.to_dict(),
     }
 

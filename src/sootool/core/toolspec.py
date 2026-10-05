@@ -36,6 +36,7 @@ SINCE: Final[dict[str, str]] = {
     "core.compare":                         "0.2.0",
     "core.explain":                         "0.2.0",
     "finance.cagr":                         "0.2.0",
+    "finance.payback_period":                "0.2.0",
     "payroll.kr_gross_from_net":            "0.2.0",
     "tax_us.fica":                          "0.2.0",
     "tax.kr_eitc":                          "0.2.0",
