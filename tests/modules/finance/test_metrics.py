@@ -146,6 +146,121 @@ class TestROI:
             )
 
 
+class TestCAGR:
+    def test_cagr_compounds_over_multiple_periods(self) -> None:
+        result = REGISTRY.invoke(
+            "finance.cagr",
+            beginning_value="100",
+            ending_value="121",
+            periods="2",
+        )
+
+        assert result["cagr"] == "0.100000"
+        assert result["trace"]["tool"] == "finance.cagr"
+
+    def test_cagr_no_growth_boundary(self) -> None:
+        result = REGISTRY.invoke(
+            "finance.cagr",
+            beginning_value="100",
+            ending_value="100",
+            periods="0.5",
+        )
+
+        assert result["cagr"] == "0.000000"
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("beginning_value", "0"),
+            ("beginning_value", "-1"),
+            ("ending_value", "0"),
+            ("ending_value", "-1"),
+            ("periods", "0"),
+            ("periods", "-0.1"),
+        ],
+    )
+    def test_cagr_rejects_non_positive_inputs(self, field: str, value: str) -> None:
+        kwargs = {
+            "beginning_value": "100",
+            "ending_value": "121",
+            "periods": "2",
+        }
+        kwargs[field] = value
+
+        with pytest.raises(InvalidInputError, match=field):
+            REGISTRY.invoke("finance.cagr", **kwargs)
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("beginning_value", "NaN"),
+            ("ending_value", "Infinity"),
+            ("periods", "NaN"),
+        ],
+    )
+    def test_cagr_rejects_non_finite_inputs(self, field: str, value: str) -> None:
+        kwargs = {
+            "beginning_value": "100",
+            "ending_value": "121",
+            "periods": "2",
+        }
+        kwargs[field] = value
+
+        with pytest.raises(InvalidInputError, match=field):
+            REGISTRY.invoke("finance.cagr", **kwargs)
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"rounding": "BANKERS"}, "반올림 정책"),
+            ({"decimals": -1}, "decimals"),
+        ],
+    )
+    def test_cagr_rejects_invalid_options(
+        self, kwargs: dict[str, object], message: str
+    ) -> None:
+        with pytest.raises(InvalidInputError, match=message):
+            REGISTRY.invoke(
+                "finance.cagr",
+                beginning_value="100",
+                ending_value="121",
+                periods="2",
+                **kwargs,
+            )
+
+    def test_cagr_preserves_decimal_precision(self) -> None:
+        result = REGISTRY.invoke(
+            "finance.cagr",
+            beginning_value="1",
+            ending_value="1.000000000000000000000000000001",
+            periods="1",
+            decimals=30,
+        )
+
+        assert Decimal(result["cagr"]) == Decimal("0.000000000000000000000000000001")
+
+    def test_cagr_honors_rounding_policy_at_precision_boundary(self) -> None:
+        half_even = REGISTRY.invoke(
+            "finance.cagr",
+            beginning_value="100",
+            ending_value="106.25",
+            periods="1",
+            decimals=3,
+            rounding="HALF_EVEN",
+        )
+        half_up = REGISTRY.invoke(
+            "finance.cagr",
+            beginning_value="100",
+            ending_value="106.25",
+            periods="1",
+            decimals=3,
+            rounding="HALF_UP",
+        )
+
+        assert half_even["cagr"] == "0.062"
+        assert half_up["cagr"] == "0.063"
+
+
 class TestIRR:
     def test_irr_simple(self) -> None:
         """cf=[-100, 110] -> irr ~ 0.10"""

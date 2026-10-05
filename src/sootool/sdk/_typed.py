@@ -46,12 +46,12 @@ import sootool.modules.engineering.si_prefix as _m36
 import sootool.modules.engineering.structural as _m23
 import sootool.modules.engineering.thermal as _m28
 import sootool.modules.finance.bond as _m38
-import sootool.modules.finance.derivatives as _m39
+import sootool.modules.finance.derivatives as _m40
 import sootool.modules.finance.loan as _m42
-import sootool.modules.finance.metrics as _m41
+import sootool.modules.finance.metrics as _m39
 import sootool.modules.finance.option as _m37
 import sootool.modules.finance.risk as _m43
-import sootool.modules.finance.tvm as _m40
+import sootool.modules.finance.tvm as _m41
 import sootool.modules.geometry.area as _m44
 import sootool.modules.geometry.distance as _m45
 import sootool.modules.geometry.matrix_ops as _m46
@@ -479,31 +479,34 @@ class _FinanceTools(Protocol):
     def bond_ytm(self, price: Num, face: Num, coupon_rate: Num, years: int, freq: int = 2, max_iter: int = 100, tol: Num = '1e-10') -> _m38.BondYtmResult:
         """채권 만기수익률(YTM)을 뉴턴법으로 구한다. price 와 face 는 양수 Decimal 문자열, coupon_rate 는 연 표면이율 소수 (예 0.05), years 는 만기 연수 정수, freq 는 연 이자지급 횟수(기본 2). ytm 은 기간 수익률 x freq 인 연율이다. 수렴하지 못하면 converged=false 로 마지막 추정값이 나오므로 확인해야 하며 이자 지급일 사이의 경과이자는 지원하지 않는다."""
         ...
-    def forward_price(self, spot: Num, risk_free_rate: Num, time_to_expiry: Num, income_yield: Num = '0') -> _m39.FinanceForwardPriceResult:
+    def cagr(self, beginning_value: Num, ending_value: Num, periods: Num, rounding: Num = 'HALF_EVEN', decimals: int = 6) -> _m39.CagrResult:
+        """연평균 복합성장률(CAGR)을 계산한다. CAGR = (ending_value / beginning_value)^(1 / periods) - 1. beginning_value, ending_value, periods 는 모두 0보다 큰 유한 Decimal 문자열이어야 하며 periods 는 소수도 허용한다. 결과는 배수(0.1 = 10%)이며 decimals(기본 6)자리로 rounding(기본 HALF_EVEN) 처리한다."""
+        ...
+    def forward_price(self, spot: Num, risk_free_rate: Num, time_to_expiry: Num, income_yield: Num = '0') -> _m40.FinanceForwardPriceResult:
         """무차익 선도가격을 계산한다. F = S x exp((r - y) x T), 연속복리 기준이며 income_yield(배당률이나 쿠폰수익률, 기본 0)를 차감한다. spot 은 양수, time_to_expiry 는 0 초과 연 단위, 모두 Decimal 문자열이고 결과는 소수 8자리. 이산복리 이율은 연속복리로 환산해서 넣어야 한다."""
         ...
-    def futures_price(self, spot: Num, risk_free_rate: Num, time_to_expiry: Num, dividend_yield: Num = '0') -> _m39.FinanceFuturesPriceResult:
+    def futures_price(self, spot: Num, risk_free_rate: Num, time_to_expiry: Num, dividend_yield: Num = '0') -> _m40.FinanceFuturesPriceResult:
         """연속복리 보유비용 모형의 선물 이론가격을 계산한다. F = S x exp((r - q) x T). spot 은 양수, risk_free_rate 와 dividend_yield(q, 기본 0)는 연속복리 연율, time_to_expiry 는 0 초과 연 단위, 모두 Decimal 문자열. 결과는 소수 8자리. 이산복리 이율을 그대로 넣으면 값이 어긋난다."""
         ...
-    def fv(self, present_value: Num, rate: Num, periods: int, rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m40.FvResult:
+    def fv(self, present_value: Num, rate: Num, periods: int, rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m41.FvResult:
         """현재 금액의 미래가치를 계산한다. FV = PV x (1+r)^n, 기간마다 복리. present_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."""
         ...
-    def irr(self, cashflows: list[Num], guess: Num = '0.1', max_iter: int = 100, tol: Num = '1e-10') -> _m41.IrrResult:
+    def irr(self, cashflows: list[Num], guess: Num = '0.1', max_iter: int = 100, tol: Num = '1e-10') -> _m39.IrrResult:
         """내부수익률(IRR), 즉 NPV 를 0 으로 만드는 기간 수익률을 구한다. cashflows 는 2개 이상이며 index 0 이 t=0, 양수와 음수가 모두 있어야 한다. 뉴턴법이 실패하면 -0.99 이상 10 이하 구간 이분법을 쓰고 max_iter 는 10000 이하. 해를 못 찾으면 irr=null, converged=false 를 돌려준다. 월별 현금흐름의 결과는 연율이 아니라 월 수익률이다."""
         ...
     def loan_schedule(self, principal: Num, annual_rate: Num, months: int, method: Num = 'EQUAL_PAYMENT', rounding: Num = 'HALF_EVEN', decimals: int = 0) -> _m42.LoanScheduleResult:
         """대출 상환 스케줄을 계산한다. method 는 EQUAL_PAYMENT(원리금균등, 기본) 또는 EQUAL_PRINCIPAL(원금균등). annual_rate 는 연이율 소수(예 0.03)이며 월이율 = 연이율 / 12, months 는 1 이상 1200 이하 정수. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리하고 마지막 회차가 잔액을 정리한다. 원금균등은 monthly_payment 가 null 이다. 거치기간과 중도상환은 지원하지 않는다."""
         ...
-    def npv(self, rate: Num, cashflows: list[Num], rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m41.NpvResult:
+    def npv(self, rate: Num, cashflows: list[Num], rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m39.NpvResult:
         """순현재가치를 계산한다. NPV = sum(CF_t / (1+r)^t). cashflows 의 index 0 은 t=0 시점이라 할인하지 않으며 초기 투자는 음수로 넣는다. rate 는 기간당 할인율(0 이상 Decimal 문자열), decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. 첫 현금흐름을 1기 말로 보려면 앞에 0 을 추가한다."""
         ...
-    def option_payoff(self, option_type: Num, strike: Num, spot_path: list[Num], is_call: bool = True, barrier: Num | None = None, barrier_type: Num | None = None, digital_cash: Num = '1') -> _m39.FinanceOptionPayoffResult:
+    def option_payoff(self, option_type: Num, strike: Num, spot_path: list[Num], is_call: bool = True, barrier: Num | None = None, barrier_type: Num | None = None, digital_cash: Num = '1') -> _m40.FinanceOptionPayoffResult:
         """옵션의 만기 payoff 를 계산한다. option_type 은 vanilla, digital(현금 지급), asian(산술평균), barrier(up_in, up_out, down_in, down_out). spot_path 는 기초자산 가격 문자열 목록이며 vanilla 와 digital 은 마지막 값만 쓴다. barrier 유형은 barrier 와 barrier_type 이 필수이고 결과는 소수 8자리. 만기 가치일 뿐 프리미엄이 아니다."""
         ...
-    def pv(self, future_value: Num, rate: Num, periods: int, rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m40.PvResult:
+    def pv(self, future_value: Num, rate: Num, periods: int, rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m41.PvResult:
         """미래 현금흐름의 현재가치를 계산한다. PV = FV / (1+r)^n. future_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."""
         ...
-    def roi(self, net_profit: Num, investment_cost: Num, rounding: Num = 'HALF_EVEN', decimals: int = 4) -> _m41.RoiResult:
+    def roi(self, net_profit: Num, investment_cost: Num, rounding: Num = 'HALF_EVEN', decimals: int = 4) -> _m39.RoiResult:
         """투자수익률(ROI)을 계산한다. ROI = net_profit / investment_cost. net_profit 은 손실이면 음수인 Decimal 문자열이고 investment_cost 는 0보다 커야 한다. 결과는 배수(0.25 = 25%)이며 decimals(기본 4)자리로 rounding(기본 HALF_EVEN) 처리한다. 기간을 반영한 연환산 수익률은 아니다."""
         ...
     def sharpe_ratio(self, returns: list[Num], risk_free_rate: Num = '0', periods_per_year: int = 0) -> _m43.FinanceSharpeRatioResult:
