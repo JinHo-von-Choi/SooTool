@@ -77,6 +77,75 @@ class TestNPV:
         assert len(set(results)) == 1, "All parallel calls must return identical NPV"
 
 
+class TestROI:
+    def test_roi_standard_investment(self) -> None:
+        result = REGISTRY.invoke(
+            "finance.roi",
+            net_profit="25",
+            investment_cost="100",
+        )
+
+        assert result["roi"] == "0.2500"
+        assert result["trace"]["tool"] == "finance.roi"
+
+    @pytest.mark.parametrize(
+        ("net_profit", "expected"),
+        [("0", "0.0000"), ("-20", "-0.2000")],
+    )
+    def test_roi_zero_or_loss_boundary(self, net_profit: str, expected: str) -> None:
+        result = REGISTRY.invoke(
+            "finance.roi",
+            net_profit=net_profit,
+            investment_cost="100",
+        )
+
+        assert result["roi"] == expected
+
+    @pytest.mark.parametrize("investment_cost", ["0", "-0.01"])
+    def test_roi_non_positive_investment_cost_raises(self, investment_cost: str) -> None:
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke(
+                "finance.roi",
+                net_profit="10",
+                investment_cost=investment_cost,
+            )
+
+    def test_roi_honors_rounding_policy_at_precision_boundary(self) -> None:
+        half_even = REGISTRY.invoke(
+            "finance.roi",
+            net_profit="1",
+            investment_cost="16",
+            decimals=3,
+            rounding="HALF_EVEN",
+        )
+        half_up = REGISTRY.invoke(
+            "finance.roi",
+            net_profit="1",
+            investment_cost="16",
+            decimals=3,
+            rounding="HALF_UP",
+        )
+
+        assert half_even["roi"] == "0.062"
+        assert half_up["roi"] == "0.063"
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"rounding": "BANKERS"}, "반올림 정책"),
+            ({"decimals": -1}, "decimals"),
+        ],
+    )
+    def test_roi_invalid_options_raise(self, kwargs: dict[str, object], message: str) -> None:
+        with pytest.raises(InvalidInputError, match=message):
+            REGISTRY.invoke(
+                "finance.roi",
+                net_profit="10",
+                investment_cost="100",
+                **kwargs,
+            )
+
+
 class TestIRR:
     def test_irr_simple(self) -> None:
         """cf=[-100, 110] -> irr ~ 0.10"""

@@ -63,6 +63,7 @@ ALIASES: Final[dict[str, tuple[str, ...]]] = {
     "finance.fv":                        ("미래가치", "복리", "compound interest", "적금", "예금 만기"),
     "finance.npv":                       ("순현재가치", "투자 타당성", "현금흐름 할인"),
     "finance.irr":                       ("내부수익률", "투자 수익률", "internal rate of return"),
+    "finance.roi":                       ("투자수익률", "투자 대비 수익", "return on investment"),
     "finance.bond_ytm":                  ("채권 수익률", "만기수익률", "yield to maturity"),
     "finance.black_scholes":             ("옵션 가격", "블랙숄즈", "option pricing"),
     "finance.var_historical":            ("위험가치", "손실 한도", "value at risk"),
