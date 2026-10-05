@@ -1,4 +1,4 @@
-"""Finance metrics tools: NPV, IRR, and ROI.
+"""Finance metrics tools: NPV, IRR, ROI, and CAGR.
 
 공식 출처: Brealey, Myers & Allen, "Principles of Corporate Finance", 13th ed.
   NPV = sum(CF_t / (1+r)^t) for t = 0..n
@@ -35,6 +35,10 @@ class IrrResult(TracedResult):
 
 class RoiResult(TracedResult):
     roi: str
+
+
+class CagrResult(TracedResult):
+    cagr: str
 
 
 def _parse_policy(rounding: str) -> RoundingPolicy:
@@ -120,6 +124,60 @@ def roi(
     trace.output(str(roi_value))
     return {
         "roi": str(roi_value),
+        "trace": trace.to_dict(),
+    }
+
+
+@REGISTRY.tool(
+    namespace="finance",
+    name="cagr",
+    description=(
+        "복합연평균성장률(CAGR)을 계산한다. CAGR = (ending_value / beginning_value)^(1 / periods) - 1. "
+        "beginning_value 는 0보다 크고 ending_value 는 0 이상인 Decimal 문자열, periods 는 1 이상 정수다. "
+        "결과는 배수(0.1 = 10%)이며 decimals(기본 6)자리로 rounding(기본 HALF_EVEN) 처리한다."
+    ),
+    version="1.0.0",
+)
+def cagr(
+    beginning_value: str,
+    ending_value: str,
+    periods: int,
+    rounding: str = "HALF_EVEN",
+    decimals: int = 6,
+) -> CagrResult:
+    """Compute compound annual growth rate over equal-length periods."""
+    trace = CalcTrace(
+        tool="finance.cagr",
+        formula="CAGR = (ending_value / beginning_value)^(1 / periods) - 1",
+    )
+    policy = _parse_policy(rounding)
+    if decimals < 0:
+        raise InvalidInputError("decimals는 0 이상이어야 합니다.")
+    if periods <= 0:
+        raise InvalidInputError("periods는 1 이상이어야 합니다.")
+
+    beginning_d = D(beginning_value)
+    ending_d = D(ending_value)
+    if beginning_d <= Decimal("0"):
+        raise InvalidInputError("beginning_value는 0보다 커야 합니다.")
+    if ending_d < Decimal("0"):
+        raise InvalidInputError("ending_value는 0 이상이어야 합니다.")
+
+    trace.input("beginning_value", beginning_value)
+    trace.input("ending_value", ending_value)
+    trace.input("periods", periods)
+    trace.input("rounding", rounding)
+    trace.input("decimals", decimals)
+
+    ratio = div(ending_d, beginning_d)
+    trace.step("growth_ratio", str(ratio))
+    cagr_raw = ratio ** div(Decimal("1"), D(periods)) - Decimal("1")
+    trace.step("cagr_raw", str(cagr_raw))
+
+    cagr_value = apply(cagr_raw, decimals, policy)
+    trace.output(str(cagr_value))
+    return {
+        "cagr": str(cagr_value),
         "trace": trace.to_dict(),
     }
 

@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-REGISTRY 수치: 18 domains, 273 base tools, 10 admin policy-management tools (0.2.0 대비 base 1개 증가: finance.roi).
+REGISTRY 수치: 18 domains, 274 base tools, 10 admin policy-management tools (0.2.0 대비 base 2개 증가: finance.roi, finance.cagr).
 
 ### Added
 
 - 재무 지표 도구 `finance.roi`(ADR 미신설, finance 모듈): ROI = 순이익 / 투자원가. 순이익은 손실이면 음수인 Decimal 문자열이고 투자원가는 0보다 커야 한다. 결과는 배수(0.25 = 25%)로 decimals(기본 4)자리와 rounding(기본 HALF_EVEN)을 따른다. 기간을 반영한 연환산 수익률은 아니다. NPV·IRR과 같은 TracedResult 기반이라 감사 트레이스를 그대로 남긴다.
+- 재무 지표 도구 `finance.cagr`(ADR 미신설, finance 모듈): 복합연평균성장률(CAGR) = (기말가치 / 초기가치)^(1/기간수) - 1. 초기가치는 0보다 크고 기말가치는 0 이상인 Decimal 문자열이며 기간수(periods)는 1 이상 정수다. 결과는 배수(0.1 = 10%)로 decimals(기본 6)자리와 rounding(기본 HALF_EVEN)을 따른다. 같은 TracedResult 기반이라 감사 트레이스를 그대로 남긴다.
 
 ## [0.2.0] - 2026-10-04
 
