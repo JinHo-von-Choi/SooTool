@@ -4,7 +4,7 @@ scripts/gen_tool_catalog.py 가 레지스트리에서 생성한다. 직접 고�
 exact(Decimal), high_precision(mpmath, 지정 자릿수), approximate(float64 근사), depends_on_children(호출한 도구에 따름),
 not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as_of`)에 따라 정책 문서를 읽는다.
 
-총 283개 도구, 20개 네임스페이스.
+총 284개 도구, 20개 네임스페이스.
 
 
 ## accounting (11)
@@ -134,13 +134,14 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |torque_rotational_power|1.0.0|0.1.0|light|exact||예|회전 일률 P = τ·ω (W)를 계산한다. torque 는 N·m, angular_velocity 는 rad/s 이다. rpm 을 그대로 넣으면 틀리므로 ω …|
 |weibull_reliability|1.0.0|0.1.0|light|high_precision||예|2모수 와이블 분포의 신뢰도 R(t) = exp(−(t/η)^β)와 불신뢰도를 계산한다. shape β 와 scale η 는 0 초과, time 은 η 와 같은…|
 
-## finance (16)
+## finance (17)
 
 |도구|버전|since|비용|정확도|정책|읽기 전용|설명|
 |-|-|-|-|-|-|-|-|
 |black_scholes|1.0.0|0.1.0|light|high_precision||예|Black-Scholes 유럽형 옵션의 가격과 델타, 감마, 베가, 세타, 로를 계산한다. option_type 은 call 또는 put, rate, sigma…|
 |bond_duration|1.0.0|0.1.0|light|exact||예|채권의 맥컬리 듀레이션과 수정 듀레이션을 연 단위로 계산한다. face 는 양수, coupon_rate 와 ytm 은 연율 소수 Decimal 문자열, year…|
 |bond_ytm|1.0.0|0.1.0|heavy|exact||예|채권 만기수익률(YTM)을 뉴턴법으로 구한다. price 와 face 는 양수 Decimal 문자열, coupon_rate 는 연 표면이율 소수 (예 0.05)…|
+|cagr|1.0.0|0.2.0|light|exact||예|복합연평균성장률(CAGR)을 계산한다. CAGR = (ending_value / beginning_value)^(1 / periods) - 1. beginnin…|
 |forward_price|1.0.0|0.1.0|light|high_precision||예|무차익 선도가격을 계산한다. F = S x exp((r - y) x T), 연속복리 기준이며 income_yield(배당률이나 쿠폰수익률, 기본 0)를 차감한다…|
 |futures_price|1.0.0|0.1.0|light|high_precision||예|연속복리 보유비용 모형의 선물 이론가격을 계산한다. F = S x exp((r - q) x T). spot 은 양수, risk_free_rate 와 divide…|
 |fv|1.0.0|0.1.0|light|exact||예|현재 금액의 미래가치를 계산한다. FV = PV x (1+r)^n, 기간마다 복리. present_value 와 rate(기간당 이율, 0 이상, 예 0.05)…|

@@ -146,6 +146,72 @@ class TestROI:
             )
 
 
+class TestCAGR:
+    def test_cagr_standard_compound_growth(self) -> None:
+        result = REGISTRY.invoke(
+            "finance.cagr",
+            beginning_value="1000",
+            ending_value="1331",
+            periods=3,
+        )
+
+        assert result["cagr"] == "0.100000"
+        assert result["trace"]["tool"] == "finance.cagr"
+
+    @pytest.mark.parametrize(
+        ("ending_value", "expected"),
+        [("0", "-1.000000"), ("100", "0.000000")],
+    )
+    def test_cagr_zero_and_no_growth_boundaries(
+        self,
+        ending_value: str,
+        expected: str,
+    ) -> None:
+        result = REGISTRY.invoke(
+            "finance.cagr",
+            beginning_value="100",
+            ending_value=ending_value,
+            periods=5,
+        )
+
+        assert result["cagr"] == expected
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"beginning_value": "0", "ending_value": "100", "periods": 1},
+            {"beginning_value": "-1", "ending_value": "100", "periods": 1},
+            {"beginning_value": "100", "ending_value": "-1", "periods": 1},
+            {"beginning_value": "100", "ending_value": "110", "periods": 0},
+            {"beginning_value": "100", "ending_value": "110", "periods": -1},
+        ],
+    )
+    def test_cagr_invalid_inputs_raise(self, kwargs: dict[str, object]) -> None:
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("finance.cagr", **kwargs)
+
+    def test_cagr_honors_rounding_policy_at_precision_boundary(self) -> None:
+        half_even = REGISTRY.invoke(
+            "finance.cagr",
+            beginning_value="16",
+            ending_value="17",
+            periods=1,
+            decimals=3,
+            rounding="HALF_EVEN",
+        )
+        half_up = REGISTRY.invoke(
+            "finance.cagr",
+            beginning_value="16",
+            ending_value="17",
+            periods=1,
+            decimals=3,
+            rounding="HALF_UP",
+        )
+
+        assert half_even["cagr"] == "0.062"
+        assert half_up["cagr"] == "0.063"
+
+
 class TestIRR:
     def test_irr_simple(self) -> None:
         """cf=[-100, 110] -> irr ~ 0.10"""
