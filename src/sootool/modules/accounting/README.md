@@ -5,6 +5,7 @@
 |도구|계산|엔진|
 |-|-|-|
 |`accounting.balance`|분개 목록의 차변 합계와 대변 합계가 같은지 검증한다.|Decimal|
+|`accounting.break_even`|고정비 / (판매 단가 - 단위 변동비)로 손익분기 판매량을 계산한다.|Decimal|
 |`accounting.cashflow_operating`|간접법 영업활동현금흐름(CFO)을 계산한다.|Decimal|
 |`accounting.depreciation_declining_balance`|정률법 감가상각 스케줄을 계산한다.|Decimal|
 |`accounting.depreciation_straight_line`|정액법 감가상각 스케줄을 계산한다.|Decimal|
@@ -19,6 +20,8 @@
 엔진 열은 도구가 정의된 모듈이 쓰는 가장 거친 수치 엔진이다. Decimal은 정확, mpmath는 지정 자릿수(기본 50자리), float64는 배정밀도 근사다. 인자와 기본값은 `sootool tools describe <도구>`로 확인한다.
 
 ## 반올림 기본값
+
+`break_even`은 고정비와 단위 변동비가 0 이상이고 판매 단가가 단위 변동비보다 클 때 사용한다. 유한한 Decimal 문자열을 입력하며 50자리 정밀도로 계산한다. 판매량은 기본 소수 4자리 HALF_EVEN 반올림한 문자열로 반환한다. 소수 판매량을 정수 판매 개수로 올림하지 않는다.
 
 |도구|기본값|근거|
 |-|-|-|

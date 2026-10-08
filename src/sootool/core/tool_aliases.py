@@ -56,6 +56,7 @@ ALIASES: Final[dict[str, tuple[str, ...]]] = {
     "accounting.balance":                ("대차 균형", "차변 대변", "분개 검증", "trial balance"),
     "accounting.ratios":                 ("재무비율", "부채비율", "유동비율", "financial ratios"),
     "accounting.income_statement":       ("손익계산서", "영업이익", "income statement", "P&L"),
+    "accounting.break_even":             ("손익분기점", "BEP", "공헌이익", "break-even sales volume"),
     "accounting.cashflow_operating":     ("현금흐름", "영업활동", "CFO", "cash flow"),
     # 금융
     "finance.loan_schedule":             ("대출 상환", "이자 계산", "원리금균등", "원금균등", "할부", "amortization", "mortgage", "loan"),

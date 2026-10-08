@@ -5,13 +5,15 @@ Date: 2026-04-23
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, localcontext
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import TracedResult
+from sootool.core.rounding import RoundingPolicy
+from sootool.core.rounding import apply as round_apply
 
 
 class AccountingIncomeStatementResult(TracedResult):
@@ -120,3 +122,62 @@ def accounting_income_statement(
         "net_margin": out["net_margin"],
         "trace": trace.to_dict(),
     }
+
+
+class AccountingBreakEvenResult(TracedResult):
+    break_even_units: str
+
+
+@REGISTRY.tool(
+    namespace="accounting",
+    name="break_even",
+    description=(
+        "손익분기 판매량 = fixed_costs / (unit_price - unit_variable_cost). "
+        "금액은 유한한 Decimal 문자열이며 고정비와 단위 변동비는 0 이상, 판매 단가는 단위 변동비보다 커야 한다. "
+        "50자리 Decimal 정밀도로 계산하고 decimals(기본 4)자리 HALF_EVEN 반올림한다. "
+        "결과는 소수 판매량이며 정수 판매 개수로 올림하지 않는다."
+    ),
+)
+def accounting_break_even(
+    fixed_costs: str,
+    unit_price: str,
+    unit_variable_cost: str,
+    decimals: int = 4,
+) -> AccountingBreakEvenResult:
+    """Return fractional break-even units, rounded only after division."""
+    fixed = D(fixed_costs)
+    price = D(unit_price)
+    variable = D(unit_variable_cost)
+    for field, value in (
+        ("fixed_costs", fixed),
+        ("unit_price", price),
+        ("unit_variable_cost", variable),
+    ):
+        if not value.is_finite():
+            raise InvalidInputError(f"{field}는 유한한 숫자여야 합니다.")
+    if fixed < 0 or variable < 0:
+        raise InvalidInputError("fixed_costs와 unit_variable_cost는 0 이상이어야 합니다.")
+    if price <= variable:
+        raise InvalidInputError("unit_price는 unit_variable_cost보다 커야 합니다.")
+    if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상의 정수여야 합니다.")
+
+    trace = CalcTrace(
+        tool="accounting.break_even",
+        formula="break_even_units = fixed_costs / (unit_price - unit_variable_cost)",
+    )
+    trace.input("fixed_costs", fixed_costs)
+    trace.input("unit_price", unit_price)
+    trace.input("unit_variable_cost", unit_variable_cost)
+    trace.input("decimals", decimals)
+
+    try:
+        with localcontext(Context(prec=50)):
+            contribution = price - variable
+            units = round_apply(fixed / contribution, decimals, RoundingPolicy.HALF_EVEN)
+    except DecimalException as exc:
+        raise InvalidInputError("입력값 또는 decimals가 50자리 Decimal 계산 범위를 벗어납니다.") from exc
+
+    trace.step("unit_contribution_margin", str(contribution))
+    trace.output(str(units))
+    return {"break_even_units": str(units), "trace": trace.to_dict()}

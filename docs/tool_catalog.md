@@ -4,14 +4,15 @@ scripts/gen_tool_catalog.py 가 레지스트리에서 생성한다. 직접 고�
 exact(Decimal), high_precision(mpmath, 지정 자릿수), approximate(float64 근사), depends_on_children(호출한 도구에 따름),
 not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as_of`)에 따라 정책 문서를 읽는다.
 
-총 285개 도구, 20개 네임스페이스.
+총 286개 도구, 20개 네임스페이스.
 
 
-## accounting (11)
+## accounting (12)
 
 |도구|버전|since|비용|정확도|정책|읽기 전용|설명|
 |-|-|-|-|-|-|-|-|
 |balance|1.0.0|0.1.0|light|exact||예|분개 목록의 차변 합계와 대변 합계가 같은지 검증한다. entries 는 {account, debit, credit} 항목의 목록이며 금액은 Decimal 문자…|
+|break_even|1.0.0|0.2.0|light|exact||예|손익분기 판매량 = fixed_costs / (unit_price - unit_variable_cost). 금액은 유한한 Decimal 문자열이며 고정비와 단위…|
 |cashflow_operating|1.0.0|0.1.0|light|exact||예|간접법 영업활동현금흐름(CFO)을 계산한다. 당기순이익에 감가상각비, 무형자산상각비, 기타 비현금 항목을 더하고 매출채권 증가와 재고자산 증가는 빼며 매입채무 …|
 |depreciation_declining_balance|1.0.0|0.1.0|light|exact||예|정률법 감가상각 스케줄을 계산한다. 연도별 감가비 = 기초 장부가 x 감가율(rate, 0 초과 1 미만 Decimal 문자열)이며 장부가는 잔존가치 아래로 내…|
 |depreciation_straight_line|1.0.0|0.1.0|light|exact||예|정액법 감가상각 스케줄을 계산한다. 연 감가비 = (취득원가 - 잔존가치) / 내용연수(life_years, 1 이상 정수), 금액은 Decimal 문자열. d…|

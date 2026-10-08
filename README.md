@@ -12,7 +12,7 @@ Precision Calc MCP for LLM tool use.
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-LLM 대신 계산을 맡는 MCP 서버. 세금, 급여, 금융, 통계, 공학 계산을 Decimal로 정확하게 수행하고 계산 근거를 함께 돌려준다. 18개 계산 도메인 275개 기본 도구 + 10개 admin 정책 도구, 한 번에 최대 500건 병렬 계산(`core.batch`), 단계 연결 계산(`core.pipeline`), 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE)을 제공한다. Python 3.12 이상.
+LLM 대신 계산을 맡는 MCP 서버. 세금, 급여, 금융, 통계, 공학 계산을 Decimal로 정확하게 수행하고 계산 근거를 함께 돌려준다. 18개 계산 도메인 276개 기본 도구 + 10개 admin 정책 도구, 한 번에 최대 500건 병렬 계산(`core.batch`), 단계 연결 계산(`core.pipeline`), 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE)을 제공한다. Python 3.12 이상.
 
 ## 왜 필요한가
 
@@ -43,7 +43,7 @@ SooTool은 이 계산을 세 가지 장치로 고정한다.
  ┌──────────────────────────────────────────────────────────────────────────────┐
  │ 경계 검사   인자 이름·타입·크기 검증, 숫자 문자열 → Decimal, 인증 범위 확인     │
  ├──────────────────────────────────────────────────────────────────────────────┤
- │ 레지스트리   도구 285개를 이름으로 찾아 실행 (core.batch / core.pipeline 포함)   │
+ │ 레지스트리   도구 286개를 이름으로 찾아 실행 (core.batch / core.pipeline 포함)   │
  ├───────────────────────────────┬──────────────────────────────────────────────┤
  │ 도메인 도구                     │ 정책 로더                                      │
  │ tax · payroll · finance ·      │ policies/<도메인>/<이름>_<연도>.yaml           │
@@ -204,12 +204,12 @@ sootool receipt verify --tool finance.fv \
 
 같은 도구를 다시 실행해 도구 이름, 입력 해시, 결과 해시, 도구 버전, 정책 해시를 대조한다. `SOOTOOL_RECEIPT_KEY_FILE`에 ed25519 개인 키 파일을 지정하면 영수증에 서명이 붙는다.
 
-## 도구 카탈로그 (275개 기본 + 10개 admin, 18 계산 도메인 + 운영 도구)
+## 도구 카탈로그 (276개 기본 + 10개 admin, 18 계산 도메인 + 운영 도구)
 
 |Namespace|Count|대표 도구|
 |-|-|-|
 |core|11|add, sub, mul, div, calc(수식), batch, pipeline, pipeline_resume, solve_for, compare, explain|
-|accounting|11|vat_extract, vat_add, balance, 감가상각 3종, dupont 2종, ratios, income_statement, cashflow_operating|
+|accounting|12|vat_extract, vat_add, balance, 감가상각 3종, dupont 2종, ratios, income_statement, cashflow_operating, break_even|
 |finance|18|pv, fv, npv, irr, roi, cagr, payback_period, loan_schedule, bond_ytm, bond_duration, black_scholes, var 2종, sharpe, sortino|
 |tax|17|kr_income, kr_comprehensive_income_tax, kr_withholding_simple, capital_gains_kr, kr_gift, kr_inheritance, kr_corporate, kr_eitc, 지방세 부가 3종|
 |tax_us|4|federal_income, capital_gains, state_tax, fica|
@@ -255,7 +255,7 @@ sootool --transport stdio,http --socket /tmp/sootool.sock  # 여러 전송 동�
 ### 노출 프로파일
 
 ```bash
-sootool --profile full   # 기본값. 도구 285개를 모두 노출
+sootool --profile full   # 기본값. 도구 286개를 모두 노출
 sootool --profile lean   # sootool.search, describe, call, skill_guide 4개만 노출
 ```
 
@@ -310,7 +310,7 @@ out["_meta"]["integrity"]["input_hash"]   # 재실행 검증용 영수증
 |문서|내용|
 |-|-|
 |[사용자 가이드](docs/user_guide.md)|도메인별 도구 개요, 공통 인자, 응답 규칙|
-|[도구 카탈로그](docs/tool_catalog.md)|도구 285개의 버전, 정확도 등급, 설명|
+|[도구 카탈로그](docs/tool_catalog.md)|도구 286개의 버전, 정확도 등급, 설명|
 |[정책 관리](docs/policy_management.md)|정책 파일 구조, 시점 선택, 갱신·롤백 절차, 감사 로그|
 |[SDK](docs/sdk.md)|파이썬 라이브러리 사용법과 샌드박스 구성|
 |[외부 정책 팩](docs/external_policy_packs.md)|서명된 정책 묶음의 생성, 검증, 설치|
