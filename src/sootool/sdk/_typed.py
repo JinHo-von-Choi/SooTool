@@ -14,10 +14,10 @@ import sootool.core.batch as _m8
 import sootool.core.calc.api as _m9
 import sootool.core.pipeline as _m11
 import sootool.modules.accounting.bookkeeping as _m0
-import sootool.modules.accounting.cashflow as _m1
-import sootool.modules.accounting.depreciation as _m2
-import sootool.modules.accounting.dupont as _m3
-import sootool.modules.accounting.income_statement as _m4
+import sootool.modules.accounting.cashflow as _m2
+import sootool.modules.accounting.depreciation as _m3
+import sootool.modules.accounting.dupont as _m4
+import sootool.modules.accounting.income_statement as _m1
 import sootool.modules.accounting.ratios as _m5
 import sootool.modules.accounting.vat as _m6
 import sootool.modules.crypto.advanced as _m12
@@ -152,25 +152,28 @@ class _AccountingTools(Protocol):
     def balance(self, entries: list[dict[str, Any]]) -> _m0.BalanceResult:
         """분개 목록의 차변 합계와 대변 합계가 같은지 검증한다. entries 는 {account, debit, credit} 항목의 목록이며 금액은 Decimal 문자열, 비어 있으면 0 으로 본다. 반환값은 balanced 여부, 두 합계, 차이의 절댓값(diff). account 는 합계에 쓰이지 않으므로 계정별 잔액 검증에는 쓸 수 없다."""
         ...
-    def cashflow_operating(self, net_income: Num, depreciation: Num = '0', amortization: Num = '0', other_noncash: Num = '0', change_in_receivables: Num = '0', change_in_inventory: Num = '0', change_in_payables: Num = '0', change_in_other_wc: Num = '0') -> _m1.AccountingCashflowOperatingResult:
+    def break_even(self, fixed_costs: Num, unit_price: Num, unit_variable_cost: Num, decimals: int = 4) -> _m1.AccountingBreakEvenResult:
+        """손익분기 판매량 = fixed_costs / (unit_price - unit_variable_cost). 금액은 유한한 Decimal 문자열이며 고정비와 단위 변동비는 0 이상, 판매 단가는 단위 변동비보다 커야 한다. 50자리 Decimal 정밀도로 계산하고 decimals(기본 4)자리 HALF_EVEN 반올림한다. 결과는 소수 판매량이며 정수 판매 개수로 올림하지 않는다."""
+        ...
+    def cashflow_operating(self, net_income: Num, depreciation: Num = '0', amortization: Num = '0', other_noncash: Num = '0', change_in_receivables: Num = '0', change_in_inventory: Num = '0', change_in_payables: Num = '0', change_in_other_wc: Num = '0') -> _m2.AccountingCashflowOperatingResult:
         """간접법 영업활동현금흐름(CFO)을 계산한다. 당기순이익에 감가상각비, 무형자산상각비, 기타 비현금 항목을 더하고 매출채권 증가와 재고자산 증가는 빼며 매입채무 증가는 더한다. 금액은 Decimal 문자열이며 반올림하지 않는다. 증가는 양수로 넣어야 하며 증가분을 음수로 넣으면 부호가 뒤집힌다."""
         ...
-    def depreciation_declining_balance(self, cost: Num, salvage: Num, rate: Num, life_years: int, decimals: int = 0, rounding: Num = 'HALF_EVEN') -> _m2.DepreciationDecliningBalanceResult:
+    def depreciation_declining_balance(self, cost: Num, salvage: Num, rate: Num, life_years: int, decimals: int = 0, rounding: Num = 'HALF_EVEN') -> _m3.DepreciationDecliningBalanceResult:
         """정률법 감가상각 스케줄을 계산한다. 연도별 감가비 = 기초 장부가 x 감가율(rate, 0 초과 1 미만 Decimal 문자열)이며 장부가는 잔존가치 아래로 내려가지 않고 도달하면 이후 연도 감가비는 0 이다. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리한다. 감가율은 입력값 그대로 쓰며 내용연수로 역산하지 않는다."""
         ...
-    def depreciation_straight_line(self, cost: Num, salvage: Num, life_years: int, decimals: int = 0, rounding: Num = 'HALF_EVEN') -> _m2.DepreciationStraightLineResult:
+    def depreciation_straight_line(self, cost: Num, salvage: Num, life_years: int, decimals: int = 0, rounding: Num = 'HALF_EVEN') -> _m3.DepreciationStraightLineResult:
         """정액법 감가상각 스케줄을 계산한다. 연 감가비 = (취득원가 - 잔존가치) / 내용연수(life_years, 1 이상 정수), 금액은 Decimal 문자열. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리하고 마지막 해는 장부가가 잔존가치에 맞도록 잔액을 상각한다. 월할이나 기중 취득 안분은 지원하지 않는다."""
         ...
-    def depreciation_units_of_production(self, cost: Num, salvage: Num, total_units: int, period_units: list[int], decimals: int = 0, rounding: Num = 'HALF_EVEN') -> _m2.DepreciationUnitsOfProductionResult:
+    def depreciation_units_of_production(self, cost: Num, salvage: Num, total_units: int, period_units: list[int], decimals: int = 0, rounding: Num = 'HALF_EVEN') -> _m3.DepreciationUnitsOfProductionResult:
         """생산량비례법 감가상각 스케줄을 계산한다. 기간 감가비 = (취득원가 - 잔존가치) / 총생산량 x 기간 생산량. total_units 는 1 이상 정수, period_units 는 기간별 생산량 정수 목록이며 금액은 Decimal 문자열. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리한다. 누적 생산량이 총생산량을 넘어도 오류 없이 장부가가 잔존가치에서 멈춘다."""
         ...
-    def dupont_3(self, net_income: Num, revenue: Num, total_assets: Num, total_equity: Num, decimals: int = 6) -> _m3.AccountingDupont3Result:
+    def dupont_3(self, net_income: Num, revenue: Num, total_assets: Num, total_equity: Num, decimals: int = 6) -> _m4.AccountingDupont3Result:
         """DuPont 3단계 분해로 ROE = 순이익률 x 총자산회전율 x 자기자본승수(재무레버리지)를 계산한다. 금액은 Decimal 문자열이며 매출, 총자산, 자기자본은 0 이 아니어야 한다. 각 값은 decimals(기본 6)자리 HALF_EVEN 반올림이고 음수 자기자본은 막지 않으므로 부호를 확인해야 한다."""
         ...
-    def dupont_5(self, net_income: Num, pretax_income: Num, ebit: Num, revenue: Num, total_assets: Num, total_equity: Num, decimals: int = 6) -> _m3.AccountingDupont5Result:
+    def dupont_5(self, net_income: Num, pretax_income: Num, ebit: Num, revenue: Num, total_assets: Num, total_equity: Num, decimals: int = 6) -> _m4.AccountingDupont5Result:
         """DuPont 5단계 분해로 ROE = 세부담비율(순이익/세전이익) x 이자부담비율(세전이익/EBIT) x 영업이익률 x 총자산회전율 x 재무레버리지를 계산한다. 금액은 Decimal 문자열이며 세전이익, EBIT, 매출, 총자산, 자기자본은 0 이 아니어야 한다. 각 값은 decimals(기본 6)자리 HALF_EVEN 반올림이다."""
         ...
-    def income_statement(self, revenue: Num, cost_of_sales: Num, operating_expenses: Num = '0', other_income: Num = '0', other_expenses: Num = '0', interest_expense: Num = '0', tax_expense: Num = '0') -> _m4.AccountingIncomeStatementResult:
+    def income_statement(self, revenue: Num, cost_of_sales: Num, operating_expenses: Num = '0', other_income: Num = '0', other_expenses: Num = '0', interest_expense: Num = '0', tax_expense: Num = '0') -> _m1.AccountingIncomeStatementResult:
         """다단계 손익계산서: 매출에서 매출총이익, 영업이익, 세전이익, 당기순이익까지 단계별 이익과 이익률을 계산한다. 금액은 Decimal 문자열이며 매출과 매출원가는 0 이상이어야 한다. 이익은 반올림하지 않고 이익률은 소수 6자리 (0.25 = 25%)로 반올림하며 매출이 0 이면 0 이다. 비용 항목은 양수로 입력한다."""
         ...
     def ratios(self, current_assets: Num, current_liabilities: Num, inventory: Num, total_assets: Num, total_liabilities: Num, total_equity: Num, net_income: Num, revenue: Num, decimals: int = 4) -> _m5.AccountingRatiosResult:

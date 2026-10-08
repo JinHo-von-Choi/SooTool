@@ -31,6 +31,7 @@ EXACTNESS: Final[dict[str, str]] = {
 # 도구가 처음 들어간 버전. 표에 없는 도구는 0.1.0 부터 있었다. 새 도구를 추가할 때 이 표에 한 줄을 더한다.
 BASELINE_VERSION: Final = "0.1.0"
 SINCE: Final[dict[str, str]] = {
+    "accounting.break_even":                "0.2.0",
     "sootool.verify_receipt":               "0.2.0",
     "core.solve_for":                       "0.2.0",
     "core.compare":                         "0.2.0",
