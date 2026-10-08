@@ -7,16 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-REGISTRY 수치: 18 domains, 273 base tools, 10 admin policy-management tools (0.2.0 대비 base 1개 증가: finance.roi).
-REGISTRY 수치: 18 domains, 274 base tools, 10 admin policy-management tools (0.2.0 대비 base 2개 증가: finance.roi, finance.cagr).
-
+REGISTRY 수치: 18 domains, 275 base tools, 10 admin policy-management tools (0.2.0 대비 base 3개 증가: finance.roi, finance.cagr, finance.payback_period).
 
 ### Added
 
-- 재무 지표 도구 `finance.roi`(ADR 미신설, finance 모듈): ROI = 순이익 / 투자원가. 순이익은 손실이면 음수인 Decimal 문자열이고 투자원가는 0보다 커야 한다. 결과는 배수(0.25 = 25%)로 decimals(기본 4)자리와 rounding(기본 HALF_EVEN)을 따른다. 기간을 반영한 연환산 수익률은 아니다. NPV·IRR과 같은 TracedResult 기반이라 감사 트레이스를 그대로 남긴다.
+- `finance.roi`: 투자수익률 ROI = 순이익 / 투자원가. 순이익은 손실이면 음수, 투자원가는 0보다 커야 한다. 결과는 배수(0.25 = 25%)이며 `decimals`(기본 4)와 `rounding`(기본 HALF_EVEN)을 따른다. 기간을 반영한 연환산 수익률이 아니다.
+- `finance.cagr`: 복합연평균성장률 CAGR = (기말가치 / 초기가치)^(1/기간수) − 1. 초기가치는 0보다 크고 기말가치는 0 이상, `periods`는 1 이상 정수다. 결과는 배수(0.1 = 10%)이며 `decimals`(기본 6)와 `rounding`(기본 HALF_EVEN)을 따른다.
+- `finance.payback_period`: 단순 투자회수기간. 누적 현금흐름이 처음 0 이상이 되는 기간을 직전 기간 수 + 미회수액 / 그 기간 현금흐름으로 보간한다. 끝까지 회수하지 못하면 `null`과 `recovered: false`를 돌려준다. `decimals`(기본 6), `rounding`(기본 HALF_EVEN).
 
-- 재무 지표 도구 `finance.cagr`(ADR 미신설, finance 모듈): 복합연평균성장률(CAGR) = (기말가치 / 초기가치)^(1/기간수) - 1. 초기가치는 0보다 크고 기말가치는 0 이상인 Decimal 문자열이며 기간수(periods)는 1 이상 정수다. 결과는 배수(0.1 = 10%)로 decimals(기본 6)자리와 rounding(기본 HALF_EVEN)을 따른다. 같은 TracedResult 기반이라 감사 트레이스를 그대로 남긴다.
+### Changed
 
+- 문서 전면 갱신: README에 구조도, 빠른 시작, 응답 읽는 법 추가. 사용자 가이드, 정책 관리, SDK, 안정성 계약, 릴리스 절차, 보안 정책, 모듈별 README를 현재 동작에 맞게 다시 썼다. 쿡북 예시를 현재 도구 인자와 실행 결과로 교체했다.
+
+### Removed
+
+- 저장소 평가 메모 `Requirements.md`.
 
 ## [0.2.0] - 2026-10-04
 

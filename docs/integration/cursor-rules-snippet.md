@@ -1,6 +1,6 @@
-# SooTool, Cursor .cursorrules 삽입용 스니펫
+# Cursor용 SooTool 규칙
 
-아래 내용을 `.cursorrules` 파일에 복사한다.
+Cursor 규칙 파일(`.cursor/rules/` 아래 파일 또는 `.cursorrules`)에 구분선 아래 내용을 붙여 넣는다.
 
 ---
 

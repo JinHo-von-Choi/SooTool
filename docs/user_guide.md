@@ -1,127 +1,155 @@
-# SooTool User Guide
+# 사용자 가이드
 
-작성자 최진호. 작성일 2026-04-24. 버전 0.1.1.
+SooTool 도구를 부를 때 알아야 할 공통 규칙과 도메인별 도구 구성을 정리한다. 도구 하나하나의 인자는 `sootool tools describe <도구>`(CLI), `sootool.describe`(MCP), [tool_catalog.md](tool_catalog.md)에서 확인한다.
 
-본 문서는 SooTool이 노출하는 도구 표면을 도메인별로 요약한다. 상세한 입력
-스키마와 trace 예시는 `sootool.skill_guide` MCP 호출 또는 개별 테스트 케이스
-(`tests/modules/<domain>/`)를 참조한다. 정책 관리와 admin 워크플로우는
-`docs/policy_management.md`를, 아키텍처 결정은 `docs/architecture.md`를 본다.
+## 도구 찾기
 
-## 총괄
+```bash
+sootool tools list --search 종부세          # 줄임말, 일상 표현, 영어 동의어로 검색
+sootool tools list --domain payroll         # 네임스페이스 안의 도구 목록
+sootool tools describe payroll.kr_salary    # 인자, 기본값, 정책 인자, 정확도 등급
+```
 
-SooTool 0.1.1은 18개 계산 도메인에 254개의 기본 도구를 노출하고, 별도의 10개
-admin 정책 도구를 `sootool` 네임스페이스에 올린다. admin 도구는
-`SOOTOOL_ADMIN_MODE=1` 환경변수에서만 호출이 허용되며, 등록 자체는 항상
-이뤄진다. `sootool.skill_guide` 1개를 포함하면 `tools/list`는 총 264개를
-반환한다.
+MCP에서는 `sootool.search(query)`와 `sootool.describe(name)`이 같은 역할을 한다. 이 두 도구는 `--profile lean`에서 노출된다.
 
-| 네임스페이스 | 도구 수 | 대표 도구 | 설명 |
-|-|-|-|-|
-| core | 8 | core.add, core.batch, core.pipeline, core.calc | Decimal 4칙, DAG 파이프라인, AST 수식 평가기 |
-| accounting | 11 | accounting.balance, accounting.vat_add, accounting.depreciation_straight_line | 회계식·감가상각·부가세 |
-| tax | 11 | tax.kr_income, tax.capital_gains_kr, tax.progressive, tax.kr_local_income_tax, tax.kr_education_tax_add, tax.kr_rural_special_tax, tax.kr_simplified_vat | 한국 세목 누진세 + 지방세 부가분 + 간이과세자 + 범용 누진세 |
-| payroll | 9 | payroll.kr_salary, payroll.kr_severance_pay, payroll.kr_year_end_tax_settlement, payroll.kr_bonus_tax, payroll.hourly_to_monthly_net, payroll.kr_medical_deduction, payroll.kr_education_deduction, payroll.kr_donation_deduction, payroll.kr_housing_loan_deduction | 급여·퇴직금·연말정산·상여·시급환산 + 의료비·교육비·기부금·주택차입이자 공제 |
-| realestate | 9 | realestate.kr_acquisition_tax, realestate.kr_dsr, realestate.kr_comprehensive, realestate.kr_local_property | 취득·종부세·DSR/LTV/DTI·임대수익률 + 광역 계수 지방세 |
-| finance | 18 | finance.npv, finance.irr, finance.roi, finance.cagr, finance.payback_period, finance.black_scholes, finance.var_historical | 현금흐름·옵션·채권·리스크 지표 |
+## 공통 규칙
 
-| probability | 30 | probability.normal_cdf, probability.poisson_pmf, probability.beta_ppf | 이산/연속 분포 pdf/cdf/ppf + 조합 |
-| stats | 14 | stats.ttest_two_sample, stats.anova_oneway, stats.regression_linear | 가설 검정·분산분석·회귀 |
-| datetime | 14 | datetime.diff, datetime.tax_period_kr, datetime.lunar_to_solar | 영업일·회계연도·음양력 변환 |
-| geometry | 15 | geometry.haversine, geometry.matrix_solve, geometry.vector_norm | 면적·부피·행렬·벡터 |
-| engineering | 56 | engineering.electrical_ohm, engineering.darcy_weisbach, engineering.lmtd | 전기·유체·열·기계·제어·신뢰성 |
-| science | 11 | science.ideal_gas, science.nernst, science.half_life | 화학·전기화학·광학·방사능 |
-| medical | 12 | medical.bmi, medical.egfr, medical.cha2ds2_vasc | 임상 점수·신기능·심혈관 위험 |
-| pm | 5 | pm.critical_path, pm.evm, pm.monte_carlo_schedule | 일정·수행가치·몬테카를로 |
-| crypto | 10 | crypto.gcd, crypto.modpow, crypto.is_prime, crypto.crt | 정수론·해시·합동 |
-| units | 8 | units.convert, units.fx_convert, units.temperature | 단위·통화·온도 변환 |
-| math | 10 | math.integrate_simpson, math.fft, math.polynomial_roots | 수치 적분·미분·FFT·보간 |
-| symbolic | 2 | symbolic.solve, symbolic.diff | sympy 기반 기호 풀이·미분 + Decimal 재평가 (optional extra) |
-| tax_us | 3 | tax_us.federal_income, tax_us.capital_gains, tax_us.state_tax | 미국 연방 소득세·자본이득세·주별 세 (CA·NY·TX) |
-| sootool | 11 | sootool.skill_guide, sootool.policy_list, sootool.policy_propose | skill 가이드 + admin 정책 도구 10개 |
+### 숫자는 문자열로 넘긴다
 
-## 공통 규약
+금액, 비율, 측정값은 `"50000000"`, `"0.035"`처럼 문자열로 넘긴다. 쉼표, 단위, 공백은 넣지 않는다. JSON 숫자를 넘겨도 받지만 부동소수(`0.1` 등)는 배정밀도 최단 표기로 바뀌며, 그 사실이 응답의 `_meta.input_coerced`에 기록된다. 배정밀도를 넘는 자릿수가 필요하면 처음부터 문자열로 넘긴다. `year`, `periods`처럼 정수로 선언된 인자는 정수로 넘긴다.
 
-- 숫자 인자는 모두 Decimal 문자열로 주입한다. float 리터럴을 직접 전달하면
-  ADR-004 float 누수 금지 정책에 위배된다.
-- 모든 도구는 `trace_level` 인자 (`none` / `summary` / `full`)를 지원하고, 응답은
-  `{result, trace}` 구조를 유지한다.
-- 응답 크기가 `SOOTOOL_MAX_PAYLOAD_KB`(기본 512KB)를 초과하면 trace.steps가
-  꼬리부터 잘리고 `truncated: true`가 실린다.
-- 한국 세목·부동산 도구는 `year` 인자를 필수 요구하며, 내부적으로
-  `src/sootool/policies/<domain>/<file>.yaml`의 버전을 SHA256으로 검증한 뒤
-  로드한다.
+응답의 숫자도 모두 문자열이다.
 
-## 도메인별 상세
+### 정책 도구: year, as_of, include_proposed
 
-### core
-Decimal 4칙(`add/sub/mul/div`)과 병렬 실행기(`batch`), DAG 파이프라인
-(`pipeline`, `pipeline_resume`), AST 기반 수식 평가기(`calc`, ADR-017)를
-제공한다. LLM이 산술을 직접 수행하면 안 되는 모든 경로의 대체 출구다.
+세율, 공제액, 보험료율 같은 법정 값을 쓰는 도구 43개는 정책 파일을 읽는다(카탈로그의 `정책` 열이 `예`인 도구).
 
-### accounting
-재무상태표(`balance`), 손익계산서(`income_statement`), 영업활동현금흐름
-(`cashflow_operating`), 감가상각 3종(정액·정률·생산량비례), 부가세 가산/추출,
-DuPont 3·5요소, 비율 분석을 포함한다.
+|인자|뜻|
+|-|-|
+|`year`|귀속 연도. 정책 도구는 대부분 필수다. 지원하지 않는 연도면 오류를 낸다.|
+|`as_of`|`YYYY-MM-DD`. 그날 시행 중이던 버전으로 계산한다. 연중에 값이 바뀌는 4대보험, 간이세액표에서 쓴다.|
+|`include_proposed`|`true`면 국회 확정 전 개정안(`status: proposed`)도 후보에 넣는다. 기본은 `false`다.|
 
-### tax / payroll
-- 정책 YAML 기반 한국 세목: `tax.kr_income`, `tax.kr_comprehensive_income_tax`(종합소득세 신고 흐름),
-  `tax.capital_gains_kr`, `tax.kr_corporate`, `tax.kr_gift`, `tax.kr_inheritance`(세대생략 할증 입력
-  `skipped_generation_amount`, `skipped_generation_minor`), `tax.kr_withholding_simple`(공식 간이세액표, 자녀 세액공제
-  인자 `children_8_20`), `tax.kr_eitc`(근로장려금), `tax.kr_securities_transaction`, `tax.kr_pension_income`,
-  `tax.kr_vehicle_tax`, `tax.kr_registration_license_tax`.
-- `tax.progressive`는 범용 누진세 엔진. `tax_us.*`는 미국 연방, 주 소득세와 FICA(`tax_us.fica`).
-- `payroll.kr_salary`는 4대보험 + 소득세(간이세액표) + 지방소득세를 하나의 trace로 합성한다. 건강보험과 장기요양은
-  10원 미만을 버리고 시행일별 값(2026-07-01, 2026-11-01)은 `as_of` 로 고른다. `payroll.kr_gross_from_net`은 세후
-  월급에서 세전 월급을 구한다.
-- 근로기준법 수당과 최저임금: `payroll.kr_overtime_pay`, `payroll.kr_weekly_holiday_pay`,
-  `payroll.kr_minimum_wage_check`. 국민연금과 건강보험: `payroll.kr_national_pension_benefit`(월 지급액 10원 미만 버림,
-  제53조 최고한도 적용, 결과의 `pension_capped`), `payroll.kr_health_income_premium`(소득월액보험료와 연말 정산).
+`as_of`를 생략하면 그 연도 확정 버전 중 시행일이 가장 늦은 것을 쓴다. 호출 시각에 따라 결과가 바뀌지 않는다. 응답에는 적용한 버전의 `policy_effective_date`, `policy_effective_to`, `policy_status`, `policy_citations`(근거 조문), `policy_sha256`이 붙는다.
 
-### realestate
-취득세, 양도세, 종합부동산세, 재산세, DSR/DTI/LTV, 임대수익률, 청약 가점(`realestate.kr_subscription_score`)을 제공한다.
-모든 도구는 2026년 정책 YAML을 참조하며 `policy_source`와 `sha256`을 trace에
-기록한다.
+### 반올림
 
-### finance
-현재가치/미래가치, 내부수익률, 순현재가치, 대출상환 스케줄, Black-Scholes,
-Bond YTM·Duration, Forward/Futures 가격, 옵션 페이오프, Historical/Parametric
-VaR, Sharpe/Sortino ratio를 포함한다.
+반올림 관행이 상황마다 갈리는 금융·회계 도구는 `rounding`과 `decimals`를 받는다.
 
-### probability / stats
-`probability.*`는 정규/이항/포아송/지수/감마/베타/카이제곱/F/로그정규
-분포의 pdf/cdf/ppf 및 조합·기댓값·베이즈를 제공한다. `stats.*`는 t-검정
-3종(일표본·독립·대응), 분산분석(ANOVA/Kruskal-Wallis), 회귀, 카이제곱
-독립성, Mann-Whitney U, Wilcoxon, 부트스트랩 CI, 효과크기(Cohen's d,
-η²)를 포함한다.
+|값|동작|대표 용도|
+|-|-|-|
+|`HALF_EVEN`|0.5는 짝수 쪽으로|회계 일반, 금융 지표|
+|`HALF_UP`|0.5는 올림|일상 반올림|
+|`DOWN`|0 쪽으로 버림|부가세 역산(원 단위 절사)|
+|`UP`|0에서 먼 쪽으로 올림||
+|`FLOOR`|음의 무한대 쪽으로||
+|`CEIL`|양의 무한대 쪽으로||
 
-### datetime
-날짜 차이, 영업일 가감산, 한국 회계연도·세무기간 추출, 음양력 변환, 24절기
-조회, 급여 기간 분리 도구를 제공한다. 공휴일 데이터베이스는 `holidays` 패키지를 사용한다.
+세목별 끝수 처리를 법령이 정한 경우(지방세 10원 미만 절사, 건강보험료 10원 미만 절사 등) 도구가 그 규칙을 적용하며, 도구 설명에 규칙이 적혀 있다.
 
-### geometry / engineering / science / medical / pm / crypto / units / math
-각 도메인은 대표 도구 예시를 통해 역할이 설명된다. 정확한 파라미터는
-`sootool.skill_guide` 호출 시 반환되는 playbook에 명시되고, 전체 인자
-스펙은 `REGISTRY.list()`의 각 엔트리 `fn.__doc__` 또는 대응 테스트에서
-확인한다.
+### trace 분량
 
-### sootool (skill + admin)
-- `sootool.skill_guide`는 일반 사용자용이다.
-- `policy_list`, `policy_get`, `policy_diff`, `policy_history`, `policy_export`,
-  `policy_import`, `policy_validate`, `policy_propose`, `policy_activate`,
-  `policy_rollback` 10개는 admin 전용이며 `SOOTOOL_ADMIN_MODE=1` 환경에서만
-  실행된다. 상세 워크플로우는 `docs/policy_management.md` 참조.
+`core.add`, `core.sub`, `core.mul`, `core.div`, `core.calc`는 `trace_level`을 받는다. `summary`(기본)는 공식·입력·출력, `full`은 중간 단계까지, `none`은 결과만 담는다. 응답이 `SOOTOOL_MAX_PAYLOAD_KB`(기본 512KB)를 넘으면 `trace.steps`를 뒤에서부터 잘라내고 `truncated: true`를 표시한다.
 
-## 라이브러리, 시점, 정책 팩
+### 오류
 
-- 코드에서 직접 부르려면 `sootool.sdk`(`docs/sdk.md`). 결과는 도구별 TypedDict 로 타입이 붙는다.
-- 정책 도구는 `as_of`(시점)와 `include_proposed`(개정안 포함)를 받고, 응답에 적용된 정책의 출처와 근거 조문이 붙는다.
-- 응답 `_meta` 에는 영수증(`integrity`), 정확도 등급(`engine`), JSON 부동소수 변환 기록(`input_coerced`), 폐기 표기(`deprecated`)가
-  들어갈 수 있다. 호환 약속은 `docs/stability.md`, 서명된 외부 정책 팩은 `docs/external_policy_packs.md`.
+도구 오류는 다음 구조로 돌아온다. MCP에서는 `isError` 결과, CLI에서는 표준에러 JSON, SDK에서는 `SooToolError` 예외(`to_payload()`가 같은 구조)다.
 
-## 다음 단계
+```json
+{"error": {"code": "policy_not_in_effect", "message": "...", "retryable": false, "field": "as_of", "details": {...}}}
+```
 
-- 트리거 테이블과 한국어/영어 playbook은 `sootool.skill_guide()` 호출로
-  직접 조회한다.
-- 아키텍처와 ADR-001~028은 `docs/architecture.md`를 본다.
-- 정책 편집·배포 절차는 `docs/policy_management.md`를 본다.
-- 전송 모드별 스모크 스크립트는 `scripts/mcp_smoke_*.py`를 본다.
+|code|뜻|
+|-|-|
+|`invalid_arguments`|선언되지 않은 인자, 필수 인자 누락, 타입 불일치|
+|`invalid_input`, `invalid_number`|값이 형식에 맞지 않음|
+|`unknown_tool`|없는 도구 이름|
+|`domain_constraint`|값의 범위 위반(음수 금액, 특이행렬 등)|
+|`division_by_zero`|0으로 나눔|
+|`input_limit`|입력 크기 한도 초과|
+|`policy_not_in_effect`|`as_of` 시점에 시행 중인 버전이 없음. `details`에 시행 기간 목록이 온다.|
+|`policy_not_enacted`|그 연도에 개정안만 있음. `include_proposed=true`로 다시 부를 수 있다.|
+|`policy_unavailable`, `policy_integrity`|정책 파일이 없거나 해시가 맞지 않음|
+|`invalid_expression`, `disallowed_operation`, `undefined_variable`, `expression_too_complex`|`core.calc` 수식 오류|
+|`no_sign_change`|`core.solve_for` 탐색 구간에 해가 없음|
+|`timeout`|시간 제한 초과|
+|`internal_error`|예기치 못한 오류. 상세는 서버 로그에만 남는다.|
+
+선언되지 않은 인자는 무시하지 않고 거부한다. 오타 난 선택 인자가 조용히 기본값으로 계산되는 일을 막기 위해서다.
+
+### 입력 한도
+
+지나치게 큰 입력은 계산 전에 `input_limit`로 거부한다. 기본값은 다음과 같고 `SOOTOOL_LIMIT_<이름>` 환경변수로 바꾼다.
+
+|이름|기본값|적용 대상|
+|-|-|-|
+|`ARG_STRING_CHARS`|100,000|문자열 인자 길이|
+|`ARG_LIST_ITEMS`|100,000|목록·객체 원소 수|
+|`ARG_DEPTH`|16|중첩 깊이|
+|`MATRIX_DIM`|200|행렬 한 변|
+|`POLYNOMIAL_DEGREE`|256|다항식 차수|
+|`FFT_SAMPLES`|65,536|FFT 표본 수|
+|`LOAN_MONTHS`|1,200|대출 상환 개월 수|
+|`MONTE_CARLO_TRIALS`|1,000,000|몬테카를로 시행 횟수|
+|`BOOTSTRAP_RESAMPLES`|100,000|부트스트랩 재표본 수|
+|`COMBINATORICS_N`|20,000|factorial, nCr, nPr의 n|
+|`CRYPTO_DIGITS`|2,048|crypto 정수 자릿수|
+|`BUSINESS_DAYS_SPAN`|100,000|영업일 계산 구간(일)|
+|`SCENARIOS`|50|`core.compare` 시나리오 수|
+
+### 응답의 `_meta`
+
+|필드|내용|
+|-|-|
+|`integrity`|영수증. `tool`, `input_hash`, `result_hash`, `tool_version`, `sootool_version`, 정책 도구는 `policy_sha256` 등.|
+|`engine`|계산 엔진. `decimal`, `mpmath`, `float64`(근사), `composite`, `none`.|
+|`hints`|다음에 쓸 만한 도구 제안. 세무 계산의 trace 생략, 같은 산술 반복, 지난 연도 정책, trace 잘림, 수동 체인, 단일 호출 남발을 감지한다.|
+|`input_coerced`|부동소수 인자를 문자열로 바꾼 기록|
+|`deprecated`|폐기 예고된 도구를 불렀을 때 대체 도구와 제거 예정 버전|
+|`session_stats`|호출 횟수. stdio와 프로세스 내 호출에서만 붙는다.|
+
+`_meta`는 결과 값에 영향을 주지 않으며 영수증의 `result_hash` 계산에서도 빠진다.
+
+## 도메인별 구성
+
+|네임스페이스|도구 수|다루는 계산|
+|-|-|-|
+|core|11|Decimal 사칙연산, 수식 계산(`calc`), 병렬 실행(`batch`), 단계 연결(`pipeline`, `pipeline_resume`), 역산(`solve_for`), 시나리오 비교(`compare`), 계산 설명(`explain`)|
+|accounting|11|부가세 가산·역산, 차대변 검증, 감가상각 3종(정액·정률·생산량비례), 손익계산서, 영업활동현금흐름, 재무비율, DuPont 분해|
+|tax|17|소득세 기본세율, 종합소득세 신고 흐름, 근로소득 간이세액표, 양도소득세, 증여세, 상속세, 법인세, 간이과세 부가세, 근로장려금, 증권거래세, 연금소득세, 자동차세, 등록면허세, 지방소득세·지방교육세·농어촌특별세, 범용 누진세|
+|tax_us|4|미국 연방 소득세, 자본이득세, 주 소득세(CA, NY, TX), FICA(자영업자 SECA 포함)|
+|payroll|15|월급 실수령액(4대보험·소득세·지방소득세), 세후에서 세전 역산, 시급 환산, 퇴직금, 연말정산, 상여 세액, 의료비·교육비·기부금·주택자금 공제, 연장·야간·휴일 수당, 주휴수당, 최저임금 확인, 국민연금 수령액, 소득월액보험료|
+|realestate|10|취득세, 양도소득세, 재산세, 종합부동산세, 광역별 지방세, LTV, DTI, DSR, 임대수익률, 청약 가점|
+|finance|18|PV, FV, NPV, IRR, ROI, CAGR, 투자회수기간, 대출 상환표, 채권 YTM·듀레이션, 블랙-숄즈와 그릭스, 선도·선물 가격, 옵션 손익, VaR(역사적·모수적), 샤프·소르티노 비율|
+|stats|14|기술통계, t-검정 3종, 분산분석, 크루스칼-월리스, 만-휘트니 U, 윌콕슨, 카이제곱 독립성, 평균 신뢰구간, 부트스트랩 신뢰구간, 선형회귀, 효과크기(Cohen's d, η²)|
+|probability|30|정규·이항·포아송·지수·감마·베타·로그정규·카이제곱·F 분포의 pdf(pmf)·cdf·ppf, 베이즈, 기댓값, 계승, 조합, 순열|
+|datetime|14|날짜 차이, 만 나이, 영업일 가감·계산(한국 공휴일), 이자 일수 관행(30/360, ACT/365 등), 시간대 변환, 음양력 변환, 24절기, 명절, 회계연도·분기, 소득세 과세기간, 급여 정산 기간|
+|math|10|심프슨·가우스-르장드르 적분, 중앙차분·5점 미분, 선형·3차 스플라인 보간, 다항식 근·호너 평가, FFT, IFFT|
+|geometry|15|넓이·부피, 벡터 내적·외적·노름, 행렬 곱·행렬식·역행렬·연립방정식, 하버사인 거리|
+|engineering|56|옴의 법칙, 전력, 저항·커패시터·인덕터 합성, 교류 임피던스, 3상 전력, 역률 보정, RC 필터, 테브난·노턴 등가, 유체(레이놀즈, 베르누이, 다르시-바이스바흐), 열전달, 응력·변형·좌굴, 기어, 베어링 수명, 제어 응답, 신뢰도|
+|units|8|물리 단위 변환, 환전(직접·삼각), 온도, 에너지, 압력, 데이터 크기, 짧은 시간 단위|
+|medical|12|BMI, 체표면적, eGFR, 체중 기반 투약량, 임신 주수, CHA₂DS₂-VASc, HAS-BLED, 프레이밍햄 10년 심혈관 위험, QTc 4종|
+|science|11|반감기, 이상기체, 몰질량, 화학량론, 네른스트 식, 패러데이 전기분해, 배터리 용량, 스넬 법칙, 얇은 렌즈, 브래그 법칙, 빛의 세기|
+|crypto|10|최대공약수, 최소공배수, 확장 유클리드, 모듈러 역원·거듭제곱, 중국인의 나머지 정리, 소수 판별, 오일러 피, 카마이클 람다, 해시|
+|pm|5|임계 경로(CPM), PERT, 획득가치(EVM), 획득일정, 몬테카를로 일정 시뮬레이션|
+|symbolic|2|방정식 풀이, 미분. 결과를 Decimal로 다시 평가한다. `pip install "sootool[symbolic]"`이 필요하다.|
+|sootool|12|에이전트 가이드(`skill_guide`), 영수증 검증(`verify_receipt`), 정책 관리 10종|
+
+`engineering`과 `probability`는 도구를 더 늘리지 않는다. 기존 도구의 버그 수정은 계속한다.
+
+## 정책 관리 도구
+
+|도구|권한|하는 일|
+|-|-|-|
+|`sootool.policy_list`|읽기|정책 목록과 적용 저장소(패키지 기본값, 사용자 덮어쓰기)|
+|`sootool.policy_get`|읽기|정책 본문 조회(`as_of`, `include_proposed` 지원)|
+|`sootool.policy_history`|읽기|변경 감사 기록|
+|`sootool.policy_diff`|읽기|두 버전의 차이|
+|`sootool.policy_validate`|읽기|YAML 검증만 하고 저장하지 않음|
+|`sootool.policy_export`|읽기|이식용 번들 생성(선택적 서명)|
+|`sootool.policy_propose`|쓰기|초안 생성과 검증|
+|`sootool.policy_activate`|쓰기|초안을 덮어쓰기 저장소에 반영|
+|`sootool.policy_rollback`|쓰기|덮어쓰기를 지워 패키지 기본값으로 복귀|
+|`sootool.policy_import`|쓰기|번들 가져오기|
+
+쓰기 도구는 관리자 모드(`SOOTOOL_ADMIN_MODE=1` 또는 `--admin`)에서만 동작한다. 절차는 [policy_management.md](policy_management.md)를 본다.

@@ -10,8 +10,8 @@ _ANTI_PATTERNS_KO: list[dict[str, Any]] = [
         "instead": "core.add / core.batch를 호출하고 반환된 trace를 응답에 인용하라.",
     },
     {
-        "pattern": "tax.* 호출 시 year 인자 누락 → UnsupportedPolicyError 뜨자 임의 추정으로 fallback",
-        "why": "연도 누락 시 서버가 UnsupportedPolicyError를 반환한다. 임의 추정은 잘못된 세율 적용으로 이어진다.",
+        "pattern": "tax.* 호출 시 year 인자 누락 → invalid_arguments 오류가 나자 임의 추정으로 fallback",
+        "why": "year를 받는 도구에서 연도를 빠뜨리면 서버가 invalid_arguments 오류를 반환한다. 임의 추정은 잘못된 세율 적용으로 이어진다.",
         "instead": "사용자에게 적용 연도를 확인하거나, 명시적으로 현재 연도를 year 인자로 전달하라.",
     },
     {
@@ -32,7 +32,7 @@ _ANTI_PATTERNS_KO: list[dict[str, Any]] = [
     {
         "pattern": "정책 YAML 개정 없이 '대충 추정'으로 답변",
         "why": "세율·규제는 매년 개정된다. 구 버전 세율 적용은 법적 위험.",
-        "instead": "year 인자를 명시하고 서버가 UnsupportedPolicyError를 반환하면 해당 연도 정책 미지원임을 사용자에게 안내하라.",
+        "instead": "year 인자를 명시하고 서버가 policy_unavailable(UnsupportedPolicyError)을 반환하면 해당 연도 정책 미지원임을 사용자에게 안내하라.",
     },
     {
         "pattern": "math.integrate_* 대신 LLM이 테일러 전개·사다리꼴 근사로 수식 적분",
@@ -53,8 +53,8 @@ _ANTI_PATTERNS_EN: list[dict[str, Any]] = [
         "instead": "Call core.add / core.batch and cite the returned trace in your response.",
     },
     {
-        "pattern": "Calling tax.* without the year argument, then falling back to an arbitrary estimate when UnsupportedPolicyError is raised",
-        "why": "Missing year causes the server to raise UnsupportedPolicyError. Arbitrary estimates apply incorrect tax rates.",
+        "pattern": "Calling tax.* without the year argument, then falling back to an arbitrary estimate when invalid_arguments is returned",
+        "why": "Omitting year on a tool that takes it makes the server return invalid_arguments. Arbitrary estimates apply incorrect tax rates.",
         "instead": "Ask the user to confirm the applicable year, or pass the current year explicitly as the year argument.",
     },
     {
@@ -75,7 +75,7 @@ _ANTI_PATTERNS_EN: list[dict[str, Any]] = [
     {
         "pattern": "Answering with a rough estimate when the policy YAML has not been updated",
         "why": "Tax rates and regulations change annually. Applying old rates creates legal risk.",
-        "instead": "Specify the year argument explicitly. If the server returns UnsupportedPolicyError, inform the user that the year is not yet supported.",
+        "instead": "Specify the year argument explicitly. If the server returns policy_unavailable (UnsupportedPolicyError), inform the user that the year is not yet supported.",
     },
     {
         "pattern": "Approximating numerical integrals by Taylor / trapezoid estimation in the prompt instead of calling math.integrate_*",

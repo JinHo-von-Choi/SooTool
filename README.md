@@ -12,30 +12,94 @@ Precision Calc MCP for LLM tool use.
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하고, 그 틀리는 작업을 한 번에 500건까지 결정적 병렬로 돌려 실무에 투입할 수 있게 만드는 정밀 계산 MCP 서버. Python 3.12 · Decimal 전용 커널 · 18개 계산 도메인 275개 기본 도구 + 10개 admin 정책 도구 · `core.batch` 500 items 병렬 · `core.pipeline` DAG 체인 · 감사 트레이스 · 정책 YAML 외부화 · 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE).
-
+LLM 대신 계산을 맡는 MCP 서버. 세금, 급여, 금융, 통계, 공학 계산을 Decimal로 정확하게 수행하고 계산 근거를 함께 돌려준다. 18개 계산 도메인 275개 기본 도구 + 10개 admin 정책 도구, 한 번에 최대 500건 병렬 계산(`core.batch`), 단계 연결 계산(`core.pipeline`), 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE)을 제공한다. Python 3.12 이상.
 
 ## 왜 필요한가
 
-LLM은 숫자를 토큰 시퀀스로 생성한다. 부가세 역산, 복리 이자, 누진세 구간, 양도소득세 장기보유특별공제, 이항분포 CDF 같은 실무 계산에서 반올림 방향·구간 경계·정책 해석이 미묘하게 어긋난다. 검증 없이 LLM 산출을 그대로 쓰면 세무 신고·재무 의사결정·의료 용량·공학 설계에서 치명적 오차가 누적된다.
+LLM은 숫자를 계산하지 않고 그럴듯한 숫자를 생성한다. 그래서 누진세 구간 경계, 반올림 방향, 연도별 세율에서 자주 틀린다. 아래는 같은 20문제를 풀린 결과다(2026-04-24 측정).
 
-문제의 층위는 두 겹이다. 첫째, 모델 자체가 산술을 수행하지 않는다. 확률 추론으로 그럴듯한 숫자를 내놓을 뿐이라 회계·세무·약제 용량 현장에서 잘못된 수치가 그대로 보고서·전표·처방에 남는다. 검증 여력이 빠듯한 전문직 실무에서는 오차 한 건이 신고 오류·환불·의료 사고로 직결된다.
+|풀이 주체|정답(exact)|근사(오차 0.01% 이내)|오답|
+|-|-|-|-|
+|SooTool|**20**|0|0|
+|gemini-3-pro-preview|12|4|4|
+|claude-opus-4-7|9|3|8|
+|gpt-5.4|5|3|12|
 
-둘째, 최신 대형 LLM은 내부에 계산기·Python 인터프리터를 내장하고 있지만 그 도구를 호출할지는 여전히 모델 재량이다. MCP 도구도 같은 제약을 공유한다. 구조적 한계가 단일 방어막 하나로는 닫히지 않는다는 뜻이다. SooTool은 모델 내장 도구와 독립된 두 번째 층의 MCP 서버로서 결정적 Decimal 경로, 외부화된 정책 데이터, 감사 가능한 트레이스를 제공해 방어 깊이를 늘린다. 호출 여부 자체는 AI 재량으로 남지만, 불리면 결과는 산술적으로 정확하다는 점이 보증된다.
+틀리는 지점은 모델이 달라도 비슷하다. 소득세 구간 경계, 양도소득세 장기보유특별공제, 부가세 반올림, 교류 임피던스 정밀도다. 문제 구성과 원자료는 [`bench/`](bench/README.md)에 있다.
 
-셋째, 실무는 한 건씩 묻지 않는다. 직원 500명 월급·4대보험·소득세 일괄 정산, 대출 50종 NPV·IRR·듀레이션 비교, 거래명세서 수천 건 VAT 역산, 양도세 시나리오 수십 가지 교차 검증은 한 번의 LLM 대화로는 신뢰할 수 없다. SooTool은 `core.batch`로 N개 독립 연산을 ThreadPool 병렬 실행하고 입력 id 순으로 결정적 재정렬하며, `core.pipeline`으로 DAG 의존(연봉→세액→실수령액) 체인을 한 왕복에 끝낸다. LLM이 도구 호출 한 번 하면 실무 수백 행의 결정적 계산이 즉시 반환된다.
+SooTool은 이 계산을 세 가지 장치로 고정한다.
 
-SooTool은 그 경로를 원천 차단한다.
+- **Decimal 전용 계산.** 입력 숫자는 문자열이나 Decimal로 받는다. 부동소수점 오차가 계산에 끼지 않는다.
+- **법령 값의 외부화.** 세율, 공제액, 보험료율은 정책 파일(YAML)에 근거 조문과 시행일을 붙여 둔다. 시점(`as_of`)을 주면 그날 시행 중이던 값으로 계산한다.
+- **계산 근거 반환.** 모든 응답에 공식, 입력, 중간값, 결과가 담긴 `trace`와 재실행 검증용 영수증(`_meta.integrity`)이 붙는다.
 
-- Decimal 전용 커널. 입력 JSON은 `parse_float=Decimal`로 파싱되어 float이 도메인 내부로 유입되지 못한다.
-- 반올림 정책 6종(HALF_EVEN · HALF_UP · DOWN · UP · FLOOR · CEIL)을 enum으로 고정하고 도구 기본값을 금지한다. 호출자가 반드시 선택한다(ADR-002).
-- 세법·부동산 규제 데이터를 `src/sootool/policies/{domain}/{key}_{year}.yaml`로 외부화하고 SHA-256 무결성 검증 + lru_cache로 로드한다(ADR-009).
-- 모든 응답은 `trace.{tool, formula, inputs, steps, output}` 필드를 포함한다. 계산 근거를 사용자에게 직접 보여줄 수 있다(ADR-003).
-- 결정론. ThreadPool 결과는 입력 id 순으로 재정렬하고, 비결정 허용 시 `non_deterministic:true` 플래그를 강제한다(ADR-011).
+## 구조
 
-## 감사 트레이스 실물 샘플
+```
+ LLM 에이전트 / CLI / 파이썬 코드
+        │
+        │  MCP(stdio, HTTP, Unix)        sootool call ...        from sootool.sdk import tax
+        ▼                                      ▼                          ▼
+ ┌──────────────────────────────────────────────────────────────────────────────┐
+ │ 경계 검사   인자 이름·타입·크기 검증, 숫자 문자열 → Decimal, 인증 범위 확인     │
+ ├──────────────────────────────────────────────────────────────────────────────┤
+ │ 레지스트리   도구 285개를 이름으로 찾아 실행 (core.batch / core.pipeline 포함)   │
+ ├───────────────────────────────┬──────────────────────────────────────────────┤
+ │ 도메인 도구                     │ 정책 로더                                      │
+ │ tax · payroll · finance ·      │ policies/<도메인>/<이름>_<연도>.yaml           │
+ │ realestate · stats · ...       │ 해시 검증 → as_of 시점의 시행 버전 선택         │
+ └───────────────────────────────┴──────────────────────────────────────────────┘
+        │
+        ▼
+ { 결과 필드, trace(공식·입력·단계·출력), 정책 출처와 근거 조문, _meta.integrity(영수증) }
+```
 
-"이 숫자는 어떻게 나왔는가"에 즉답하기 위해 모든 도구는 `trace` 필드를 반환한다. 아래는 `finance.npv(rate=0.08, cashflows=[-1000, 300, 400, 500, 200], rounding=HALF_EVEN, decimals=2)` 실제 응답이다. 공식·입력·중간 단계·출력이 원자적으로 기록된다.
+세 진입점(MCP, CLI, SDK)은 같은 레지스트리를 거친다. 같은 입력이면 어느 경로로 불러도 결과와 영수증이 같다.
+
+## 빠른 시작
+
+### 설치
+
+```bash
+pip install sootool                 # 기호 계산(symbolic.*)까지 쓰려면 pip install "sootool[symbolic]"
+```
+
+### Claude Code에 등록
+
+```bash
+claude mcp add --scope user sootool -- uvx sootool
+```
+
+저장소를 받아 개발 중인 코드로 띄우려면 다음처럼 등록한다.
+
+```bash
+git clone https://github.com/JinHo-von-Choi/SooTool.git
+cd SooTool && uv sync
+claude mcp add --scope user sootool -- uv run --directory "$PWD" python -m sootool
+```
+
+### 첫 계산
+
+MCP 클라이언트에서 "과세표준 5천만 원의 2026년 소득세는?"이라고 물으면 에이전트가 `tax.kr_income`을 호출한다. 터미널에서 같은 도구를 직접 실행할 수도 있다.
+
+```bash
+sootool call tax.kr_income --arg taxable_income=50000000 --arg year=2026 --format raw
+```
+
+```json
+{
+  "tax": "6240000",
+  "effective_rate": "0.12480000",
+  "marginal_rate": "0.15",
+  "breakdown": [ ... 구간별 과세표준과 세액 ... ],
+  "policy_effective_date": "2026-01-01",
+  "policy_citations": [{"law": "소득세법", "article": "제55조제1항", "url": "https://www.law.go.kr/법령/소득세법/제55조"}]
+}
+```
+
+## 응답 읽는 법
+
+`finance.npv(rate="0.08", cashflows=["-1000","300","400","500","200"], rounding="HALF_EVEN", decimals=2)`의 실제 응답이다.
 
 ```json
 {
@@ -43,273 +107,230 @@ SooTool은 그 경로를 원천 차단한다.
   "trace": {
     "tool": "finance.npv",
     "formula": "NPV = sum(CF_t / (1+r)^t, t=0..n)",
-    "inputs": {
-      "rate": "0.08",
-      "cashflows": ["-1000", "300", "400", "500", "200"],
-      "rounding": "HALF_EVEN",
-      "decimals": 2
-    },
-    "steps": [
-      {
-        "label": "npv_raw",
-        "value": "164.63539696786661172171511042618089308126395968697"
-      }
-    ],
+    "inputs": {"rate": "0.08", "cashflows": ["-1000", "300", "400", "500", "200"], "rounding": "HALF_EVEN", "decimals": 2},
+    "steps": [{"label": "npv_raw", "value": "164.63539696786661172171511042618089308126395968697"}],
     "output": "164.64"
   },
   "_meta": {
-    "hints": [],
-    "session_stats": {"tool_calls": 1, "unique_tools": 1}
+    "integrity": {
+      "tool": "finance.npv",
+      "input_hash": "00da5199...",
+      "result_hash": "d7a0ecfe...",
+      "tool_version": "1.0.0",
+      "sootool_version": "0.2.0"
+    },
+    "engine": "decimal"
   }
 }
 ```
 
-중간 단계의 `npv_raw`는 반올림 이전 완전 정밀 Decimal 값으로, 반올림 정책(HALF_EVEN)이 소수점 2자리(`decimals=2`)에 적용된 결과가 `output`과 `npv` 필드에 일치하게 노출된다. 감사 추적은 `trace` 필드만 보면 충분하며, `_meta`는 미들웨어 주입 영역(ADR-014)으로 결과 신뢰에 영향을 주지 않는다(ADR-011).
+|필드|뜻|
+|-|-|
+|`npv` 등 결과 필드|계산 결과. 숫자는 모두 문자열이다.|
+|`trace.steps`|반올림 전 값을 포함한 중간 계산. 결과를 사람이 검산할 때 본다.|
+|`policy_*`|정책 도구만 붙는다. 적용한 정책 파일의 시행일, 상태, 근거 조문, 해시.|
+|`_meta.integrity`|영수증. 입력과 결과의 해시라서 `sootool receipt verify`로 같은 계산을 다시 돌려 대조할 수 있다.|
+|`_meta.engine`|계산 엔진. `decimal`(정확), `mpmath`(지정 자릿수), `float64`(근사), `composite`, `none`.|
+|`_meta.hints`|다음에 부를 만한 도구 제안. 결과 값에는 영향이 없다.|
 
+## 주요 기능
 
-## 벤치마크 결과 (2026-04-24)
+### 반올림은 호출자가 고른다
 
-20 케이스(한국 소득세 8 · 부가세 3 · 복리 2 · 확률통계 3 · 공학 2 · 양도세 2) × 대형 LLM 실측. `exact` 문자열 일치, `approx` 상대오차 ≤ 0.01%, `wrong` 그 외.
+반올림 관행이 상황마다 갈리는 금융·회계 도구(부가세, 현금흐름, 감가상각, 환전 등)는 `rounding`(HALF_EVEN, HALF_UP, DOWN, UP, FLOOR, CEIL)과 `decimals`를 받는다. 부가세 역산은 원 단위 절사(DOWN), 회계 일반은 HALF_EVEN처럼 쓰임새마다 규칙이 다르기 때문이다. 법령이 끝수 처리를 정한 세목(예: 지방세 10원 미만 절사)은 그 규칙을 그대로 따르고 도구 설명에 적어 둔다.
 
-### 표준 모델
+### 시점을 지정한 정책 계산
 
-|Provider|Model|Exact|Approx|Wrong|정확율|
-|-|-|-|-|-|-|
-|SooTool|Decimal 커널|**20**|0|0|**100%**|
-|Google|gemini-2.5-pro|13|3|4|65%|
-|Anthropic|claude-sonnet-4-5|3|3|13|15%|
-|OpenAI|gpt-4o|2|4|14|10%|
-
-### 현존 최고 모델 (SOTA)
-
-|Provider|Model|Exact|Approx|Wrong|정확율|
-|-|-|-|-|-|-|
-|SooTool|Decimal 커널|**20**|0|0|**100%**|
-|Google|gemini-3-pro-preview|12|4|4|60%|
-|Anthropic|claude-opus-4-7|9|3|8|45%|
-|OpenAI|gpt-5.4|5|3|12|25%|
-
-모델을 최신 SOTA로 올려도 어느 LLM도 20/20에 도달하지 못한다. Claude 3→9 (3배 개선), OpenAI 2→5 (2.5배), Gemini는 보합. 공통 실패 지점은 누진세 구간 경계, 양도소득세 장기보유특별공제(실세액 8% 이상 오차), 부가세 HALF_EVEN 반올림, AC 임피던스 정밀도다. 모델 발전만으로 닫히지 않는 구조적 한계를 SooTool이 Decimal + 정책 YAML + 명시적 rounding enum 세 층위로 메운다. 상세: [`bench/results/2026-04-24-final.md`](bench/results/2026-04-24-final.md) (표준), [`bench/results/2026-04-24-sota.md`](bench/results/2026-04-24-sota.md) (SOTA).
-
-## 설치
+세법과 보험료율은 연중에도 바뀐다. 정책 도구는 `year` 외에 `as_of`(YYYY-MM-DD)와 `include_proposed`를 받는다.
 
 ```
-cd SooTool
-uv sync
+policies/payroll/kr_4insurance_2026.yaml             2026-01-01 ~ 2026-06-30
+policies/payroll/kr_4insurance_2026@2026-07-01.yaml  2026-07-01 ~ 2026-10-31  ◀── as_of="2026-08-15"
+policies/payroll/kr_4insurance_2026@2026-11-01.yaml  2026-11-01 ~ 2026-12-31
+
+as_of가 속한 버전으로 계산하고, 응답에 그 버전의 시행일과 근거 조문을 싣는다.
 ```
 
-## 실행
+`as_of`를 주지 않으면 그 해 확정 버전 중 시행일이 가장 늦은 것을 쓴다. 국회 확정 전 개정안(`status: proposed`)은 `include_proposed=true`일 때만 쓴다. 정책 파일을 서버 재배포 없이 고치는 절차는 [docs/policy_management.md](docs/policy_management.md)에 있다.
 
-기본(stdio, MCP 클라이언트 연동):
-```
-uv run python -m sootool
-```
-
-전송별 단일 기동:
-```
-uv run python -m sootool --transport http       --http-port 10535
-uv run python -m sootool --transport sse-legacy --sse-port 10536   # 폐기 예정
-uv run python -m sootool --transport unix       --socket /tmp/sootool.sock
-```
-
-다중 전송 동시 기동:
-```
-uv run python -m sootool --transport stdio,http,unix --socket /tmp/sootool.sock
-```
-
-기본 바인딩은 `127.0.0.1`. 외부 노출은 `--host 0.0.0.0` + Bearer 토큰이 의무다(ADR-014).
-
-정책 쓰기 도구(`sootool.policy_*` 중 4종)는 로컬 전송(stdio, unix)에서만 노출한다. 네트워크 전송에 노출하려면 `--admin --remote-admin --admin-token <토큰>`이 모두 필요하며, 관리자 토큰으로 인증한 요청만 쓰기를 수행한다(`--auth-token` 토큰은 읽기 범위다). 자세한 내용은 ADR-025를 본다.
-
-노출 프로파일(`--profile` 또는 `SOOTOOL_PROFILE`):
-```
-uv run python -m sootool --profile full   # 기본값, 모든 도구 노출
-uv run python -m sootool --profile lean   # sootool.search, describe, call, skill_guide 만 노출
-```
-
-`lean`은 전체 도구 정의를 컨텍스트에 싣지 않는다. 에이전트는 `sootool.search`로 도구를 찾고 `sootool.describe`로 파라미터를 확인한 뒤 `sootool.call`로 실행한다. 호출 결과의 trace와 `_meta.integrity`는 도구를 직접 호출한 결과와 같다. `sootool.call`은 읽기 전용 도구만 실행하며 정책 쓰기 도구는 `full`에서 사용한다.
-
-## 명령줄
-
-서브커맨드 없이 실행하면 서버로 기동하고, 서브커맨드를 주면 같은 도구를 터미널에서 직접 실행한다. 모든 호출은 MCP와 같은 레지스트리 경로를 거쳐 같은 결과, 영수증, 오류 코드를 낸다.
+### 여러 건을 한 번에: batch와 pipeline
 
 ```
-uv run sootool call core.add --arg 'operands=["1.5","2.5"]'
-uv run sootool call tax.kr_income --arg taxable_income=50000000 --arg year=2026 --arg as_of=2026-06-01
-uv run sootool call payroll.kr_gross_from_net --arg net_monthly=3000000 --arg year=2026 --format raw
-uv run sootool call finance.npv --arg-json '{"rate":"0.1","cashflows":["-100","50","60","70"]}'
-uv run sootool tools list --search 양도세             # 별칭 포함 검색
-uv run sootool tools describe tax.kr_income          # 파라미터와 정책 인자(as_of 등)
-uv run sootool batch -f items.json                   # - 는 표준입력
-uv run sootool receipt verify --tool finance.fv --arguments '{"present_value":"1000","rate":"0.05","periods":10}' --receipt receipt.json
-uv run sootool policy show --arg domain=tax --arg name=kr_income --arg year=2026
-uv run sootool version
+core.batch     독립 계산 N건을 병렬로             core.pipeline   앞 단계 결과를 다음 단계 입력으로
+                                                 
+ ┌ s1: finance.npv(rate=0.05) ┐                  annual = core.mul(3000000, 12)
+ ├ s2: finance.npv(rate=0.08) ┼─▶ id 순서로 결과       │  ${annual.result.result}
+ └ s3: finance.npv(rate=0.10) ┘                       ▼
+                                                  tax = tax.kr_income(annual, 2026)
+ 최대 500건, 항목당 10초, 전체 60초              최대 50단계, 깊이 10, 단계당 2초, 전체 30초
 ```
 
-`--format`은 `pretty`(기본), `json`(전체), `raw`(trace와 `_meta` 제외), `trace`다. 결과는 표준출력에, 오류는 표준에러에 JSON으로 나온다. 종료 코드: 0 성공, 1 도구 오류(도메인 제약, 정책 없음, 한도 초과, 영수증 불일치), 2 입력 오류(인자 형식, 알 수 없는 도구), 3 관리자 모드 필요(`policy propose|activate|rollback|import`와 쓰기 도구, `SOOTOOL_ADMIN_MODE=1`), 70 내부 오류. 문자열 파라미터의 `--arg 이름=값`은 값을 그대로 문자열로 전달하고, 그 밖의 타입(정수, 불리언, 목록, 객체)은 JSON으로 읽는다. 숫자 문자열은 Decimal 경계를 위해 변환하지 않는다.
+`core.batch`는 항목마다 성공, 오류, 시간 초과를 따로 기록하고 결과를 입력 순서대로 돌려준다. `core.pipeline`은 앞 단계가 실패하면 뒤 단계를 `skipped`로 표시하며, 실패한 지점부터 다시 돌리는 `core.pipeline_resume`(10분 보관)이 있다.
 
-## Claude Code 연동
-
-user-scope로 글로벌 등록 (권장, 어느 디렉토리에서든 호출 가능):
-```
-claude mcp add --scope user sootool -- uv run --directory /path/to/SooTool python -m sootool
-```
-
-또는 프로젝트 스코프로 SooTool 저장소 내에서만:
-```
-cd SooTool
-claude mcp add sootool -- uv run python -m sootool
-```
-
-## 라이브러리로 쓰기 (코드 실행 환경)
-
-MCP 서버 없이 같은 도구를 파이썬 함수로 호출한다. 결과 구조, 영수증, 정책 시점(`as_of`)이 MCP 와 같고 결과 타입이 선언되어 있어 타입 검사가 된다. 첫 호출까지 약 0.35~0.5초가 든다.
-
-```python
-from sootool.sdk import tax
-
-out = tax.kr_income(taxable_income=50_000_000, year=2026)
-out["tax"]                              # "6240000"
-out["_meta"]["integrity"]["input_hash"]  # 재실행 검증용 영수증
-```
-
-자세한 내용과 샌드박스 레시피는 `docs/sdk.md`, 호환 약속과 폐기 절차는 `docs/stability.md`, 서명된 외부 정책 팩은 `docs/external_policy_packs.md`.
-
-## 도구 카탈로그 (275개 기본 + 10개 admin, 18 계산 도메인 + sootool 운영 도구)
-
-
-|Namespace|Count|대표 도구|
-|-|-|-|
-|core|11|add, sub, mul, div, calc, batch, pipeline, pipeline_resume, solve_for(역산), compare(시나리오 비교), explain(설명)|
-|accounting|11|vat_extract, vat_add, balance, depreciation 3종, dupont 2종, ratios, income_statement, cashflow_operating|
-|finance|18|pv, fv, npv, irr, roi, cagr, payback_period, loan_schedule, bond_ytm, bond_duration, black_scholes, var 2종, sharpe, sortino 외|
-
-|tax|17|progressive, kr_income, kr_withholding_simple(공식 간이세액표), capital_gains_kr, kr_gift, kr_inheritance, kr_corporate, kr_simplified_vat, kr_eitc(근로장려금), kr_comprehensive_income_tax(종합소득세 신고 흐름), kr_securities_transaction, kr_pension_income, kr_vehicle_tax, kr_registration_license_tax, 지방세 부가 3종|
-|tax_us|4|federal_income, capital_gains, state_tax, fica(급여세와 자영업자 세금)|
-|payroll|15|kr_salary, kr_gross_from_net(세후에서 세전 역산), hourly_to_monthly_net, kr_severance_pay, kr_year_end_tax_settlement, kr_bonus_tax, 공제 4종, kr_overtime_pay, kr_weekly_holiday_pay, kr_minimum_wage_check, kr_national_pension_benefit, kr_health_income_premium|
-|realestate|10|kr_ltv, kr_dti, kr_dsr, kr_acquisition_tax, kr_transfer_tax, kr_property_tax, kr_comprehensive, kr_local_property, rental_yield, kr_subscription_score(청약 가점)|
-|stats|14|descriptive, ttest 3종, chi_square_independence, ci_mean, regression_linear, anova, bootstrap_ci 외|
-|probability|30|normal/binomial/poisson, gamma, beta, exponential, lognormal, chi_square, F, bayes, factorial, nCr, nPr, expected_value|
-|datetime|14|add/count_business_days, day_count, age, diff, tz_convert, solar↔lunar, solar_terms, lunar_holiday, fiscal_year, fiscal_quarter, tax_period_kr, payroll_period|
-|math|10|integrate_simpson, integrate_gauss_legendre, diff_central, diff_five_point, interpolate_linear, interpolate_cubic_spline, polynomial_roots, polynomial_horner, fft, ifft|
-|geometry|15|area·volume 7종, vector dot/cross/norm, matrix 4종, haversine|
-|engineering|56|electrical_*, electrical_ac 11종, fluid, thermal, mechanical, structural, control 5종, si_prefix_convert|
-|units|8|convert (pint), fx_convert, fx_triangulate, temperature, energy_convert, pressure_convert, data_size_convert, time_small_convert|
-|medical|12|bmi, bsa, dose_weight_based, egfr, pregnancy_weeks, cha2ds2_vasc, has_bled, framingham_cvd_10y, qtc 4종|
-|science|11|half_life, ideal_gas, molar_mass, stoichiometry, nernst, faraday_electrolysis, battery_capacity, snell_law, thin_lens, bragg, intensity|
-|crypto|10|gcd, lcm, hash, is_prime, modinv, modpow, egcd, crt, euler_totient, carmichael_lambda|
-|pm|5|critical_path (CPM), evm, pert, earned_schedule, monte_carlo_schedule|
-|symbolic|2|solve, diff (선택 extra `sootool[symbolic]`)|
-|sootool|2+10|skill_guide, verify_receipt (항시) + policy_mgmt 10종(쓰기 4종은 로컬 전송과 관리자 모드)|
-
-전체 도구 목록은 `docs/tool_catalog.md`(레지스트리에서 생성), 사용법은 `docs/user_guide.md` 와 `sootool.skill_guide` MCP 호출, 라이브러리로 쓰는 방법은 `docs/sdk.md` 를 본다.
-
-## 실전 예시
-
-세무 체인 파이프라인. 월급 3,000,000원을 연소득으로 환산한 뒤 2026년 한국 소득세를 계산한다.
 ```json
 {
   "name": "core.pipeline",
   "arguments": {
     "steps": [
-      {"id": "annual", "tool": "core.mul",       "args": {"operands": ["3000000", "12"]}},
-      {"id": "tax",    "tool": "tax.kr_income",  "args": {"taxable_income": "${annual.result.result}", "year": 2026}}
+      {"id": "annual", "tool": "core.mul",      "args": {"operands": ["3000000", "12"]}},
+      {"id": "tax",    "tool": "tax.kr_income", "args": {"taxable_income": "${annual.result.result}", "year": 2026}}
     ]
   }
 }
 ```
 
-재무 시나리오 비교 배치. 동일 현금흐름에 대해 할인율 3종 NPV를 동시 산출한다.
-```json
-{
-  "name": "core.batch",
-  "arguments": {
-    "items": [
-      {"id": "s1", "tool": "finance.npv", "args": {"rate": "0.05", "cashflows": ["-100","30","40","50"], "rounding": "HALF_EVEN", "decimals": 2}},
-      {"id": "s2", "tool": "finance.npv", "args": {"rate": "0.08", "cashflows": ["-100","30","40","50"], "rounding": "HALF_EVEN", "decimals": 2}},
-      {"id": "s3", "tool": "finance.npv", "args": {"rate": "0.10", "cashflows": ["-100","30","40","50"], "rounding": "HALF_EVEN", "decimals": 2}}
-    ]
-  }
-}
-```
+실무에서는 다음처럼 쓴다.
 
-공학 레이놀즈 수. 밀도·속도·특성길이·점성으로 층류/전이/난류 영역을 판정하고 trace에 공식을 남긴다.
-```json
-{
-  "name": "engineering.fluid_reynolds",
-  "arguments": {"density": "1000", "velocity": "2", "length": "0.05", "viscosity": "0.001"}
-}
-```
-
-통계 회귀 + 신뢰구간 배치. 단일 왕복으로 선형회귀 계수·p-value와 평균 95% 신뢰구간을 동시 반환한다.
-```json
-{
-  "name": "core.batch",
-  "arguments": {
-    "items": [
-      {"id": "reg", "tool": "stats.regression_linear", "args": {"X": [[1],[2],[3],[4]], "y": [2.1, 4.0, 6.2, 8.1]}},
-      {"id": "ci",  "tool": "stats.ci_mean",           "args": {"data": [2.1, 4.0, 6.2, 8.1], "confidence": 0.95}}
-    ]
-  }
-}
-```
-
-## 실무 대량 처리
-
-LLM이 한 건씩 산출하면 재현성·신뢰성이 흔들린다. SooTool은 한 호출로 수백 행의 결정적 계산을 즉시 반환한다.
-
-|시나리오|규모|도구 조합|반환|
-|-|-|-|-|
-|급여 마감|직원 500명|`core.batch` + `payroll.kr_salary`|행별 net·4대보험·소득세·trace|
-|투자 민감도|할인율 9 × 현금흐름 5 = 45 지점|`core.batch` + `finance.npv`·`finance.irr`|시나리오별 NPV/IRR 표|
-|거래명세서 VAT 분리|수백~수천 건|`core.batch` + `accounting.vat_extract`|공급가 합계·VAT 합계|
-|채권 포트폴리오|종목 수십|`core.batch` + `finance.bond_ytm`·`bond_duration`|종목별 수익률·듀레이션|
-|양도세 교차 검증|보유기간 10종 × 취득·양도가 세트|`core.batch` + `tax.capital_gains_kr`|시나리오별 실세액|
-|세무 체인|월급→연봉→소득세→실수령액|4 단계 `core.pipeline`|단일 왕복|
-
-구현 세부:
-
-- `core.batch`, N개 독립 연산을 ThreadPoolExecutor로 병렬 실행. id 중복 거부, per-item 격리(`ok|error|timeout|skipped`), 최대 500 items, per-item 10s, batch 60s 제한. 결과는 입력 id 순으로 결정적 재정렬된다(ADR-011).
-- `core.pipeline`, `graphlib.TopologicalSorter` 기반 DAG 실행기. `${step_id.result.field}` 참조 문법으로 단계 간 데이터 전달. max_steps=50, max_depth=10, step_timeout_s=2.0, pipeline_timeout_s=30.0(ADR-006).
-- `core.pipeline_resume`, 실패한 스텝을 TTL 10분 in-memory 캐시로부터 부분 재실행.
-
-## 전송 지원
-
-|Transport|용도|Flag|
+|작업|규모|조합|
 |-|-|-|
-|stdio|Claude Code·Desktop 기본|--transport stdio|
-|http|Streamable HTTP(무상태), 권장 원격|--transport http|
-|sse-legacy|2024-11 호환. MCP 사양에서 폐기되어 다음 마이너에서 제거|--transport sse-legacy|
-|unix|Unix 소켓 위의 Streamable HTTP, 소켓 권한(0600)으로 접근 통제|--transport unix --socket PATH|
-|multi|동시 기동|--transport stdio,http,...|
+|급여 마감|직원 500명|`core.batch` + `payroll.kr_salary`|
+|투자 민감도|할인율 9개 × 현금흐름 5안|`core.batch` + `finance.npv`, `finance.irr`|
+|거래명세서 부가세 분리|수백 건|`core.batch` + `accounting.vat_extract`|
+|월급에서 실수령액까지|4단계|`core.pipeline`|
 
-WebSocket 전송은 MCP 사양에 없고 SDK v2에서 제거되어 함께 제거했다. 네트워크 전송은 모두 무상태(MCP 2026-07-28)라 라운드 로빈 로드 밸런서 뒤에서 동작한다. HTTP 계열 전송은 Bearer 인증, 요청별 `Accept-Language` 로케일 감지(ko 기본), `_meta.hints`(호출 이력이 필요 없는 규칙만), CORS 화이트리스트를 공통 미들웨어로 적용한다(ADR-014, ADR-025).
+### 역산, 비교, 설명
+
+- `core.solve_for`: 목표 결과를 만드는 입력값을 찾는다. 예) 실수령액 300만 원이 되는 세전 월급.
+- `core.compare`: 기준안 대비 시나리오별 값과 차이를 표로 낸다.
+- `core.explain`: 계산 과정과 적용 정책을 한국어나 영어 문장으로 풀어 쓴다. 수치는 바꾸지 않는다.
+
+### 영수증 재실행 검증
+
+```bash
+sootool receipt verify --tool finance.fv \
+  --arguments '{"present_value":"1000","rate":"0.05","periods":10}' \
+  --receipt receipt.json
+```
+
+같은 도구를 다시 실행해 도구 이름, 입력 해시, 결과 해시, 도구 버전, 정책 해시를 대조한다. `SOOTOOL_RECEIPT_KEY_FILE`에 ed25519 개인 키 파일을 지정하면 영수증에 서명이 붙는다.
+
+## 도구 카탈로그 (275개 기본 + 10개 admin, 18 계산 도메인 + 운영 도구)
+
+|Namespace|Count|대표 도구|
+|-|-|-|
+|core|11|add, sub, mul, div, calc(수식), batch, pipeline, pipeline_resume, solve_for, compare, explain|
+|accounting|11|vat_extract, vat_add, balance, 감가상각 3종, dupont 2종, ratios, income_statement, cashflow_operating|
+|finance|18|pv, fv, npv, irr, roi, cagr, payback_period, loan_schedule, bond_ytm, bond_duration, black_scholes, var 2종, sharpe, sortino|
+|tax|17|kr_income, kr_comprehensive_income_tax, kr_withholding_simple, capital_gains_kr, kr_gift, kr_inheritance, kr_corporate, kr_eitc, 지방세 부가 3종|
+|tax_us|4|federal_income, capital_gains, state_tax, fica|
+|payroll|15|kr_salary, kr_gross_from_net, kr_severance_pay, kr_year_end_tax_settlement, kr_overtime_pay, kr_minimum_wage_check, 공제 4종|
+|realestate|10|kr_acquisition_tax, kr_transfer_tax, kr_property_tax, kr_comprehensive, kr_ltv, kr_dti, kr_dsr, kr_subscription_score|
+|stats|14|descriptive, t-검정 3종, anova_oneway, regression_linear, ci_mean, bootstrap_ci, 비모수 검정|
+|probability|30|정규, 이항, 포아송, 감마, 베타, 지수, 로그정규, 카이제곱, F 분포의 pdf·cdf·ppf, bayes, nCr, nPr|
+|datetime|14|영업일 계산, day_count, age, diff, tz_convert, 음양력 변환, 24절기, 회계연도, 소득세 과세기간|
+|math|10|수치 적분 2종, 수치 미분 2종, 보간 2종, polynomial_roots, polynomial_horner, fft, ifft|
+|geometry|15|넓이·부피 7종, 벡터 3종, 행렬 4종, haversine|
+|engineering|56|전기·교류 회로, 유체, 열전달, 재료역학, 제어, 신뢰성, SI 접두어 변환|
+|units|8|convert, fx_convert, fx_triangulate, temperature, 에너지·압력·데이터 크기·시간 변환|
+|medical|12|bmi, bsa, egfr, dose_weight_based, pregnancy_weeks, cha2ds2_vasc, has_bled, framingham_cvd_10y, QTc 4종|
+|science|11|half_life, ideal_gas, molar_mass, stoichiometry, nernst, snell_law, thin_lens, bragg 외|
+|crypto|10|gcd, lcm, egcd, modinv, modpow, crt, is_prime, euler_totient, carmichael_lambda, hash|
+|pm|5|critical_path, pert, evm, earned_schedule, monte_carlo_schedule|
+|symbolic|2|solve, diff (`sootool[symbolic]` 설치 시)|
+|sootool|2+10|skill_guide, verify_receipt, 정책 관리 10종(쓰기 4종은 관리자 모드)|
+
+도구별 버전, 정확도 등급, 설명은 [docs/tool_catalog.md](docs/tool_catalog.md)에 있다. 이 파일은 레지스트리에서 자동 생성한다.
+
+## 서버 실행
+
+```bash
+sootool                                                    # stdio (MCP 클라이언트 기본)
+sootool --transport http --http-port 10535                 # Streamable HTTP
+sootool --transport unix --socket /tmp/sootool.sock        # Unix 소켓
+sootool --transport stdio,http --socket /tmp/sootool.sock  # 여러 전송 동시 기동
+```
+
+|전송|용도|비고|
+|-|-|-|
+|stdio|Claude Code, Claude Desktop 등 로컬 클라이언트|기본값|
+|http|원격 접속(Streamable HTTP)|무상태라 로드 밸런서 뒤에 둘 수 있다. 기본 포트 10535|
+|unix|같은 호스트의 다른 프로세스|소켓 파일 권한(기본 0600)으로 접근을 통제한다|
+|sse-legacy|MCP 2024-11 클라이언트 호환|폐기 예정. `--enable-sse-legacy`로만 켜진다. 기본 포트 10536|
+
+네트워크 전송의 보안 규칙은 다음과 같다.
+
+- 기본 바인딩은 `127.0.0.1`이다. `--host 0.0.0.0`으로 외부에 열려면 `--auth-token`(또는 `SOOTOOL_AUTH_TOKEN`)이 있어야 기동한다.
+- 정책을 바꾸는 쓰기 도구 4종은 stdio와 Unix 소켓에서만 노출한다. 네트워크에서 쓰려면 `--admin --remote-admin --admin-token <토큰>`이 모두 필요하고, 관리자 토큰으로 인증한 요청만 쓰기를 수행한다.
+
+### 노출 프로파일
+
+```bash
+sootool --profile full   # 기본값. 도구 285개를 모두 노출
+sootool --profile lean   # sootool.search, describe, call, skill_guide 4개만 노출
+```
+
+`lean`은 도구 정의 전체를 컨텍스트에 올리지 않는다. 에이전트는 `sootool.search`로 도구를 찾고, `sootool.describe`로 인자를 확인한 뒤, `sootool.call`로 실행한다. 결과와 영수증은 직접 호출과 같다. `sootool.call`은 읽기 전용 도구만 실행한다.
+
+## 명령줄
+
+서브커맨드를 주면 서버를 띄우지 않고 도구를 바로 실행한다.
+
+```bash
+sootool call core.add --arg 'operands=["1.5","2.5"]'
+sootool call finance.npv --arg-json '{"rate":"0.1","cashflows":["-100","50","60","70"]}'
+sootool call payroll.kr_gross_from_net --arg net_monthly=3000000 --arg year=2026 --format raw
+sootool tools list --search 양도세        # 줄임말과 일상 표현으로 검색
+sootool tools describe tax.kr_income     # 인자와 정책 인자 확인
+sootool batch -f items.json              # -f - 는 표준입력
+sootool policy show --arg domain=tax --arg name=kr_income --arg year=2026
+sootool skill-guide --section triggers
+sootool version
+```
+
+|항목|내용|
+|-|-|
+|인자|`--arg 이름=값`을 반복하거나 `--arg-json`으로 한 번에 넘긴다. 문자열 인자는 값을 그대로 쓰고, 정수·불리언·목록·객체는 JSON으로 읽는다.|
+|출력 형식|`--format pretty`(기본), `json`(전체), `raw`(trace와 `_meta` 제외), `trace`|
+|출력 위치|결과는 표준출력, 오류는 표준에러에 JSON으로 낸다.|
+|종료 코드|0 성공, 1 도구 오류, 2 입력 오류, 3 관리자 모드 필요(`SOOTOOL_ADMIN_MODE=1`), 70 내부 오류|
+
+## 파이썬 라이브러리로 쓰기
+
+MCP 서버 없이 같은 도구를 함수로 부른다. 결과, 영수증, `as_of` 처리가 MCP와 같고 결과 타입이 선언되어 있어 타입 검사기가 필드를 확인한다.
+
+```python
+from sootool.sdk import tax
+
+out = tax.kr_income(taxable_income=50_000_000, year=2026)
+out["tax"]                                # "6240000"
+out["_meta"]["integrity"]["input_hash"]   # 재실행 검증용 영수증
+```
+
+샌드박스에서 에이전트가 파이썬을 실행하는 구성은 [docs/sdk.md](docs/sdk.md)를 본다.
+
+## 에이전트에 사용 규칙 알려 주기
+
+도구를 등록해도 에이전트가 직접 암산하는 경우가 있다. 아래 중 하나로 "숫자 계산은 SooTool로" 규칙을 넣는다.
+
+- 세션 시작 시 `sootool.skill_guide`를 호출하게 한다. 언제 어떤 도구를 부를지 정리한 트리거 표, 예시, 금지 패턴, 플레이북을 돌려준다(`section`: `triggers`, `examples`, `anti_patterns`, `playbooks`, `all` / `lang`: `ko`, `en`).
+- 클라이언트 설정 파일에 붙여 넣을 규칙: [Claude Code](docs/integration/claude-md-snippet.md), [Cursor](docs/integration/cursor-rules-snippet.md), [AGENTS.md](docs/integration/agents-md-snippet.md)
+
+## 문서
+
+|문서|내용|
+|-|-|
+|[사용자 가이드](docs/user_guide.md)|도메인별 도구 개요, 공통 인자, 응답 규칙|
+|[도구 카탈로그](docs/tool_catalog.md)|도구 285개의 버전, 정확도 등급, 설명|
+|[정책 관리](docs/policy_management.md)|정책 파일 구조, 시점 선택, 갱신·롤백 절차, 감사 로그|
+|[SDK](docs/sdk.md)|파이썬 라이브러리 사용법과 샌드박스 구성|
+|[외부 정책 팩](docs/external_policy_packs.md)|서명된 정책 묶음의 생성, 검증, 설치|
+|[안정성 계약](docs/stability.md)|호환을 약속하는 범위와 폐기 절차|
+|[쿡북](docs/cookbook/)|세무, 금융, 전기 공학 시나리오별 호출 예시|
+|[아키텍처 결정 기록](docs/architecture.md)|설계 결정과 근거(ADR)|
+|[릴리스 절차](docs/release.md)|버전 올리기부터 PyPI 게시까지|
 
 ## 개발
 
-- 테스트: `make test` (pytest 1097건, 97% 커버리지)
-- 린트: `make lint` (ruff)
-- 타입체크: `make typecheck` (mypy)
-- 포맷: `make format`
-- 전송 스모크: `uv run python scripts/mcp_smoke_{test,http,sse,unix}.py`
+```bash
+uv sync --extra symbolic
+make test        # pytest와 커버리지
+make lint        # ruff
+make typecheck   # mypy
+uv run python scripts/mcp_smoke_test.py   # stdio 연결 점검 (http, sse, unix 스크립트도 있다)
+```
 
-새 도메인 도구 추가는 `src/sootool/modules/<domain>/<tool>.py`에 `@REGISTRY.tool(namespace, name, description, version)` 데코레이터로 구현하고 도메인 `__init__.py`에서 import하면 런타임 자동 등록된다(ADR-004).
-
-## 아키텍처
-
-설계 결정과 근거는 `docs/architecture.md` ADR-001~017에 기록되어 있다. 핵심 invariant:
-
-- Decimal-only 경계 · 명시적 rounding · 감사 트레이스 · 모듈 stateless / batch-safe
-- 자료형 이원화: 회계·세무·금융은 전 구간 Decimal, 통계·기하·확률은 내부 float64 + 경계 Decimal 직렬화(ADR-008)
-- 정책 YAML 외부화 + SHA-256 무결성(ADR-009)
-- trace_level none·summary·full + SOOTOOL_MAX_PAYLOAD_KB(기본 512KB) 초과 시 trace.steps tail 절단(ADR-010)
-- KRWMoney는 Decimal 상속 대신 합성(ADR-013)
-- 도메인별 `*_bulk` 도구 금지, `core.batch` 일반해로 통일(ADR-006)
-
-## 스킬 가이드
-
-에이전트가 언제 어떤 도구를 호출해야 하는지 기술한 트리거 테이블·예시·플레이북은 `sootool.skill_guide` MCP 도구를 호출하여 조회한다. 섹션은 `triggers | examples | anti_patterns | playbooks | all`, 언어는 `ko | en`.
+새 도구는 `src/sootool/modules/<도메인>/`에 함수를 만들고 `@REGISTRY.tool(namespace, name, description, version)`을 붙인 뒤 도메인 `__init__.py`에서 불러오면 등록된다. 도구 설명이나 타입을 바꾸면 `scripts/gen_tool_catalog.py`와 `scripts/gen_sdk_stubs.py`로 생성 문서를 다시 만든다. 정책 파일을 고치면 `scripts/policy_stamp.py`로 해시를 갱신한다.
 
 ## 라이선스
 
-`LICENSE` 파일 참조.
+MIT. [LICENSE](LICENSE) 참조.

@@ -2,7 +2,7 @@
 name = "sootool"
 version = "0.2.0"
 # keep in sync with README first paragraph (ADR-019)
-description = "LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Decimal 전용 커널, 18개 계산 도메인 274개 기본 도구 + 10개 admin 정책 도구, 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE)."
+description = "LLM이 확률 추론으로 산수를 틀리는 구조적 한계를 차단하는 정밀 계산 MCP 서버. Decimal 전용 커널, 18개 계산 도메인 275개 기본 도구 + 10개 admin 정책 도구, 4종 전송(stdio/Streamable HTTP/Unix, 폐기 예정 SSE)."
 
 readme = "README.md"
 license = { file = "LICENSE" }

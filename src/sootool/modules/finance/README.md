@@ -1,80 +1,53 @@
-# Finance Module
+# finance
 
-작성자: 최진호
-작성일: 2026-04-22
+화폐의 시간 가치, 투자 지표, 대출, 채권, 파생상품, 위험 지표 도구.
 
-## 도구 목록
-
-| 도구명 | 설명 | 파일 |
+|도구|계산|엔진|
 |-|-|-|
-| finance.pv | 현재가치(PV) | tvm.py |
-| finance.fv | 미래가치(FV) | tvm.py |
-| finance.npv | 순현재가치(NPV) | metrics.py |
-| finance.irr | 내부수익률(IRR) | metrics.py |
-| finance.roi | 투자수익률(ROI) | metrics.py |
-| finance.cagr | 복합연평균성장률(CAGR) | metrics.py |
-| finance.payback_period | 단순 투자회수기간 | metrics.py |
-| finance.loan_schedule | 대출 상환 스케줄 | loan.py |
-| finance.bond_ytm | 채권 만기수익률(YTM) | bond.py |
-| finance.bond_duration | Macaulay/Modified Duration | bond.py |
-| finance.black_scholes | Black-Scholes 옵션 가격 + Greeks | option.py |
+|`finance.black_scholes`|Black-Scholes 유럽형 옵션의 가격과 델타, 감마, 베가, 세타, 로를 계산한다.|mpmath|
+|`finance.bond_duration`|채권의 맥컬리 듀레이션과 수정 듀레이션을 연 단위로 계산한다.|Decimal|
+|`finance.bond_ytm`|채권 만기수익률(YTM)을 뉴턴법으로 구한다.|Decimal|
+|`finance.cagr`|복합연평균성장률(CAGR)을 계산한다.|Decimal|
+|`finance.forward_price`|무차익 선도가격을 계산한다.|mpmath|
+|`finance.futures_price`|연속복리 보유비용 모형의 선물 이론가격을 계산한다.|mpmath|
+|`finance.fv`|현재 금액의 미래가치를 계산한다.|Decimal|
+|`finance.irr`|내부수익률(IRR), 즉 NPV 를 0 으로 만드는 기간 수익률을 구한다.|Decimal|
+|`finance.loan_schedule`|대출 상환 스케줄을 계산한다.|Decimal|
+|`finance.npv`|순현재가치를 계산한다.|Decimal|
+|`finance.option_payoff`|옵션의 만기 payoff 를 계산한다.|mpmath|
+|`finance.payback_period`|단순 투자회수기간을 계산한다.|Decimal|
+|`finance.pv`|미래 현금흐름의 현재가치를 계산한다.|Decimal|
+|`finance.roi`|투자수익률(ROI)을 계산한다.|Decimal|
+|`finance.sharpe_ratio`|샤프지수 = (평균수익률 - 무위험수익률) / 표본표준편차(n-1)를 계산한다.|float64(근사)|
+|`finance.sortino_ratio`|소르티노 비율 = (평균수익률 - 무위험수익률) / 하방편차를 계산한다.|float64(근사)|
+|`finance.var_historical`|과거 수익률의 경험적 분위수로 VaR 와 CVaR(기대부족액)을 계산한다.|float64(근사)|
+|`finance.var_parametric`|정규분포를 가정한 모수적 VaR 와 CVaR 를 계산한다.|float64(근사)|
 
-## 공식 출처
+엔진 열은 도구가 정의된 모듈이 쓰는 가장 거친 수치 엔진이다. Decimal은 정확, mpmath는 지정 자릿수(기본 50자리), float64는 배정밀도 근사다. 인자와 기본값은 `sootool tools describe <도구>`로 확인한다.
 
-### TVM (화폐의 시간 가치)
-- Brealey, Myers & Allen, "Principles of Corporate Finance", 13th ed., Ch. 2-3.
-- PV = FV / (1+r)^n
-- FV = PV * (1+r)^n
+## 공식과 출처
 
-### NPV / IRR / 투자회수기간
-- Brealey, Myers & Allen, "Principles of Corporate Finance", 13th ed., Ch. 5-6.
-- NPV = sum(CF_t / (1+r)^t, t=0..n)
-- IRR: NPV(r) = 0, Newton-Raphson + bisection fallback
-- Payback Period = 회수 직전 기간 + 회수 직전 미회수액 / 회수 기간 현금흐름
-
-### 대출 상환
-- 금융감독원 표준 대출 상환 공식 (표준 금융상품 약관)
-- EQUAL_PAYMENT: M = P * r_m * (1+r_m)^n / ((1+r_m)^n - 1)
-- EQUAL_PRINCIPAL: principal_per_month = P / n; interest = balance * r_m
-
-### 채권
-- Fabozzi, "Fixed Income Mathematics", 4th ed., Ch. 3-4.
-- YTM: Newton-Raphson으로 P = sum(C/(1+y/f)^t) + F/(1+y/f)^n 수치해법
-- Macaulay Duration = sum(t * PV(CF_t)) / P  [in years]
-- Modified Duration = Macaulay / (1 + ytm/freq)
-
-### Black-Scholes
-- Black, F. & Scholes, M. (1973). "The Pricing of Options and Corporate Liabilities."
-  Journal of Political Economy, 81(3), 637-654. DOI:10.1086/260062
-- Merton, R.C. (1973). "Theory of Rational Option Pricing."
-  Bell Journal of Economics, 4(1), 141-183.
-- d1 = (ln(S/K) + (r - q + sigma^2/2)*T) / (sigma*sqrt(T))
-- d2 = d1 - sigma*sqrt(T)
-- call = S*exp(-qT)*N(d1) - K*exp(-rT)*N(d2)
-- put  = K*exp(-rT)*N(-d2) - S*exp(-qT)*N(-d1)
-
-## 자료형 정책 (ADR-008)
-
-| 도구 | 내부 연산 | 반환 |
+|구분|공식|출처|
 |-|-|-|
-| TVM (pv, fv) | pure Decimal | str |
-| NPV, IRR, ROI, CAGR, Payback Period | pure Decimal | str (Payback 미회수 시 null + recovered=false) |
-| 대출 스케줄 | pure Decimal | str |
-| 채권 (YTM, Duration) | pure Decimal | str |
-| Black-Scholes | mpmath (50 dps) | str via mpmath_to_decimal |
+|PV, FV|PV = FV / (1+r)^n, FV = PV·(1+r)^n|Brealey, Myers & Allen, *Principles of Corporate Finance*, 13th ed., Ch. 2-3|
+|NPV, IRR|NPV = Σ CF_t / (1+r)^t, IRR은 NPV(r) = 0의 해|같은 책 Ch. 5-6|
+|ROI, CAGR|ROI = 순이익 / 투자원가, CAGR = (기말/기초)^(1/n) − 1|-|
+|투자회수기간|회수 직전 기간 수 + 회수 직전 미회수액 / 회수 기간 현금흐름. 끝까지 회수하지 못하면 `null`과 `recovered: false`|-|
+|대출|원리금균등 M = P·r·(1+r)^n / ((1+r)^n − 1), 원금균등 P/n + 잔액 이자|-|
+|채권|P = Σ C/(1+y/f)^t + F/(1+y/f)^n, 수정 듀레이션 = 맥컬리 / (1 + y/f)|Fabozzi, *Fixed Income Mathematics*, 4th ed., Ch. 3-4|
+|블랙-숄즈|d1 = (ln(S/K) + (r − q + σ²/2)T) / (σ√T), d2 = d1 − σ√T|Black & Scholes (1973), Merton (1973)|
 
-## 반올림 정책
+## 수렴
 
-- 기본값: HALF_EVEN (IEEE 754 banker's rounding)
-- 원화(KRW): decimals=0
-- 채권/옵션: 소수점 6자리 이상 유지 권장
-
-## 알고리즘 수렴 정책
-
-| 도구 | 알고리즘 | tol (기본) | 폴백 |
+|도구|방법|허용오차|실패 시|
 |-|-|-|-|
-| IRR | Newton-Raphson | 1e-10 | bisection [-0.99, 10] |
-| Bond YTM | Newton-Raphson | 1e-10 | N/A (coupon rate 초기값) |
+|`irr`|뉴턴-랩슨, 실패하면 [−0.99, 10] 구간 이분법|1e-10|`converged: false`, `irr: null`|
+|`bond_ytm`|뉴턴-랩슨(표면이율에서 시작)|1e-10|`converged: false`|
 
-수렴 실패 시 converged=False 반환 (예외 미발생).
-IRR의 경우 부호 전환이 없으면 즉시 converged=False 반환.
+현금흐름의 부호가 한 번도 바뀌지 않으면 `irr`은 반복 없이 `converged: false`를 돌려준다.
+
+## 반올림
+
+`npv`, `pv`, `fv`, `roi`, `cagr`, `payback_period` 등은 `rounding`(기본 HALF_EVEN)과 `decimals`를 받는다. 원화 금액은 `decimals=0`, 채권·옵션 값은 6자리 이상을 권한다.
+
+호출 예시는 [금융 쿡북](../../../../docs/cookbook/finance_scenarios.md)에 있다.

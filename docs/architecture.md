@@ -1,7 +1,9 @@
 # SooTool 아키텍처 결정 기록
 
+설계 결정과 그 이유를 결정 순서대로 적는다. 뒤의 결정이 앞의 결정을 바꾼 경우 해당 항목에 표시한다. 현재 동작의 요약은 [README](../README.md)와 [사용자 가이드](user_guide.md)를 본다.
+
 ## ADR-001: Decimal 의무화, float 금지
-문자열 기반 Decimal 입력만 허용. float 허용 시 `allow_float=True`로 명시적 opt-in.
+계산 경로에는 Decimal만 흐른다. 내부에서 float를 Decimal로 바꿀 때는 `D(x, allow_float=True)`로 명시한다. 외부 입력의 JSON 숫자 처리는 ADR-025를 따른다.
 사유: 회계·금융에서 0.1+0.2=0.30000000000000004 유형 오류 근절.
 
 ## ADR-002: 반올림 정책 명시
@@ -21,7 +23,7 @@
 uv는 resolve 속도·재현성에서 우수.
 
 ## ADR-006: 배치·파이프라인 1급 지원
-`core.batch`(독립 병렬)와 `core.pipeline`(DAG 의존)을 Phase 0 코어 필수 기능으로 포함.
+`core.batch`(독립 병렬)와 `core.pipeline`(DAG 의존)을 코어 기능으로 포함한다.
 사유:
 - 문서 작성·보고서·다중 시나리오 비교 등 실사용에서 한 요청당 수십~수백 연산이 기본.
 - LLM 레벨 parallel tool call(5~10개)만으로는 호출당 프레이밍 토큰 누적으로 비경제적.
@@ -50,13 +52,13 @@ uv는 resolve 속도·재현성에서 우수.
 - 서버 JSON 파싱은 `parse_float=Decimal`로 입구 누수 차단.
 
 ## ADR-009: 정책 데이터 외부화
-세법·부동산 규제 등 가변 데이터는 Python 코드에서 분리, `src/sootool/policies/{domain}/{year}.yaml`에 수록.
+세법·부동산 규제 등 가변 데이터는 Python 코드에서 분리, `src/sootool/policies/<domain>/<name>_<year>.yaml`에 수록.
 사유: 2026년 세율 2027년 적용 같은 '정밀한 오답' 방지. 감사 추적·롤백·재현성 확보.
 결정:
 - YAML 전면에 `sha256`, `effective_date`, `notice_no`, `source_url` 필수 헤더.
 - 로더는 파일 SHA256 검증 후 메모리 캐시(불변).
 - 모든 정책 호출 도구는 `year` 필수, 응답 trace에 `policy_version` 포함.
-- 지원 연도 외 호출은 `UnsupportedPolicyError`.
+- 지원 연도 외 호출은 `UnsupportedPolicyError`(오류 코드 `policy_unavailable`). 같은 연도 안의 버전 선택은 ADR-026을 따른다.
 - 외부 신뢰 API 래핑은 거부(네트워크 의존성, 테스트 재현성 상실).
 
 ## ADR-010: Trace Leveling + 페이로드 상한
@@ -101,7 +103,7 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 ## ADR-014: 다중 전송 계층 지원
 
 결정:
-- SooTool은 stdio와 Streamable HTTP 두 전송을 1급 지원한다. 추가 전송(HTTP+SSE legacy, Unix socket)은 후속 마일스톤에서 순차 추가한다. WebSocket 전송은 ADR-025 에서 제거했다.
+- SooTool은 stdio와 Streamable HTTP를 기본 전송으로 지원하고, HTTP+SSE legacy(폐기 예정)와 Unix 소켓을 추가로 제공한다. WebSocket 전송은 ADR-025에서 제거했다.
 - 전송 계층은 `src/sootool/transports/` 패키지로 격리된다. REGISTRY는 전송 계층을 인식하지 않는다.
 - 기본 네트워크 바인딩은 loopback(`127.0.0.1`). 외부 노출(`--host 0.0.0.0`)은 명시적 opt-in이며, `SOOTOOL_AUTH_TOKEN` 또는 `--auth-token` 미설정 시 기동을 거부한다.
 - Streamable HTTP는 Starlette 미들웨어 체인(RequestID → Logging → Auth → CORS)으로 감싼 ASGI 앱으로 노출한다.
@@ -120,7 +122,7 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 결정:
 - SooTool 서버는 `sootool.skill_guide` MCP 도구로 트리거·예시·안티패턴·플레이북을 JSON으로 노출한다.
 - FastMCP `instructions` 필드에 도구 우선 사용 지시를 주입한다.
-- 모든 도구 응답이 `_meta.hints` 배열을 포함하며 세션 호출 이력을 근거로 후속 행동을 제안한다.
+- 모든 도구 응답이 `_meta.hints` 배열을 포함하며 호출 이력을 근거로 후속 행동을 제안한다. 무상태 네트워크 요청에서는 이력이 필요한 규칙을 건너뛴다(ADR-025).
 - `.github/skills/sootool/SKILL.md` 및 통합 스니펫 3종(Claude Code / Cursor / AGENTS.md)을 배포한다.
 - 가이드 데이터는 SemVer(`version` 필드)로 관리하며 ADR-012 변경 규칙 준수한다.
 - 세션 상태는 `SessionStore` 프로토콜 + `InMemoryStore` 구현으로 추상화하여 Redis drop-in 가능하게 한다.
@@ -129,7 +131,7 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 
 사유:
 - 도구 등록만으로는 LLM이 확률 추론 대신 도구 호출 경로로 자동 전환하지 않음.
-- Memento(AnchorMind) MCP가 동일 문제에 대해 검증한 패턴(instructions + guide 도구 + _meta.hints + 스킬 문서 + 사용자 스니펫) 재사용.
+- 지시문(instructions), 안내 도구, 응답 힌트, 스킬 문서, 사용자 설정 스니펫을 함께 두어 여러 경로로 같은 규칙을 전달한다.
 - 서버 측 단일 근원으로 가이드를 유지해 트리거·플레이북 개정 시 전 에이전트가 자동 최신화.
 
 ## ADR-016: 정책 파일 사용자 관리
@@ -137,7 +139,7 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 결정:
 - 정책 YAML을 이중 저장소로 분리: 패키지 동봉 기본값(읽기 전용) + 사용자 덮어쓰기(XDG_DATA_HOME 또는 `SOOTOOL_POLICY_DIR`).
 - 로더는 덮어쓰기 > 기본값 순으로 해석하며, 호출자에게 `policy_source` 로 어느 저장소가 적용됐는지 투명하게 반환한다.
-- 쓰기 도구 10종(`sootool.policy_*`, validate, propose, activate, rollback, history, diff, list, export, import, status)은 admin 모드 한정으로 노출한다. 진입은 환경변수 `SOOTOOL_ADMIN_MODE=1` 또는 CLI `--admin` 중 하나.
+- 정책 관리 도구는 10종(`sootool.policy_list`, `get`, `history`, `diff`, `validate`, `export`, `propose`, `activate`, `rollback`, `import`)이다. 이 중 쓰기 도구 4종(`propose`, `activate`, `rollback`, `import`)은 admin 모드에서만 동작한다. 진입은 환경변수 `SOOTOOL_ADMIN_MODE=1` 또는 CLI `--admin` 중 하나이며, 네트워크 노출 조건은 ADR-025를 따른다.
 - 모든 쓰기는 원자적 파일 교체(tmp → rename) + JSONL 감사 로그(append-only)로 기록한다. audit_id 는 계산 도구 trace 에 `policy_audit_id` 로 전파된다.
 - 수명 주기: draft → validate → propose → activate (24시간 TTL). rollback 은 activate 역연산으로 감사 로그에 기록한다.
 - 계산 도구 trace 는 `policy_source: package|override`, `policy_sha256`, `policy_audit_id` 3개 필드를 의무 주입하여 덮어쓰기 여부를 호출자가 항상 식별 가능하게 한다.
@@ -172,7 +174,7 @@ LLM 프롬프트에 박제된 도구 스키마의 진화 경로 명시.
 - 배포 문서 3자, `README.md` 첫 문단·도구 카탈로그 헤더, `pyproject.toml` `project.description`, `CHANGELOG.md` 릴리즈 요약, 는 동일 숫자 문자열을 노출한다. `pyproject.toml` description 상단에 `# keep in sync with README first paragraph` 주석을 유지한다.
 - 계산 도메인의 정의는 "운영 네임스페이스(`core`, `sootool`) 를 제외한 모든 네임스페이스" 로 고정한다. 전체 네임스페이스·계산 도메인·운영 도메인은 분리 표기하여 혼동을 차단한다.
 - CI 가드는 `scripts/count_tools.py --json` 출력을 기준으로 README·pyproject·CHANGELOG 의 선언 숫자 토큰을 정규식으로 대조하고, `--assert-total`/`--assert-domains`/`--assert-policy` 단언을 병행한다. 불일치 시 빌드 실패로 릴리즈 태깅·PyPI 배포를 차단한다.
-- 테스트 수는 `pytest --collect-only` 결과를 부가 지표로 기록하되 빌드 차단 기준은 아니다(테스트는 지속 추가되며 문서 동기화 우선순위가 낮다).
+- 테스트 수는 빌드 차단 기준이 아니며 배포 문서에 고정 숫자로 적지 않는다.
 
 사유:
 - 문서 간 숫자 불일치는 "Decimal 정밀성" 이라는 제품 약속과 직접 충돌한다. 첫인상에서 신뢰가 꺾이면 후속 엔지니어링 성과가 상쇄된다.
@@ -223,21 +225,21 @@ CI(`.github/workflows/ci.yml`의 Tool count single source guard step)는 REGISTR
 - 스레드 로컬 컨텍스트 방식을 택한 이유는 (1) 도구 함수 시그니처를 수정하지 않아도 되고 (2) 기존 post-processor 체인과 호환되며 (3) `core.batch` 병렬 실행에서도 각 워커 스레드가 독립된 프레임을 가질 수 있기 때문이다. 동일 스레드 내 중첩 invoke 는 stack-style save/restore 로 분리하여 외부 프레임이 내부 호출 이후에도 올바른 input_hash 를 계산할 수 있도록 보존한다.
 - `_meta` 병합 구현은 `_hints_post_processor` 가 `_meta` 존재 시 early-return 하는 기존 계약을 존중한다. integrity 는 hints 이후 실행되어 `_meta.hints` 와 `_meta.integrity` 가 공존하고, trace 엔리치로 이미 policy 메타를 주입한 도구(`tax.kr_income` 등) 도 추가 충돌 없이 integrity 블록을 갖는다.
 
-## ADR-022: symbolic 하이브리드 경계 (CE-M4)
+## ADR-022: symbolic 하이브리드 경계
 
 결정:
 - 신규 네임스페이스 `symbolic` 에 `symbolic.solve`·`symbolic.diff` 두 도구만 노출한다. 범위는 "기호 풀이·기호 미분 후 Decimal 재평가 브릿지" 로 제한하며, LaTeX 출력·적분·급수 전개 등 sympy 의 다른 표면은 본 ADR 범위 외(향후 별도 ADR 로만 확장) 이다.
 - 의존성 `sympy>=1.12` 는 기본 의존이 아닌 optional extra `[symbolic]` 로 선언한다. `uv pip install -e '.[symbolic]'` 또는 `uv sync --extra symbolic` 으로 활성화한다. sympy 미설치 환경에서 도구 호출 시 `SymbolicDependencyError` 로 친절한 설치 안내를 반환하고, 다른 도구 경로는 영향 없이 동작한다. 기본 배포 용량을 보존하기 위한 설계다.
 - 입력 수식(`equation` / `expression`) 은 sympy.sympify 에 도달하기 전에 `core.calc._parse` + `core.calc._count_and_validate` 를 통과한다. AST 화이트리스트(ADR-017 재사용) 가 `__import__`·`eval`·`exec`·`compile`·`open`·`Lambda`·`Attribute`·`Subscript`·`Comprehension`·`Starred`·`List`·`Set`·`Dict` 를 포함한 위험 노드를 1차 차단한다. sympify 호출은 `locals={}`, `rational=False` 고정으로 이름 해석 경로를 봉쇄한다.
 - 수치 경계는 ADR-001/008 을 승계한다. sympy 결과는 `evalf(50)` → `sympy.Float` → `mpmath.mpf` → `core.cast.mpmath_to_decimal` → Decimal 문자열. 중간에 Python `float` 타입을 경유하지 않는다. 유리수 해(`sympy.Rational`) 는 분자·분모를 정수로 꺼낸 뒤 Decimal 나눗셈으로 표현한다. 복소·기호 잔류 해는 `solutions` 배열에서 제외하고 `symbolic` 배열에만 문자열로 담는다.
-- 복잡도 상한은 expression 문자열 5000자(core.calc 3000자 기본보다 다소 넉넉하게 잡되 DoS 방어 수준 유지), AST 노드 한도는 core.calc 기본 300(환경변수 `SOOTOOL_CALC_MAX_NODES` 로 조정) 을 그대로 사용, sympy 평가 자체는 `signal.SIGALRM` 기반 5초 타임아웃으로 래핑한다. 타임아웃은 `DomainConstraintError` 로 변환하여 트레이스에 남긴다. SIGALRM 미지원 환경(Windows·비메인 스레드) 에서는 보호 없이 실행되며 이는 plan 의 Linux/POSIX 서버 타겟 제약을 반영한다.
+- 복잡도 상한은 expression 문자열 5000자(core.calc 3000자 기본보다 다소 넉넉하게 잡되 DoS 방어 수준 유지), AST 노드 한도는 core.calc 기본 300(환경변수 `SOOTOOL_CALC_MAX_NODES` 로 조정) 을 그대로 사용, sympy 평가 자체는 `signal.SIGALRM` 기반 5초 타임아웃으로 래핑한다. 타임아웃은 `DomainConstraintError` 로 변환하여 트레이스에 남긴다. 비메인 스레드에서의 시간 제한은 ADR-023 R2에서 보완했다.
 - 모든 응답에 `result`/`symbolic`/`trace` 세 축을 유지한다. `symbolic.solve` 는 `{solutions: [...], symbolic: ["x = ...", ...], trace}`, `symbolic.diff` 는 `{derivative: "...", numeric: "..." | null, trace}` 형식으로 고정한다. trace 는 CalcTrace 포맷으로 inputs·steps·output 을 채워 ADR-003(트레이스 의무) 을 지킨다.
 
 사유:
-- "sympy 래퍼는 고도 기호 엔진 대체 불가" 라는 외부 비판(A축 검토 기록) 을 수용하여, 본 마일스톤은 정책적 기호 풀이가 아닌 "기호 단계를 거쳐 Decimal 을 복구하는 브릿지" 로 범위를 조인다. 두 도구만 노출하는 것은 트레이스·정책 서명·재현성 계약을 유지 가능한 최소 표면이다.
+- sympy 래퍼는 전문 기호 계산 엔진을 대체하지 못한다. 그래서 범위를 "기호 단계를 거쳐 Decimal 값을 복구하는 브릿지"로 좁힌다. 두 도구만 노출하는 것은 트레이스·정책 서명·재현성 계약을 유지 가능한 최소 표면이다.
 - AST 화이트리스트를 sympy 앞에 세우는 것은 sympify 단독으로는 임의 코드 실행 경로(예: `x.__class__.__base__.__subclasses__()`) 가 Python 객체 그래프를 통해 노출될 수 있기 때문이다. core.calc 의 화이트리스트를 재사용하면 허용 문법을 한 곳에서 감사할 수 있고, 확장 시 ADR-017 과 동일한 리뷰 절차를 따르게 된다.
 - optional extra 는 기본 배포의 용량·의존성 공격 표면을 보존하기 위함이다. sympy 는 내부적으로 mpmath 를 공유하지만(이미 기본 의존) sympy 자체의 순수 Python 패키지 크기와 릴리즈 주기가 기본 의존군과 다르다. opt-in 경로는 세무·금융 사용자가 기호 연산 비사용 시 불필요한 업데이트 노이즈를 피하게 한다.
-- evalf → mpf → Decimal 경로는 Phase 1 부터 지켜 온 "float 누수 금지" 원칙의 연장이다. sympy.Float 객체를 str 로 전환한 뒤 mpmath 컨텍스트(50자리) 에서 재파싱하면, Python float 의 IEEE-754 반올림이 트레이스 경계에 끼어들지 않는다.
+- evalf → mpf → Decimal 경로는 "float 누수 금지" 원칙(ADR-001)의 연장이다. sympy.Float 객체를 str 로 전환한 뒤 mpmath 컨텍스트(50자리) 에서 재파싱하면, Python float 의 IEEE-754 반올림이 트레이스 경계에 끼어들지 않는다.
 - 타임아웃을 SIGALRM 으로 도입한 이유는 sympy.solve 가 입력에 따라 비선형 시간으로 폭발할 수 있기 때문이다. 5초 상한은 일반적인 방정식·다항식·단순 초월 방정식에는 충분하고, 초과 시 사용자에게 "복잡한 symbolic 연산은 정책적 도메인 도구(tax.*, finance.*) 를 사용하라" 는 방향성을 강제한다.
 
 ## ADR-023: Release Gate, Timeout Contracts, Optional Extras Matrix
@@ -245,8 +247,8 @@ CI(`.github/workflows/ci.yml`의 Tool count single source guard step)는 REGISTR
 컨텍스트:
 0.1.1~0.1.2 릴리스 기간 동안 세 종류의 구조적 갭이 누적됐다.
 
-1. 릴리스 게이트 부재: CE-M4 이후 CI 가 `uv sync --frozen` 에 `--extra symbolic` 누락으로 만성 red 였으나, master push 와 tag push 를 가로막는 상태 체크가 없어 CI red 상태에서 두 차례 릴리스가 진행됐다. 0.1.2 는 publish 빌드 잡에서 같은 이유로 실패하여 PyPI 업로드가 스킵됐다.
-2. 시간 축 제어의 선언-실장 갭: `BatchExecutor.batch_timeout_s`/`item_timeout_s`, `PipelineExecutor.step_timeout_s`/`pipeline_timeout_s`, `symbolic/_bridge._EVAL_TIMEOUT_S` 네 시간 계약이 필드·상수로 선언되었으나 실행 경로에서 실제 wall-clock 을 구속하지 않았다. 2067개 기존 테스트는 값·순서 불변만 검증하고 시간 축 계약은 검증하지 않았다.
+1. 릴리스 게이트 부재: symbolic extra 도입 이후 CI 가 `uv sync --frozen` 에 `--extra symbolic` 누락으로 만성 red 였으나, master push 와 tag push 를 가로막는 상태 체크가 없어 CI red 상태에서 두 차례 릴리스가 진행됐다. 0.1.2 는 publish 빌드 잡에서 같은 이유로 실패하여 PyPI 업로드가 스킵됐다.
+2. 시간 축 제어의 선언-실장 갭: `BatchExecutor.batch_timeout_s`/`item_timeout_s`, `PipelineExecutor.step_timeout_s`/`pipeline_timeout_s`, `symbolic/_bridge._EVAL_TIMEOUT_S` 네 시간 계약이 필드·상수로 선언되었으나 실행 경로에서 실제 wall-clock 을 구속하지 않았다. 기존 테스트는 값·순서 불변만 검증하고 시간 축 계약은 검증하지 않았다.
 3. Optional Extras 설치 매트릭스 공백: `symbolic` extra 가 optional 임에도 기본 설치(`uv sync --frozen`) 에서 symbolic 테스트가 어떻게 처리되는지 CI 가 검증하지 않았다. 따라서 "extra 없이도 sootool 이 import 가능한가" 라는 필수 계약이 회귀로 깨져도 감지되지 않았다.
 
 결정:
@@ -278,8 +280,6 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 상태: 수용됨(Accepted). 2026-04-24.
 
 관련 아티팩트:
-- 플랜: `docs/plans/2026-04-24-release-quality-improvements.md`
-- 구현 커밋: 본 ADR 과 함께 반영되는 릴리스 품질 개선 PR
 - 테스트: `tests/core/test_timeout_contracts.py`
 - 스크립트: `scripts/release_preflight.py`, `scripts/count_tools.py`(`--assert-base` 포함)
 - 워크플로: `.github/workflows/ci.yml` (extras matrix), `.github/workflows/publish-pypi.yml` (attestation)
@@ -296,12 +296,11 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 - 벽시계 시각은 영수증에 넣지 않는다(결정성 유지). 시각이 필요한 감사 기록은 별도 로그 계층의 책임이다.
 - 정확도 등급: 응답 `_meta.engine` 은 도구가 사용하는 수치 엔진(`decimal`, `mpmath`, `float64`, `composite`, `none`)을 알린다. 정의 모듈의 임포트를 정적으로 분석하는 보수적 분류(`core/engines.py`)이며 영수증 해시에는 포함하지 않는다. `float64` 는 IEEE 754 배정밀도 근사임을 뜻한다.
 
-상태: 제안됨(Proposed). 2026-10-03.
+상태: 수용됨(Accepted). 2026-10-03.
 
 관련 아티팩트:
 - 구현: `src/sootool/core/audit.py`, `src/sootool/core/receipts.py`, `src/sootool/core/signing.py`, `src/sootool/receipt_tools.py`
 - 테스트: `tests/core/test_receipts.py`
-- 계획: `docs/plans/2026-10-03-enhancement-roadmap.md` 4.1
 
 
 ## ADR-025: MCP SDK v2 이행, 무상태 전환, 오류 계약
@@ -318,12 +317,11 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 
 결과: 네트워크 전송이 라운드 로빈 로드 밸런서 뒤에서 동작하고, 요청 사이에 상태가 새지 않으며, 클라이언트가 오류를 코드로 분기할 수 있다.
 
-상태: 제안됨(Proposed). 2026-10-03.
+상태: 수용됨(Accepted). 2026-10-03.
 
 관련 아티팩트:
 - 구현: `src/sootool/boundary.py`, `src/sootool/core/request_context.py`, `src/sootool/core/errors.py`, `src/sootool/transports/`, `src/sootool/middleware/`
 - 테스트: `tests/core/test_boundary.py`, `tests/core/test_request_context.py`, `tests/transports/test_http_e2e.py`, `tests/middleware/`
-- 계획: `docs/plans/2026-10-03-enhancement-roadmap.md` A4, A5, A6, B1, B4
 
 
 ## ADR-026: 시점·조문 인지 정책 엔진 (schema v2)
@@ -332,36 +330,34 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 
 결정:
 - 헤더 v2(모두 선택, 하위 호환): `effective_to`, `status`(enacted, proposed, superseded), `version`, `citations`(law, article?, url?, note?), `reviewed_by`. 같은 연도의 추가 버전은 `<name>_<year>@<시행일>.yaml` 이다.
-- 호출 단위 해석: 정책 기반 도구(`policy=True` 로 선언한 27개와 `policy_get`, `policy_export`)는 공통 인자 `as_of`(YYYY-MM-DD)와 `include_proposed` 를 받는다. 레지스트리가 이 인자를 도구 함수에 넘기지 않고 호출 범위의 컨텍스트(`core/policy_context.py`)로 설정한다. 도구 함수의 시그니처는 바꾸지 않는다. 중첩 호출(위임 도구, batch, pipeline)은 컨텍스트를 상속하며 batch·pipeline 의 워커 스레드로는 호출마다 컨텍스트를 복사해 전달한다.
+- 호출 단위 해석: 정책 기반 도구(`policy=True` 로 선언한 도구와 `policy_get`, `policy_export`)는 공통 인자 `as_of`(YYYY-MM-DD)와 `include_proposed` 를 받는다. 레지스트리가 이 인자를 도구 함수에 넘기지 않고 호출 범위의 컨텍스트(`core/policy_context.py`)로 설정한다. 도구 함수의 시그니처는 바꾸지 않는다. 중첩 호출(위임 도구, batch, pipeline)은 컨텍스트를 상속하며 batch·pipeline 의 워커 스레드로는 호출마다 컨텍스트를 복사해 전달한다.
 - 선택 규칙(`policy_mgmt/loader.py`): 시점이 없으면 확정 버전 중 시행일이 가장 늦은 것(호출 시각에 의존하지 않아 결정적). `as_of` 가 있으면 시행 기간에 시점이 속하는 버전 중 시행일이 가장 늦은 것이며 교체된 버전도 자기 기간에는 쓰인다. 개정안은 `include_proposed` 일 때만 후보다. 후보가 없으면 `policy_not_in_effect`(시행 기간 목록 포함) 또는 `policy_not_enacted` 를 낸다.
 - 표기: 결과에 `policy_status`, `policy_effective_date`, `policy_effective_to`, `policy_citations` 를 싣고 `_meta.integrity` 에 `policy_status`, `policy_effective_from`, `policy_effective_to` 를 더한다. 개정안으로 계산한 결과에는 `proposed_policy_in_use` 힌트가 붙는다. `as_of` 와 `include_proposed` 는 영수증 입력 해시에 포함되어 재실행 검증이 같은 버전으로 재현된다.
 - 관리: 검증은 헤더 v2 필드 형식과 같은 연도 확정 버전의 시행 기간 겹침을 확인한다. 활성화는 시행일이 같으면 교체, 다르면 새 버전 파일을 만든다. 롤백은 `effective_date` 로 버전을 고른다.
 - 자체 해시 갱신과 검사는 `scripts/policy_stamp.py` 가 맡고 CI 가 `--check` 로 검사한다.
 
-상태: 제안됨(Proposed). 2026-10-03.
+상태: 수용됨(Accepted). 2026-10-03.
 
 관련 아티팩트:
 - 구현: `src/sootool/policy_mgmt/loader.py`, `src/sootool/core/policy_context.py`, `src/sootool/core/registry.py`, `src/sootool/policy_mgmt/validators.py`, `src/sootool/policy_mgmt/tools.py`
 - 테스트: `tests/policy_mgmt/test_policy_versions.py`, `tests/policy_mgmt/test_policy_schema_v2.py`, `tests/core/test_policy_tools.py`
 - 문서: `docs/policy_management.md`
-- 계획: `docs/plans/2026-10-03-enhancement-roadmap.md` 4.2
 
 
 ## ADR-027: 명령줄 인터페이스와 공유 레지스트리
 
 결정:
-- 서브커맨드 체계(`call`, `tools`, `batch`, `pipeline`, `receipt`, `policy`, `skill-guide`, `version`)를 `src/sootool/cli/` 에 둔다. 서브커맨드가 없거나 `serve` 이면 서버로 기동하며 기존 서버 플래그는 그대로다.
+- 서브커맨드 체계(`call`, `tools`, `batch`, `pipeline`, `receipt`, `policy`, `pack`, `skill-guide`, `version`)를 `src/sootool/cli/` 에 둔다. 서브커맨드가 없거나 `serve` 이면 서버로 기동하며 기존 서버 플래그는 그대로다.
 - 모든 도구 호출은 `REGISTRY.invoke` 단일 경로를 거친다. 인자 검증은 MCP 경계와 같은 규칙을 쓴다(`cli/binder.py`: `boundary._coercible` 기반 숫자 허용, 같은 `invalid_arguments` 오류 계약). 숫자 문자열은 변환하지 않고 그대로 전달한다.
 - 쓰기 도구(`policy propose|activate|rollback|import`와 `call` 로 호출한 쓰기 도구)는 CLI 에서 관리자 모드를 먼저 확인하고(종료 코드 3), 레지스트리의 관리자 게이트를 다시 통과한다(이중 게이트). CLI 는 로컬 신뢰 컨텍스트라 요청 범위 검사를 하지 않는다.
 - 종료 코드: 0 성공, 1 도구 오류, 2 입력 오류, 3 관리자 모드 필요, 70 내부 오류. 오류는 표준에러에 오류 계약 JSON 으로 낸다.
 - 의존성을 늘리지 않는다: 대화형 REPL(prompt_toolkit)과 셸 자동완성(argcomplete)은 도입하지 않는다. 인자는 `--arg 이름=값` 반복과 `--arg-json` 으로 받으며 CSV 간편 입력은 두지 않는다(엄격한 JSON 유지). 설정 파일은 두지 않는다.
 
-상태: 제안됨(Proposed). 2026-10-03.
+상태: 수용됨(Accepted). 2026-10-03.
 
 관련 아티팩트:
 - 구현: `src/sootool/cli/`, `src/sootool/__main__.py`
 - 테스트: `tests/cli/test_cli.py`
-- 계획: `docs/plans/2026-04-24-cli-subcommand-support.md`, `docs/plans/2026-10-03-enhancement-roadmap.md` D6
 
 ## ADR-028: 라이브러리 인터페이스(SDK)와 결과 스키마
 
@@ -372,7 +368,7 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 - 모든 도구는 도구별 TypedDict 로 결과를 선언한다(`sootool.core.result_types` 의 기반 타입 상속). MCP 에는 `outputSchema` 로, SDK 에는 타입 선언 파일(`sdk/_typed.py`, `scripts/gen_sdk_stubs.py` 가 생성하고 시험이 최신 여부를 검사)로 공개한다. 공개 `outputSchema` 는 공통 외피(`_meta`, `trace`, 정책 출처)를 줄여 `tools/list` 응답 크기를 제한한다(전체 프로파일 600KB 미만을 시험으로 고정).
 - 시험 중 모든 `REGISTRY.invoke` 결과를 선언 타입으로 검증한다(`tests/conftest.py`). 선언과 실제 응답이 어긋나면 해당 도구를 호출하는 모든 시험이 실패한다.
 
-상태: 제안됨(Proposed). 2026-10-04.
+상태: 수용됨(Accepted). 2026-10-04.
 
 관련 아티팩트:
 - 구현: `src/sootool/sdk/`, `src/sootool/runtime.py`, `src/sootool/core/result_types.py`, `src/sootool/core/coerce.py`

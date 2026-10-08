@@ -1,295 +1,134 @@
-# 쿡북, 한국 세무 시나리오 (월급 3,500,000원 풀 체인)
+# 쿡북: 월급 350만 원 근로자의 2026년 세금
 
-실행 버전: v0.1.x, 2026-04-24
-작성자: 최진호
+월급 3,500,000원(비과세 식대 200,000원 포함), 부양가족 본인 1명인 근로자를 예로 실수령액, 역산, 상여 세액, 연말정산, 퇴직소득세를 차례로 계산한다. 결과 값은 SooTool 0.2.0과 2026년 정책 파일로 실제 실행한 값이다. 정책 파일이 갱신되면 값이 달라질 수 있다.
 
-관련 문서: [README](../../README.md) · [architecture](../architecture.md) · [user_guide](../user_guide.md)
-· 다른 쿡북: [finance_scenarios](./finance_scenarios.md) · [engineering_electrical](./engineering_electrical.md)
+```
+월급 3,500,000 ─▶ ① 실수령액 ─▶ ② 연 실수령액(pipeline)
+                     │
+목표 300만 원 ─▶ ③ 세전 역산
+상여 500만 원 ─▶ ④ 상여 원천징수
+연간 합계 ───▶ ⑤ 연말정산
+퇴직 5년 ────▶ ⑥ 퇴직소득세
+```
 
-## 시나리오 요약
+다른 쿡북: [금융](finance_scenarios.md) · [전기 공학](engineering_electrical.md)
 
-무주택 근로자가 월급 3,500,000원(세전)을 받는 경우를 가정하고, 다음 체인을
-SooTool 도구로 전 구간 Decimal 정확도로 계산한다.
+## ① 월 실수령액: payroll.kr_salary
 
-1. 월급 → 연봉 환산
-2. 근로소득공제 후 과세표준 추정 → 종합소득세(정책 YAML 기반)
-3. 실수령액 추정 (세후 월급)
-4. 연말정산 (월 원천징수 누적 vs 연 세액)
-5. 상여 5,000,000원이 추가된 경우의 세액 증분
-6. 퇴직금 예측 (근속 5년)
+> "월급 350만 원(식대 20만 원 포함)이면 실수령액이 얼마야?"
 
-모든 숫자는 `REGISTRY.invoke` 실제 호출 결과(master@587b763, 2026-04-24 기준)이다.
-과세표준 산출은 단순화된 가정(근로소득공제 11,250,000원, 인적공제 등은 생략)을
-사용한다. 실제 상담에서는 4대보험·인적공제·세액공제를 `core.sub`/`core.batch`
-체인으로 추가해야 한다.
-
-## 공통 4단 형식
-
-각 단계는 다음 4단 형식으로 기록한다.
-
-1. LLM 프롬프트 원문
-2. SooTool JSON 호출
-3. 응답 trace 발췌
-4. 사용자 보고서 인용 예
-
----
-
-## 1. 연봉 환산 (core.mul)
-
-### 1.1 LLM 프롬프트 원문
-
-> "월급이 3,500,000원이면 연봉이 얼마야?"
-
-### 1.2 SooTool JSON 호출
+```json
+{"tool": "payroll.kr_salary",
+ "args": {"monthly_salary": "3500000", "year": 2026, "meal_allowance": "200000", "num_dependents": 1}}
+```
 
 ```json
 {
-  "tool": "core.mul",
-  "args": {"a": "3500000", "b": "12"}
+  "gross": "3500000",
+  "non_taxable": "200000",
+  "taxable": "3300000",
+  "insurances": {
+    "national_pension": "156750",
+    "health_insurance": "118630",
+    "long_term_care": "15580",
+    "employment_insurance": "29700",
+    "total": "320660"
+  },
+  "taxes": {"income_tax": "102770", "local_income_tax": "10277", "total": "113047"},
+  "net": "3066293"
 }
 ```
 
-### 1.3 응답 trace 발췌
+답변 예: 과세급여 3,300,000원에서 4대보험 320,660원과 소득세·지방소득세 113,047원을 빼면 실수령액은 3,066,293원이다.
+
+- 연봉을 `monthly_salary`에 넣으면 안 된다. 월급을 넣는다.
+- 4대보험 요율과 상·하한은 연중에 바뀐다. 특정 달의 급여를 계산하려면 `"as_of": "2026-03-15"`처럼 지급일을 준다. 생략하면 그해 마지막 시행 버전을 쓴다.
+
+## ② 연 실수령액: core.pipeline
+
+앞 결과를 다음 계산에 넘길 때는 숫자를 옮겨 적지 말고 `${단계id.result.필드}`로 참조한다.
 
 ```json
-{
-  "result": "42000000",
-  "trace": {
-    "tool": "core.mul",
-    "formula": "a*b",
-    "inputs": {"a": "3500000", "b": "12"},
-    "output": "42000000"
-  }
-}
+{"tool": "core.pipeline",
+ "args": {"steps": [
+   {"id": "salary",     "tool": "payroll.kr_salary",
+    "args": {"monthly_salary": "3500000", "year": 2026, "meal_allowance": "200000"}},
+   {"id": "annual_net", "tool": "core.mul",
+    "args": {"operands": ["${salary.result.net}", "12"]}}
+ ]}}
 ```
 
-### 1.4 사용자 보고서 인용
+결과: `steps.annual_net.result.result` = `"36795516"`. 단계마다 `status`가 붙고, 앞 단계가 실패하면 뒤 단계는 `skipped`가 된다.
 
-> 월급 3,500,000원 × 12개월 = 연봉 42,000,000원 (세전).
+## ③ 세후 목표에서 세전 월급 역산: payroll.kr_gross_from_net
 
----
-
-## 2. 종합소득세, 과세표준 30,750,000원 가정 (tax.kr_income)
-
-근로소득공제 추정치 11,250,000원을 차감하여 과세표준 30,750,000원으로 가정한다.
-실제 공제 로직은 별도 `tax.kr_withholding_simple` 또는 `payroll.*`과 체인으로
-연결해야 한다.
-
-### 2.1 LLM 프롬프트 원문
-
-> "2026년 종합소득세율 기준으로, 과세표준 30,750,000원이면 산출세액이 얼마야?
-> 장부 목적이라 반올림 없이 원 단위로 답해 줘."
-
-### 2.2 SooTool JSON 호출
+> "실수령액 300만 원을 받으려면 세전 월급이 얼마여야 해? 식대 20만 원은 따로 있어."
 
 ```json
-{
-  "tool": "tax.kr_income",
-  "args": {
-    "taxable_income": "30750000",
-    "year": 2026,
-    "rounding": "HALF_UP",
-    "decimals": 0
-  }
-}
+{"tool": "payroll.kr_gross_from_net",
+ "args": {"net_monthly": "3000000", "year": 2026, "meal_allowance": "200000"}}
 ```
-
-### 2.3 응답 trace 발췌
 
 ```json
-{
-  "tax": "3352500",
-  "effective_rate": "0.10902439",
-  "marginal_rate": "0.15",
-  "breakdown": [
-    {"bracket": {"lower": "0",        "upper": "14000000", "rate": "0.06"},
-     "taxable_in_bracket": "14000000", "tax_in_bracket": "840000.00"},
-    {"bracket": {"lower": "14000000", "upper": "50000000", "rate": "0.15"},
-     "taxable_in_bracket": "16750000", "tax_in_bracket": "2512500.00"}
-  ],
-  "policy_version": "tax/kr_income/2026@...",
-  "trace": {
-    "tool": "tax.kr_income",
-    "formula": "소득세법 누진세율 구간별 세액 합산",
-    "inputs": {"taxable_income": "30750000", "year": 2026, "rounding": "HALF_UP", "policy_version": "tax/kr_income/2026@..."}
-  }
-}
+{"net_target": "3000000", "gross": "3412750", "achieved_net": "3000000", "residual": "0", "exact": true}
 ```
 
-### 2.4 사용자 보고서 인용
+답변 예: 세전 월급 3,412,750원이면 실수령액이 정확히 3,000,000원이 된다. 목표에 따라 정확히 맞는 월급이 없을 수 있으니 `exact`와 `residual`을 확인한다. 다른 도구의 결과를 역산하려면 `core.solve_for`를 쓴다.
 
-> 과세표준 30,750,000원에 대한 2026년 종합소득세 산출세액은 3,352,500원이다
-> (실효세율 10.90%, 한계세율 15%). 14,000,000원까지는 6% 구간에서 840,000원,
-> 초과 16,750,000원은 15% 구간에서 2,512,500원이 각각 산출됐다. 지방소득세
-> 10%(335,250원) 가산 시 총 3,687,750원.
+## ④ 상여 원천징수: payroll.kr_bonus_tax
 
----
-
-## 3. 실수령액 추정 (core.sub)
-
-연 세전 42,000,000 − 연 세금 3,352,500 − 지방세 335,250 = 연 실수령 추정치.
-
-### 3.1 LLM 프롬프트 원문
-
-> "연봉 42,000,000원에서 종합소득세 3,352,500원과 지방소득세 335,250원을 뺀
-> 실수령액은?"
-
-### 3.2 SooTool JSON 호출 (2단 체인, core.pipeline 권장)
+> "상여 500만 원을 받으면 원천징수가 얼마나 돼?"
 
 ```json
-{
-  "tool": "core.pipeline",
-  "args": {
-    "steps": [
-      {"id": "s1", "tool": "core.sub",
-       "args": {"a": "42000000", "b": "3352500"}},
-      {"id": "s2", "tool": "core.sub",
-       "args": {"a": "@ref:s1.result", "b": "335250"}}
-    ]
-  }
-}
+{"tool": "payroll.kr_bonus_tax",
+ "args": {"bonus_amount": "5000000", "monthly_salary": "3300000", "year": 2026}}
 ```
-
-### 3.3 응답 trace 발췌
-
-```
-s1: 42000000 - 3352500 = 38647500
-s2: 38647500 - 335250   = 38312250
-```
-
-### 3.4 사용자 보고서 인용
-
-> 연 세후 실수령 추정 38,312,250원, 월 환산 약 3,192,687원.
-> 4대보험(국민연금 4.5% / 건강 3.545% / 장기요양 / 고용 0.9%)은 별도 계산이
-> 필요하며, `core.batch`로 각각 `core.mul` 호출을 병렬 실행할 수 있다.
-
----
-
-## 4. 연말정산 (월 원천징수 누적 vs 연 세액)
-
-월 원천징수 250,000원 × 12개월 = 3,000,000원 누적 vs 연 산출세액 3,352,500원.
-
-### 4.1 LLM 프롬프트 원문
-
-> "연말정산 기준, 월 원천징수 250,000원을 12개월 납부했고 연 세액이
-> 3,352,500원이면 환급인지 추가납부인지 알려줘."
-
-### 4.2 SooTool JSON 호출
 
 ```json
-{"tool": "core.sub",
- "args": {"a": "3000000", "b": "3352500"}}
+{"method": "averaging", "payment_period_months": 12,
+ "base_monthly_tax": "102770", "combined_monthly_tax": "151670", "bonus_tax": "586800"}
 ```
 
-### 4.3 응답 trace 발췌
+답변 예: 상여를 12개월로 나눠 월급에 더하는 방식(소득세법 제136조제1항제1호)으로 계산한 상여 소득세는 586,800원이다. `monthly_salary`에는 비과세를 뺀 과세급여를 넣는다. 지방소득세는 `tax.kr_local_income_tax`로 따로 구한다.
+
+## ⑤ 연말정산: payroll.kr_year_end_tax_settlement
+
+> "1년 동안 매달 102,770원씩 원천징수됐어. 연말정산하면 환급이야, 추가 납부야?"
+
+과세급여 3,300,000원 × 12 = 39,600,000원, 기납부세액 102,770원 × 12 = 1,233,240원이다. 4대보험료 공제는 `extra_deductions`로 넣는다(320,660원 × 12 = 3,847,920원).
 
 ```json
-{
-  "result": "-352500",
-  "trace": {
-    "tool": "core.sub",
-    "formula": "a-b",
-    "inputs": {"a": "3000000", "b": "3352500"},
-    "output": "-352500"
-  }
-}
+{"tool": "payroll.kr_year_end_tax_settlement",
+ "args": {"annual_gross": "39600000", "prepaid_tax": "1233240", "year": 2026,
+          "extra_deductions": "3847920"}}
 ```
-
-### 4.4 사용자 보고서 인용
-
-> 누적 원천징수 − 연 산출세액 = −352,500원. 음수는 추가납부를 의미하므로
-> 납세자는 연말정산 시 352,500원을 추가 납부한다. 반대로 원천징수가 연 세액을
-> 초과했다면 환급액이 된다.
-
----
-
-## 5. 상여 5,000,000원 증분 (tax.kr_income)
-
-과세표준이 30,750,000 → 35,750,000으로 증가하는 경우.
-
-### 5.1 LLM 프롬프트 원문
-
-> "과세표준에 5,000,000원이 추가되면 세액이 얼마나 늘어나?"
-
-### 5.2 SooTool JSON 호출 (core.batch 로 before/after 병렬)
 
 ```json
-{
-  "tool": "core.batch",
-  "args": {
-    "deterministic": true,
-    "items": [
-      {"id": "before", "tool": "tax.kr_income",
-       "args": {"taxable_income": "30750000", "year": 2026}},
-      {"id": "after",  "tool": "tax.kr_income",
-       "args": {"taxable_income": "35750000", "year": 2026}}
-    ]
-  }
-}
+{"taxable_income": "23062080.00", "computed_tax": "2199312", "tax_credit": "817200.000",
+ "decided_tax": "1382112", "prepaid_tax": "1233240", "refund": "-148872", "status": "additional"}
 ```
 
-### 5.3 응답 trace 발췌
+답변 예: 결정세액 1,382,112원에서 기납부세액 1,233,240원을 빼면 148,872원을 추가 납부한다(`refund`가 음수면 추가 납부).
 
-```
-before.tax = 3,352,500
-after.tax  = 4,102,500
-증분        = 750,000
-한계세율   = 15% → 5,000,000 * 0.15 = 750,000 (일치)
-```
+이 도구는 근로소득공제, 인적공제, 근로소득세액공제, 표준세액공제만 반영하는 간이 모델이다. 의료비·교육비·기부금·주택자금 공제는 `payroll.kr_medical_deduction` 등으로 먼저 구해 `extra_deductions`나 `extra_tax_credits`에 넣는다.
 
-### 5.4 사용자 보고서 인용
+## ⑥ 퇴직소득세: payroll.kr_severance_pay
 
-> 상여 5,000,000원 추가 시 세액은 750,000원 증가한다. 한계세율 15% 구간
-> 내부에서 발생한 증분이므로 단순 곱 검증 `5,000,000 * 0.15 = 750,000`과
-> 정확히 일치한다.
-
----
-
-## 6. 퇴직금 예측 (근속 5년, core.mul)
-
-퇴직금 개념상 단순 모델: 평균임금 30일분 × 근속연수 (상세 계산은
-`payroll.kr_severance_pay` 추가 구현 시 사용).
-
-### 6.1 LLM 프롬프트 원문
-
-> "월 평균 3,500,000원을 받고 5년 근무하면 퇴직금 단순 추정치는?"
-
-### 6.2 SooTool JSON 호출
+> "5년 일하고 퇴직금 1,750만 원을 받으면 퇴직소득세는?"
 
 ```json
-{"tool": "core.mul",
- "args": {"a": "3500000", "b": "5"}}
+{"tool": "payroll.kr_severance_pay",
+ "args": {"severance_amount": "17500000", "service_years": "5", "year": 2026}}
 ```
-
-### 6.3 응답 trace 발췌
 
 ```json
-{
-  "result": "17500000",
-  "trace": {"tool": "core.mul", "formula": "a*b",
-            "inputs": {"a": "3500000", "b": "5"}, "output": "17500000"}
-}
+{"service_deduction": "5000000", "converted_salary": "30000000", "converted_deduction": "21200000.00",
+ "converted_tax_base": "8800000.00", "converted_tax": "528000", "tax": "220000"}
 ```
 
-### 6.4 사용자 보고서 인용
+답변 예: 근속연수공제 500만 원을 뺀 뒤 12배 환산급여 3,000만 원에서 환산급여공제 2,120만 원을 빼면 과세표준 880만 원, 환산 산출세액 528,000원이다. 이를 근속연수 비율로 되돌린 퇴직소득세는 220,000원이다. 지방소득세는 포함되지 않으므로 `tax.kr_local_income_tax(income_tax="220000")`으로 더한다.
 
-> 단순 모델(평균임금 30일분 × 근속연수)로는 17,500,000원. 실제 근로기준법
-> 제34조 기준은 "퇴직 전 3개월 평균임금 × 30일 × 근속연수/365"이며 상여와
-> 연차수당 포함 여부, 퇴직소득세(tax.kr_withholding 체인) 적용이 필요하다.
+## 답변에 인용할 것
 
----
-
-## 체인 총정리
-
-위 6단계를 `core.pipeline` 하나로 묶을 수 있다. 각 단계 결과는 `@ref:stepid.field`
-로 다음 단계에 주입되며, SooTool 서버는 전체 체인의 trace 를 단일 audit 레코드로
-반환한다. 정책 YAML 개정(`kr_income_2026.yaml` SHA256 변경) 시 `tax.kr_income`
-단계의 `policy_version` 이 함께 갱신되어 체인 재현성을 보장한다.
-
-## 한계와 확장
-
-- 4대보험, 인적공제, 세액공제는 본 문서 범위 외이다. `payroll.*` 도메인 확장 후
-  쿡북 v2 에서 포함한다.
-- 상여 비과세 한도, 스톡옵션 행사차익 과세는 별도 시나리오로 분리 가능.
-- 지방소득세 10% 가산은 `core.mul(a=tax, b="0.1")` 로 후처리 하거나
-  `tax.local_income` 도구 추가가 필요하다 (FB-M5 범위).
+- 결과 숫자와 함께 응답의 `policy_effective_date`, `policy_citations`(근거 조문)를 적으면 어느 시점의 어느 법령으로 계산했는지 드러난다.
+- 감사가 필요하면 `_meta.integrity`를 보관해 두고 `sootool receipt verify`로 재실행 검증한다.

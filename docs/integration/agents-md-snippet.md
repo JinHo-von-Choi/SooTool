@@ -1,12 +1,12 @@
-# SooTool, 범용 AGENTS.md 삽입용 스니펫
+# AGENTS.md용 SooTool 규칙
 
-아래 내용을 `AGENTS.md` 또는 에이전트 시스템 프롬프트에 복사한다.
+`AGENTS.md`나 에이전트 시스템 프롬프트에 구분선 아래 내용을 붙여 넣는다. 영어로 작성되어 있어 모델 종류와 관계없이 쓸 수 있다.
 
 ---
 
 ## SooTool: Deterministic Calculation Engine
 
-SooTool replaces probabilistic LLM arithmetic with 100% deterministic Decimal-path computation.
+SooTool performs numeric calculations with exact Decimal arithmetic and returns the formula, inputs, and intermediate steps as a `trace`.
 
 ### Mandatory pre-session action
 

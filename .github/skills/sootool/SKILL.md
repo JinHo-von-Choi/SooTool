@@ -1,6 +1,6 @@
 ---
 name: sootool
-description: LLM 확률 추론 한계를 결정론 계산 도구로 대체. 산수·세무·금융·통계 요청 감지 시 자동 호출.
+description: 산수, 세금, 급여, 금융, 통계, 단위 변환처럼 숫자를 계산해야 하는 요청에서 직접 계산하지 않고 SooTool MCP 도구를 호출한다.
 ---
 
 ## When to invoke
@@ -49,10 +49,10 @@ Numeric request
 ## Anti-patterns
 
 - Do NOT write `40000000 × 0.15 = 6000000` in the prompt, call core.mul.
-- Do NOT omit `year` when calling tax.*, results in UnsupportedPolicyError or wrong rates.
+- Do NOT omit `year` on tax, payroll, or real estate tools that take it; the call is rejected with `invalid_arguments`. Never guess the rate instead.
 - Do NOT call core.add 10 times, use core.batch instead.
 - Do NOT ignore `status: "skipped"` in pipeline responses.
-- Do NOT use trace_level="none" for tax/accounting, audit trail is required.
+- Do NOT drop the `trace` or `policy_citations` when reporting tax or accounting results; they are the audit trail.
 
 ## Playbooks (abbreviated)
 

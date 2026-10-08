@@ -1,42 +1,41 @@
-# GitHub Actions Workflows
+# GitHub Actions 워크플로
 
-## `ci.yml`, 지속 통합
+## ci.yml
 
-트리거: `master`/`main` 푸시 및 PR.
+`master`, `main`으로의 push와 PR에서 실행한다. Python 3.12에서 선택 설치 조합 세 가지(`extras=none`, `symbolic`, `all`)로 각각 돈다.
 
-실행 단계: uv sync → ruff → mypy → pytest → MCP stdio 스모크 → uv build → `__version__` 검증.
+```
+uv sync → ruff → mypy → pytest → 정책 해시 검사 → 도구 수 대조 → MCP 연결 점검(stdio, HTTP, SSE, Unix) → uv build → __version__ 확인
+```
 
-## `publish-pypi.yml`, PyPI 배포
+도구 수 대조 단계는 `scripts/count_tools.py`가 레지스트리에서 센 숫자가 README, `pyproject.toml`, CHANGELOG의 숫자와 같은지 확인한다. 도구를 추가하거나 지웠다면 네 곳을 함께 고친다([docs/release.md](../../docs/release.md) 3절).
 
-트리거:
-- GitHub Release 발행 시 자동 (`release: types: [published]`) → PyPI 공개 업로드
-- 수동 (`workflow_dispatch`) → PyPI 또는 TestPyPI 선택 업로드
+## publish-pypi.yml
 
-인증 방식: PyPI Trusted Publishing (OIDC). API 토큰 저장 불필요.
+|트리거|동작|
+|-|-|
+|GitHub Release 발행(`release: published`)|PyPI에 업로드|
+|수동 실행(`workflow_dispatch`)|`target`으로 PyPI 또는 TestPyPI 선택|
 
-### 1회성 초기 설정 (PyPI 계정에서 직접 수행 필요)
+빌드 산출물에 출처 증명(attestation)을 만든 뒤 Trusted Publishing(OIDC)으로 업로드한다. 저장소에 PyPI API 토큰을 두지 않는다.
 
-1. https://pypi.org/manage/account/publishing/ 접속 후 "Add a new pending publisher" 클릭
-2. 다음 값 입력:
+### Trusted Publisher 최초 등록
+
+PyPI 계정에서 한 번만 한다.
+
+1. https://pypi.org/manage/account/publishing/ 에서 "Add a new pending publisher"
+2. 입력값
    - PyPI Project Name: `sootool`
    - Owner: `JinHo-von-Choi`
    - Repository name: `SooTool`
    - Workflow name: `publish-pypi.yml`
    - Environment name: `pypi`
-3. TestPyPI 동일 절차: https://test.pypi.org/manage/account/publishing/ 에서 environment name `testpypi` 로 등록
+3. TestPyPI는 https://test.pypi.org/manage/account/publishing/ 에서 같은 값으로, Environment name만 `testpypi`로 등록한다.
 
-### 2회차 이후 릴리즈 절차
+### TestPyPI로 시험 업로드
 
-1. 로컬에서 `pyproject.toml` 버전 bump 및 CHANGELOG 갱신 후 커밋
-2. `git tag -a vX.Y.Z -m "..." && git push origin vX.Y.Z`
-3. GitHub 웹에서 Release 생성 (태그 지정, 릴리즈 노트 작성) 또는 `gh release create vX.Y.Z --notes-from-tag`
-4. Release `published` 이벤트가 `publish-pypi.yml` 을 자동 트리거하여 PyPI 업로드
-5. 업로드 완료 후 https://pypi.org/project/sootool/ 에서 확인
+Actions 탭 → "Publish to PyPI" → "Run workflow" → `target: testpypi`. 업로드 뒤 `pip install -i https://test.pypi.org/simple/ sootool`로 설치해 본다.
 
-### 수동 TestPyPI 테스트
+### 배포 승인 단계 추가(선택)
 
-GitHub 웹 Actions 탭 → "Publish to PyPI" → "Run workflow" → `target: testpypi` 선택. 업로드 후 `pip install -i https://test.pypi.org/simple/ sootool` 로 검증.
-
-### Environment 보호 (선택)
-
-`pypi` environment 에 리뷰어 승인을 설정하면 릴리즈 자동 트리거 후에도 수동 approval 이 필요해진다. Settings → Environments → pypi → Required reviewers.
+Settings → Environments → `pypi` → Required reviewers를 지정하면 Release를 발행해도 승인 전까지 업로드하지 않는다.

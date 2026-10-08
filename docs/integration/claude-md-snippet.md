@@ -1,15 +1,15 @@
-# SooTool, Claude Code CLAUDE.md 삽입용 스니펫
+# Claude Code용 SooTool 규칙
 
-아래 내용을 `CLAUDE.md`에 복사하면 Claude Code가 SooTool 도구를 자동 호출한다.
+프로젝트나 사용자 `CLAUDE.md`에 구분선 아래 내용을 붙여 넣는다. Claude Code가 숫자 계산을 직접 하지 않고 SooTool 도구를 부르게 된다.
 
 ---
 
-## SooTool 능동 활용 규칙 (절대 준수)
+## SooTool 사용 규칙
 
 ### 세션 시작 시
 - 반드시 `sootool.skill_guide()` 를 호출하여 트리거 테이블을 숙지한다.
 
-### 트리거, 아래 신호 감지 시 즉시 해당 도구 호출 (직접 산술 금지)
+### 아래 요청이 보이면 직접 계산하지 말고 해당 도구를 호출한다
 
 | 감지 신호 | 즉시 호출 도구 |
 |-|-|
@@ -37,7 +37,7 @@
 | "청약 가점" | realestate.kr_subscription_score |
 | "미국 급여세", "FICA" | tax_us.fica |
 
-### 안티패턴 (절대 금지)
+### 하지 말 것
 - 프롬프트 내 `3 + 5 = 8` 직접 서술 후 검증 생략
 - tax.* 호출 시 year 인자 누락 → 임의 추정 fallback
 - 배치 가능한 시나리오를 core.add N회로 풀어 호출
