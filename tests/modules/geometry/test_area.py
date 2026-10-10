@@ -122,6 +122,50 @@ class TestAreaRectangle:
 
 
 class TestAreaPolygon:
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_small_square_at_large_coordinates(self, reverse: bool) -> None:
+        low = "1000000000000000000000000000000"
+        high = "1000000000000000000000000000001"
+        vertices = [[low, low], [high, low], [high, high], [low, high]]
+        if reverse:
+            vertices.reverse()
+
+        result = _polygon(vertices)
+
+        assert Decimal(result["area"]) == Decimal("1")
+        assert result["trace"]["output"] == {"area": result["area"]}
+
+    def test_fractional_area_at_large_coordinates(self) -> None:
+        result = _polygon([
+            ["1000000000000000000000000000000.000", "-1000000000000000000000000000000.00"],
+            ["1000000000000000000000000000000.125", "-1000000000000000000000000000000.00"],
+            ["1000000000000000000000000000000.000", "-999999999999999999999999999999.75"],
+        ])
+
+        assert Decimal(result["area"]) == Decimal("0.015625")
+
+    @pytest.mark.parametrize("vertices", [
+        [["0", "0"], ["1", "1"], ["2", "2"]],
+        [["1", "1"], ["1", "1"], ["1", "1"]],
+        [["0", "0"], ["1", "0"], ["1", "1"], ["0", "1"], ["0", "0"]],
+    ])
+    def test_degenerate_and_closed_boundaries(self, vertices: list[list[str]]) -> None:
+        expected = "1" if len(vertices) == 5 else "0"
+        assert Decimal(_polygon(vertices)["area"]) == Decimal(expected)
+
+    @pytest.mark.parametrize("coordinate", ["NaN", "sNaN", "Infinity", "-Infinity", "abc"])
+    @pytest.mark.parametrize("axis", [0, 1])
+    def test_invalid_coordinates_raise(self, coordinate: str, axis: int) -> None:
+        vertices = [["0", "0"], ["1", "0"], ["0", "1"]]
+        vertices[1][axis] = coordinate
+        with pytest.raises(InvalidInputError):
+            _polygon(vertices)
+
+    @pytest.mark.parametrize("vertex", [[], ["1"], ["1", "2", "3"]])
+    def test_vertex_requires_exactly_two_coordinates(self, vertex: list[str]) -> None:
+        with pytest.raises(InvalidInputError):
+            _polygon([["0", "0"], vertex, ["0", "1"]])
+
     def test_polygon_unit_square(self) -> None:
         # [[0,0],[1,0],[1,1],[0,1]] → area = 1
         vertices = [["0", "0"], ["1", "0"], ["1", "1"], ["0", "1"]]
