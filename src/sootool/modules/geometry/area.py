@@ -162,6 +162,17 @@ class AreaPolygonResult(TracedResult):
     area: str
 
 
+def _shoelace_sum(points: list[tuple[Decimal, Decimal]]) -> Decimal:
+    """Return twice the signed area, translating to avoid large-product cancellation."""
+    origin_x, origin_y = points[0]
+    translated = [(x - origin_x, y - origin_y) for x, y in points]
+    total = D("0")
+    for i, (x_i, y_i) in enumerate(translated):
+        x_next, y_next = translated[(i + 1) % len(translated)]
+        total += x_i * y_next - x_next * y_i
+    return total
+
+
 @REGISTRY.tool(
     namespace="geometry",
     name="area_polygon",
@@ -197,17 +208,17 @@ def area_polygon(vertices: list[list[str]]) -> AreaPolygonResult:
             f"다각형은 최소 3개의 꼭짓점이 필요합니다. 입력: {len(vertices)}개"
         )
 
-    try:
-        points = [(D(str(v[0])), D(str(v[1]))) for v in vertices]
-    except Exception as exc:
-        raise InvalidInputError(f"vertices 형식 오류: {exc}") from exc
+    points = []
+    for i, vertex in enumerate(vertices):
+        if len(vertex) != 2:
+            raise InvalidInputError(f"vertices[{i}]는 [x, y] 좌표 쌍이어야 합니다.")
+        x = _parse_decimal(vertex[0], f"vertices[{i}][0]")
+        y = _parse_decimal(vertex[1], f"vertices[{i}][1]")
+        if not x.is_finite() or not y.is_finite():
+            raise InvalidInputError(f"vertices[{i}]의 좌표는 유한한 숫자여야 합니다.")
+        points.append((x, y))
 
-    n = len(points)
-    total = D("0")
-    for i in range(n):
-        x_i,     y_i     = points[i]
-        x_next,  y_next  = points[(i + 1) % n]
-        total += x_i * y_next - x_next * y_i
+    total = _shoelace_sum(points)
 
     area = abs(total) / D("2")
 
