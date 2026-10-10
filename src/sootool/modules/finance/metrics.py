@@ -159,13 +159,15 @@ def cagr(
         formula="CAGR = (ending_value / beginning_value)^(1 / periods) - 1",
     )
     policy = _parse_policy(rounding)
-    if decimals < 0:
-        raise InvalidInputError("decimals는 0 이상이어야 합니다.")
-    if periods <= 0:
-        raise InvalidInputError("periods는 1 이상이어야 합니다.")
+    if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
+    if isinstance(periods, bool) or not isinstance(periods, int) or periods <= 0:
+        raise InvalidInputError("periods는 1 이상 정수여야 합니다.")
 
     beginning_d = D(beginning_value)
     ending_d = D(ending_value)
+    if not beginning_d.is_finite() or not ending_d.is_finite():
+        raise InvalidInputError("beginning_value와 ending_value는 유한한 숫자여야 합니다.")
     if beginning_d <= Decimal("0"):
         raise InvalidInputError("beginning_value는 0보다 커야 합니다.")
     if ending_d < Decimal("0"):
@@ -179,7 +181,11 @@ def cagr(
 
     ratio = div(ending_d, beginning_d)
     trace.step("growth_ratio", str(ratio))
-    cagr_raw = ratio ** div(Decimal("1"), D(periods)) - Decimal("1")
+    if periods == 1:
+        # Subtract before dividing to preserve changes smaller than the precision of 1.
+        cagr_raw = div(ending_d - beginning_d, beginning_d)
+    else:
+        cagr_raw = ratio ** div(Decimal("1"), D(periods)) - Decimal("1")
     trace.step("cagr_raw", str(cagr_raw))
 
     cagr_value = apply(cagr_raw, decimals, policy)

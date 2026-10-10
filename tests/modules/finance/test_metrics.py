@@ -148,6 +148,39 @@ class TestROI:
 
 
 class TestCAGR:
+    @pytest.mark.parametrize(
+        ("ending_value", "expected"),
+        [
+            ("1." + "0" * 49 + "1", Decimal("1e-50")),
+            ("0." + "9" * 50, Decimal("-1e-50")),
+            ("0", Decimal("-1")),
+            ("1", Decimal("0")),
+        ],
+    )
+    def test_single_period_preserves_small_changes(self, ending_value, expected) -> None:
+        result = REGISTRY.invoke(
+            "finance.cagr", beginning_value="1", ending_value=ending_value,
+            periods=1, decimals=50 if abs(expected) < 1 else 6,
+        )
+        assert Decimal(result["cagr"]) == expected
+        assert Decimal(result["trace"]["output"]) == expected
+
+    @pytest.mark.parametrize("field", ["beginning_value", "ending_value"])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "bad", 1.5])
+    def test_rejects_invalid_values(self, field, value) -> None:
+        kwargs = {"beginning_value": "100", "ending_value": "110", "periods": 2}
+        kwargs[field] = value
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("finance.cagr", **kwargs)
+
+    @pytest.mark.parametrize("field", ["periods", "decimals"])
+    @pytest.mark.parametrize("value", [True, False, 1.5, "2", None, -1])
+    def test_rejects_invalid_integer_arguments(self, field, value) -> None:
+        kwargs = {"beginning_value": "100", "ending_value": "110", "periods": 2}
+        kwargs[field] = value
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("finance.cagr", **kwargs)
+
     def test_cagr_standard_compound_growth(self) -> None:
         result = REGISTRY.invoke(
             "finance.cagr",
