@@ -67,6 +67,8 @@ def vat_extract(
     gross_d = D(gross)
     rate_d  = D(rate)
 
+    if not gross_d.is_finite() or not rate_d.is_finite():
+        raise InvalidInputError("gross와 rate는 유한한 숫자여야 합니다.")
     if rate_d <= Decimal("0"):
         raise InvalidInputError("rate는 0 초과여야 합니다.")
     if gross_d < Decimal("0"):
@@ -76,10 +78,19 @@ def vat_extract(
     trace.input("rate",     rate)
     trace.input("rounding", rounding)
 
-    divisor = add(Decimal("1"), rate_d)
-    net_raw = div(gross_d, divisor)
-    net     = apply(net_raw, 0, policy)
-    vat     = sub(gross_d, net)
+    # Keep the divisor exact and retain enough quotient digits to round at
+    # integer boundaries, then preserve every gross digit in the remainder.
+    highest_digit = max(0, gross_d.adjusted(), rate_d.adjusted())
+    lowest_digit = min(0, int(gross_d.as_tuple().exponent), int(rate_d.as_tuple().exponent))
+    precision = max(50, highest_digit - lowest_digit + len(rate_d.as_tuple().digits) + 10)
+    try:
+        with localcontext(Context(prec=precision)):
+            divisor = add(Decimal("1"), rate_d)
+            net_raw = div(gross_d, divisor)
+            net = apply(net_raw, 0, policy)
+            vat = sub(gross_d, net)
+    except DecimalException as exc:
+        raise InvalidInputError("입력이 지원 가능한 Decimal 계산 범위를 벗어났습니다.") from exc
 
     trace.step("divisor", str(divisor))
     trace.step("net_raw", str(net_raw))
