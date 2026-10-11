@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 import pytest
 
@@ -97,6 +97,47 @@ class TestElectricalPower:
         )
         assert abs(Decimal(result["current"]) - Decimal("2")) < Decimal("1E-15")
         assert abs(Decimal(result["voltage"]) - Decimal("10")) < Decimal("1E-15")
+
+    @pytest.mark.parametrize(("power", "expected"), [
+        ("0", "0"),
+        ("1E+400", "1E+200"),
+        ("1E-400", "1E-200"),
+    ])
+    def test_power_square_root_boundaries(self, power: str, expected: str) -> None:
+        result = REGISTRY.invoke(
+            "engineering.electrical_power", power=power, resistance="1"
+        )
+        assert Decimal(result["current"]) == Decimal(expected)
+        assert Decimal(result["voltage"]) == Decimal(expected)
+        assert result["trace"]["output"]["current"] == result["current"]
+        assert result["trace"]["output"]["voltage"] == result["voltage"]
+
+    @pytest.mark.parametrize(("power", "expected"), [
+        ("2", "1.4142135623730950488016887242096980785696718753769"),
+        ("2E-80", "1.4142135623730950488016887242096980785696718753769E-40"),
+    ])
+    def test_power_square_root_decimal_precision(self, power: str, expected: str) -> None:
+        with localcontext() as context:
+            context.prec = 50
+            result = REGISTRY.invoke(
+                "engineering.electrical_power", power=power, resistance="1"
+            )
+        assert Decimal(result["current"]) == Decimal(expected)
+        assert Decimal(result["voltage"]) == Decimal(expected)
+
+    @pytest.mark.parametrize("power", ["-1", "NaN", "sNaN", "Infinity", "-Infinity", "abc"])
+    def test_power_square_root_invalid_input(self, power: str) -> None:
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke(
+                "engineering.electrical_power", power=power, resistance="1"
+            )
+
+    @pytest.mark.parametrize("resistance", ["0", "-1", "NaN", "sNaN", "Infinity", "-Infinity", "abc"])
+    def test_power_square_root_invalid_resistance(self, resistance: str) -> None:
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke(
+                "engineering.electrical_power", power="2", resistance=resistance
+            )
 
     def test_power_overdetermined_raises(self) -> None:
         """Providing all 4 values must raise InvalidInputError."""
