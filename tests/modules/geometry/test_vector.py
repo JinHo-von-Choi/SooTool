@@ -1,13 +1,14 @@
 """Tests for geometry vector tools: dot, cross, norm."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
 import sootool.modules.geometry  # noqa: F401
-from sootool.core.errors import DomainConstraintError
+from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.modules.geometry.vector_ops import vector_dot
 
 
 def _dot(a: list[str], b: list[str]) -> dict:
@@ -23,6 +24,49 @@ def _norm(v: list[str], p: int = 2) -> dict:
 
 
 class TestVectorDot:
+    @pytest.mark.parametrize("invoke", [vector_dot, _dot])
+    def test_large_products_cancel_without_losing_small_term(self, invoke) -> None:
+        result = invoke(["1E60", "0.125", "-1E60"], ["1", "0.25", "1"])
+        assert Decimal(result["result"]) == Decimal("0.03125")
+        assert result["trace"]["output"] == {"result": result["result"]}
+
+    def test_product_preserves_more_than_fifty_digits(self) -> None:
+        # (10**30 + 1)**2 = 10**60 + 2 * 10**30 + 1.
+        value = str(10**30 + 1)
+        result = _dot([value], [value])
+        assert Decimal(result["result"]) == Decimal(str(10**60 + 2 * 10**30 + 1))
+
+    @pytest.mark.parametrize("invoke", [vector_dot, _dot])
+    def test_caller_decimal_context_is_isolated(self, invoke) -> None:
+        with localcontext() as caller:
+            caller.prec = 3
+            caller.rounding = ROUND_UP
+            caller.traps[Inexact] = True
+            caller.clear_flags()
+            result = invoke(["0.123456789", "-0.000000001"], ["1", "1"])
+            assert Decimal(result["result"]) == Decimal("0.123456788")
+            assert caller.prec == 3
+            assert caller.rounding == ROUND_UP
+            assert caller.traps[Inexact]
+            assert not any(caller.flags.values())
+
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "abc"])
+    @pytest.mark.parametrize("field", ["a", "b"])
+    @pytest.mark.parametrize("invoke", [vector_dot, _dot])
+    def test_invalid_component_rejected(self, value: str, field: str, invoke) -> None:
+        inputs = {"a": ["1"], "b": ["1"]}
+        inputs[field] = [value]
+        with pytest.raises(InvalidInputError):
+            invoke(**inputs)
+
+    @pytest.mark.parametrize("a, b, expected", [
+        (["0"], ["-1E60"], "0"),
+        (["1E60", "-1E60"], ["1", "1"], "0"),
+        (["1E-60"], ["1E-60"], "1E-120"),
+    ])
+    def test_zero_cancellation_and_tiny_boundaries(self, a, b, expected: str) -> None:
+        assert Decimal(_dot(a, b)["result"]) == Decimal(expected)
+
     def test_dot_1_2_3_4_5_6(self) -> None:
         # [1,2,3]·[4,5,6] = 4+10+18 = 32
         result = _dot(["1", "2", "3"], ["4", "5", "6"])
