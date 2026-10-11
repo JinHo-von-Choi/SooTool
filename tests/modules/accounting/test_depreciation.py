@@ -3,8 +3,12 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
+
 import sootool.modules.accounting  # noqa: F401
+from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.modules.accounting.depreciation import depreciation_units_of_production
 
 
 class TestStraightLine:
@@ -107,6 +111,65 @@ class TestDecliningBalance:
 
 
 class TestUnitsOfProduction:
+    @pytest.mark.parametrize("rounding", ["HALF_EVEN", "HALF_UP", "DOWN", "UP", "FLOOR", "CEIL"])
+    def test_fractional_salvage_caps_expense_exactly(self, rounding: str) -> None:
+        result = REGISTRY.invoke(
+            "accounting.depreciation_units_of_production",
+            cost="10", salvage="1.5", total_units=10,
+            period_units=[100, 1, 0], decimals=0, rounding=rounding,
+        )
+        schedule = result["schedule"]
+        assert [Decimal(row["depreciation"]) for row in schedule] == [
+            Decimal("8.5"), Decimal("0"), Decimal("0"),
+        ]
+        assert all(Decimal(row["book_value_end"]) == Decimal("1.5") for row in schedule)
+
+    @pytest.mark.parametrize("cost,salvage", [("0", "0"), ("1.5", "1.5")])
+    def test_no_depreciable_base(self, cost: str, salvage: str) -> None:
+        result = depreciation_units_of_production(cost, salvage, 1, [0, 1, 2])
+        assert all(Decimal(row["depreciation"]) == 0 for row in result["schedule"])
+        assert all(Decimal(row["book_value_end"]) == Decimal(cost) for row in result["schedule"])
+
+    def test_zero_production_and_empty_schedule(self) -> None:
+        assert depreciation_units_of_production("10", "1", 10, [])["schedule"] == []
+        row = depreciation_units_of_production("10", "1", 10, [0])["schedule"][0]
+        assert Decimal(row["depreciation"]) == 0
+        assert Decimal(row["book_value_end"]) == 10
+
+    def test_decimal_precision_and_conservation(self) -> None:
+        cost = "0.300000000000000000000000000003"
+        result = REGISTRY.invoke(
+            "accounting.depreciation_units_of_production",
+            cost=cost, salvage="0", total_units=3,
+            period_units=[0, 1, 1, 1], decimals=30,
+        )
+        schedule = result["schedule"]
+        assert [row["depreciation"] for row in schedule[1:]] == [
+            "0.100000000000000000000000000001",
+        ] * 3
+        previous = Decimal(cost)
+        for row in schedule:
+            expense = Decimal(row["depreciation"])
+            book_value = Decimal(row["book_value_end"])
+            assert previous - expense == book_value
+            assert expense >= 0 and book_value >= 0
+            previous = book_value
+        assert previous == 0
+
+    @pytest.mark.parametrize("overrides", [
+        {"cost": "-1"}, {"salvage": "-1"}, {"salvage": "11"},
+        {"cost": "NaN"}, {"salvage": "Infinity"}, {"cost": "not-a-number"},
+        {"total_units": 0}, {"total_units": -1}, {"total_units": 1.5},
+        {"total_units": True}, {"period_units": [-1]}, {"period_units": [1, -1]},
+        {"period_units": [1.5]}, {"period_units": [True]},
+        {"decimals": -1}, {"decimals": 1.5}, {"rounding": "INVALID"},
+    ])
+    def test_invalid_inputs(self, overrides: dict) -> None:
+        kwargs = dict(cost="10", salvage="1", total_units=10, period_units=[1])
+        kwargs.update(overrides)
+        with pytest.raises(InvalidInputError):
+            depreciation_units_of_production(**kwargs)
+
     def test_units_production(self) -> None:
         """총 1000단위, 기간별 [100, 300, 600], cost=1100, salvage=100"""
         result = REGISTRY.invoke(

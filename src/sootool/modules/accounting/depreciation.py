@@ -259,6 +259,9 @@ def depreciation_units_of_production(
 
     Formula: dep_period = (cost - salvage) / total_units * period_units
 
+    Rounded expenses are capped at the exact remaining depreciable amount,
+    even when that amount has more fractional digits than decimals.
+
     Args:
         cost:         취득원가 (Decimal string)
         salvage:      잔존가치 (Decimal string)
@@ -279,8 +282,18 @@ def depreciation_units_of_production(
     cost_d    = D(cost)
     salvage_d = D(salvage)
 
-    if total_units <= 0:
-        raise InvalidInputError("total_units는 1 이상이어야 합니다.")
+    if type(total_units) is not int or total_units <= 0:
+        raise InvalidInputError("total_units는 1 이상 정수여야 합니다.")
+    if not isinstance(period_units, list) or any(
+        type(units) is not int or units < 0 for units in period_units
+    ):
+        raise InvalidInputError("period_units는 0 이상 정수 목록이어야 합니다.")
+    if type(decimals) is not int or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
+    if not cost_d.is_finite() or not salvage_d.is_finite():
+        raise InvalidInputError("cost와 salvage는 유한한 숫자여야 합니다.")
+    if cost_d < 0 or salvage_d < 0:
+        raise InvalidInputError("cost와 salvage는 0 이상이어야 합니다.")
     if cost_d < salvage_d:
         raise InvalidInputError("cost는 salvage 이상이어야 합니다.")
 
@@ -305,8 +318,7 @@ def depreciation_units_of_production(
         dep_raw  = mul(rate_per_unit, D(str(units)))
         dep      = apply(dep_raw, decimals, policy)
         # Never depreciate below salvage
-        if sub(book_value, dep) < salvage_d:
-            dep = apply(sub(book_value, salvage_d), decimals, policy)
+        dep = min(dep, sub(book_value, salvage_d))
         book_value = sub(book_value, dep)
         schedule.append({
             "period":         period,
