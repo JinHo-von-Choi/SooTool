@@ -1,7 +1,7 @@
 """Accounting depreciation tools: straight-line, declining balance, units-of-production."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, localcontext
 from typing import TypedDict
 
 from sootool.core.audit import CalcTrace
@@ -57,8 +57,9 @@ def _parse_policy(rounding: str) -> RoundingPolicy:
     name="depreciation_straight_line",
     description=(
         "정액법 감가상각 스케줄을 계산한다. 연 감가비 = (취득원가 - 잔존가치) / 내용연수(life_years, 1 이상 정수), "
-        "금액은 Decimal 문자열. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리하고 마지막 해는 장부가가 잔존가치에 "
-        "맞도록 잔액을 상각한다. 월할이나 기중 취득 안분은 지원하지 않는다."
+        "취득원가와 잔존가치는 유한한 0 이상 Decimal 문자열이며 취득원가는 잔존가치 이상이어야 한다. "
+        "decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리하되 감가비는 남은 상각액을 넘지 않는다. "
+        "마지막 해는 소수 자릿수와 관계없이 잔액을 정확히 상각한다. 월할이나 기중 취득 안분은 지원하지 않는다."
     ),
     version="1.0.0",
 )
@@ -72,6 +73,9 @@ def depreciation_straight_line(
     """Straight-line depreciation schedule.
 
     Formula: annual_expense = (cost - salvage) / life_years
+
+    Expenses are capped at the remaining depreciable amount. The last year
+    consumes the exact remainder, even when it has more digits than decimals.
 
     Args:
         cost:       취득원가 (Decimal string)
@@ -92,8 +96,14 @@ def depreciation_straight_line(
     cost_d    = D(cost)
     salvage_d = D(salvage)
 
-    if life_years <= 0:
-        raise InvalidInputError("life_years는 1 이상이어야 합니다.")
+    if type(life_years) is not int or life_years <= 0:
+        raise InvalidInputError("life_years는 1 이상 정수여야 합니다.")
+    if type(decimals) is not int or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
+    if not cost_d.is_finite() or not salvage_d.is_finite():
+        raise InvalidInputError("cost와 salvage는 유한한 숫자여야 합니다.")
+    if cost_d < 0 or salvage_d < 0:
+        raise InvalidInputError("cost와 salvage는 0 이상이어야 합니다.")
     if cost_d < salvage_d:
         raise InvalidInputError("cost는 salvage 이상이어야 합니다.")
 
@@ -103,29 +113,34 @@ def depreciation_straight_line(
     trace.input("decimals",   decimals)
     trace.input("rounding",   rounding)
 
-    depreciable = sub(cost_d, salvage_d)
-    annual_raw  = div(depreciable, D(str(life_years)))
-    annual      = apply(annual_raw, decimals, policy)
-
-    trace.step("depreciable_base", str(depreciable))
-    trace.step("annual_raw",       str(annual_raw))
-    trace.step("annual_expense",   str(annual))
-
+    # Preserve the full subtraction and book values independently of caller context.
+    highest_digit = max(cost_d.adjusted(), salvage_d.adjusted(), 0)
+    lowest_digit = min(int(cost_d.as_tuple().exponent), int(salvage_d.as_tuple().exponent), 0)
+    precision = max(
+        50,
+        highest_digit - lowest_digit + len(str(life_years)) + 10,
+        highest_digit + decimals + 11,
+    )
     schedule: list[StraightLineRow] = []
-    book_value = cost_d
-    for year in range(1, life_years + 1):
-        remaining = sub(book_value, salvage_d)
-        if year < life_years:
-            dep = apply(annual_raw, decimals, policy)
-        else:
-            # Last year: depreciate exactly to salvage to avoid float drift
-            dep = apply(remaining, decimals, policy)
-        book_value = sub(book_value, dep)
-        schedule.append({
-            "year":           year,
-            "depreciation":   str(dep),
-            "book_value_end": str(book_value),
-        })
+    with localcontext(Context(prec=precision)):
+        depreciable = sub(cost_d, salvage_d)
+        annual_raw = div(depreciable, D(life_years))
+        annual = apply(annual_raw, decimals, policy)
+
+        trace.step("depreciable_base", str(depreciable))
+        trace.step("annual_raw", str(annual_raw))
+        trace.step("annual_expense", str(annual))
+
+        book_value = cost_d
+        for year in range(1, life_years + 1):
+            remaining = sub(book_value, salvage_d)
+            dep = min(annual, remaining) if year < life_years else remaining
+            book_value = sub(book_value, dep)
+            schedule.append({
+                "year":           year,
+                "depreciation":   str(dep),
+                "book_value_end": str(book_value),
+            })
 
     trace.output({"annual_expense": str(annual), "schedule_rows": len(schedule)})
 
