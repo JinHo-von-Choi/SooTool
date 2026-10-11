@@ -9,7 +9,7 @@ E[X] = Σ (value_i * probability_i)
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_HALF_EVEN, Context, Decimal, localcontext
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
@@ -72,26 +72,28 @@ def expected_value(
     if len(values) == 0:
         raise InvalidInputError("values와 probabilities는 비어 있을 수 없습니다.")
 
-    parsed_vals  = [_parse_decimal(v, f"values[{i}]")   for i, v in enumerate(values)]
-    parsed_probs = [_parse_decimal(p, f"probabilities[{i}]") for i, p in enumerate(probabilities)]
+    with localcontext(Context(prec=50, rounding=ROUND_HALF_EVEN)):
+        parsed_vals  = [_parse_decimal(v, f"values[{i}]")   for i, v in enumerate(values)]
+        parsed_probs = [_parse_decimal(p, f"probabilities[{i}]") for i, p in enumerate(probabilities)]
 
-    for i, p in enumerate(parsed_probs):
-        if p < D("0") or p > D("1"):
+        for i, p in enumerate(parsed_probs):
+            if p < D("0") or p > D("1"):
+                raise DomainConstraintError(
+                    f"probabilities[{i}]={p}은(는) [0, 1] 범위를 벗어납니다."
+                )
+
+        prob_sum = sum(parsed_probs, D("0"))
+        if abs(prob_sum - D("1")) > _PROB_SUM_TOLERANCE:
             raise DomainConstraintError(
-                f"probabilities[{i}]={p}은(는) [0, 1] 범위를 벗어납니다."
+                f"확률의 합이 1이 아닙니다: sum={prob_sum} (허용 오차 {_PROB_SUM_TOLERANCE})"
             )
 
-    prob_sum = sum(parsed_probs, D("0"))
-    if abs(prob_sum - D("1")) > _PROB_SUM_TOLERANCE:
-        raise DomainConstraintError(
-            f"확률의 합이 1이 아닙니다: sum={prob_sum} (허용 오차 {_PROB_SUM_TOLERANCE})"
-        )
+        ev = sum(v * p for v, p in zip(parsed_vals, parsed_probs, strict=True))
 
     trace.input("values",        [str(v) for v in parsed_vals])
     trace.input("probabilities",  [str(p) for p in parsed_probs])
     trace.step("prob_sum",        str(prob_sum))
 
-    ev = sum(v * p for v, p in zip(parsed_vals, parsed_probs, strict=True))
     result_str = str(ev)
 
     trace.step("expected_value",  result_str)

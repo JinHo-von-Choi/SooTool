@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal
+from decimal import ROUND_DOWN, ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
@@ -121,3 +121,49 @@ class TestExpectedValueBatchRaceFree:
 
         for r in results:
             assert abs(r - expected_val) < Decimal("1E-9"), f"Race condition: got {r}"
+
+
+class TestExpectedValueDecimalContext:
+    @pytest.mark.parametrize("invoke", [expected_value, _ev])
+    @pytest.mark.parametrize("rounding", [ROUND_DOWN, ROUND_UP])
+    @pytest.mark.parametrize("precision", [6, 80])
+    def test_precision_and_rounding_are_isolated(self, invoke, rounding, precision) -> None:
+        # 51 significant digits, with a tie after an even 50th digit.
+        value = "0." + "1" * 49 + "25"
+        with localcontext() as caller:
+            caller.prec = precision
+            caller.rounding = rounding
+            caller.traps[Inexact] = True
+            caller.clear_flags()
+            result = invoke([value], ["1"])
+            assert Decimal(result["result"]) == Decimal("0." + "1" * 49 + "2")
+            assert caller.prec == precision
+            assert caller.rounding == rounding
+            assert caller.traps[Inexact]
+            assert not any(caller.flags.values())
+
+    @pytest.mark.parametrize("probability", ["0.499999999", "0.500000001"])
+    def test_tolerance_boundary_under_low_precision(self, probability: str) -> None:
+        with localcontext() as caller:
+            caller.prec = 6
+            result = expected_value(["0", "2"], ["0.5", probability])
+        expected = {"0.499999999": "0.999999998", "0.500000001": "1.000000002"}
+        assert Decimal(result["result"]) == Decimal(expected[probability])
+
+    @pytest.mark.parametrize("probability", ["0.49999999899999999999", "0.50000000100000000001"])
+    def test_invalid_sum_under_low_precision(self, probability: str) -> None:
+        with localcontext() as caller:
+            caller.prec = 6
+            caller.clear_flags()
+            with pytest.raises(DomainConstraintError):
+                expected_value(["0", "2"], ["0.5", probability])
+            assert caller.prec == 6
+            assert not any(caller.flags.values())
+
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "abc"])
+    def test_invalid_value_with_disabled_traps(self, value: str) -> None:
+        with localcontext() as caller:
+            for signal in caller.traps:
+                caller.traps[signal] = False
+            with pytest.raises(InvalidInputError, match=r"values\[0\]"):
+                expected_value([value], ["1"])
