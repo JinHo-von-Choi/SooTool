@@ -17,20 +17,12 @@ def _d_or_none(v: str | None) -> Decimal | None:
 
 
 def _sqrt_decimal(x: Decimal) -> Decimal:
-    """Newton-Raphson square root for Decimal."""
-    if x < _ZERO:
-        raise InvalidInputError("제곱근의 피연산자는 0 이상이어야 합니다.")
+    """Return the square root rounded to the active Decimal precision."""
+    if not x.is_finite() or x < _ZERO:
+        raise InvalidInputError("제곱근의 피연산자는 유한한 0 이상 숫자여야 합니다.")
     if x == _ZERO:
         return _ZERO
-    # Use Python float as initial guess then refine
-    guess = Decimal(str(float(x) ** 0.5))
-    two   = Decimal("2")
-    for _ in range(30):
-        next_g = (guess + div(x, guess)) / two
-        if abs(next_g - guess) < Decimal("1E-40"):
-            break
-        guess = next_g
-    return guess
+    return x.sqrt()
 
 
 class ElectricalOhmResult(TracedResult):
@@ -241,6 +233,10 @@ def electrical_power(
     elif keys == frozenset({"power", "resistance"}):
         # I = √(P/R), V = √(P*R)
         assert p_d is not None and r_d is not None
+        if not p_d.is_finite() or p_d < _ZERO:
+            raise InvalidInputError("power는 유한한 0 이상 숫자여야 합니다.")
+        if not r_d.is_finite() or r_d <= _ZERO:
+            raise InvalidInputError("resistance는 유한한 0 초과 숫자여야 합니다.")
         pr_ratio   = div(p_d, r_d)
         pr_product = mul(p_d, r_d)
         i_d = _sqrt_decimal(pr_ratio)
