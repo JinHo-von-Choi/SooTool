@@ -1,17 +1,84 @@
 """Tests for accounting depreciation tools."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal, localcontext
 
 import pytest
 
 import sootool.modules.accounting  # noqa: F401
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
-from sootool.modules.accounting.depreciation import depreciation_units_of_production
+from sootool.modules.accounting.depreciation import (
+    depreciation_straight_line,
+    depreciation_units_of_production,
+)
 
 
 class TestStraightLine:
+    @pytest.mark.parametrize("rounding", ["HALF_EVEN", "HALF_UP", "DOWN", "UP", "FLOOR", "CEIL"])
+    @pytest.mark.parametrize("cost,salvage,life", [
+        ("2", "0", 4), ("10", "1.5", 3), ("0", "0", 1), ("1.5", "1.5", 2),
+    ])
+    def test_rounding_preserves_salvage_and_expense_conservation(
+        self, rounding: str, cost: str, salvage: str, life: int,
+    ) -> None:
+        result = REGISTRY.invoke(
+            "accounting.depreciation_straight_line",
+            cost=cost, salvage=salvage, life_years=life, rounding=rounding,
+        )
+        previous = Decimal(cost)
+        total = Decimal("0")
+        assert len(result["schedule"]) == life
+        for row in result["schedule"]:
+            expense = Decimal(row["depreciation"])
+            book_value = Decimal(row["book_value_end"])
+            assert expense >= 0
+            assert previous - expense == book_value
+            assert book_value >= Decimal(salvage)
+            total += expense
+            previous = book_value
+        assert previous == Decimal(salvage)
+        assert total == Decimal(cost) - Decimal(salvage)
+
+    @pytest.mark.parametrize("overrides", [
+        {"cost": "-1"}, {"salvage": "-1"}, {"salvage": "11"},
+        {"cost": "NaN"}, {"cost": "sNaN"}, {"cost": "Infinity"},
+        {"salvage": "NaN"}, {"salvage": "-Infinity"}, {"cost": "invalid"},
+        {"cost": 0.1}, {"life_years": 0}, {"life_years": -1},
+        {"life_years": True}, {"life_years": 1.5}, {"life_years": "2"},
+        {"decimals": -1}, {"decimals": True}, {"decimals": 1.5},
+        {"decimals": "2"}, {"rounding": "INVALID"},
+    ])
+    def test_invalid_inputs(self, overrides: dict) -> None:
+        kwargs = dict(cost="10", salvage="1", life_years=3)
+        kwargs.update(overrides)
+        with pytest.raises(InvalidInputError):
+            depreciation_straight_line(**kwargs)
+
+    @pytest.mark.parametrize("cost", [
+        "1.000000000000000000000000000003",
+        "1." + "0" * 59 + "3",
+    ])
+    def test_small_depreciable_base_ignores_caller_context(self, cost: str) -> None:
+        decimals = len(cost.split(".")[1])
+        expected_expense = Decimal("0." + "0" * (decimals - 1) + "1")
+        with localcontext() as context:
+            context.prec = 6
+            context.rounding = ROUND_UP
+            result = depreciation_straight_line(cost, "1", 3, decimals=decimals)
+            assert Decimal(result["annual_expense"]) == expected_expense
+            assert [Decimal(row["depreciation"]) for row in result["schedule"]] == [expected_expense] * 3
+            assert Decimal(result["schedule"][-1]["book_value_end"]) == 1
+            assert context.prec == 6
+            assert context.rounding == ROUND_UP
+
+    @pytest.mark.parametrize("rounding,expected", [("HALF_EVEN", "0.12"), ("HALF_UP", "0.13")])
+    def test_annual_rounding_tie(self, rounding: str, expected: str) -> None:
+        result = depreciation_straight_line("1", "0", 8, decimals=2, rounding=rounding)
+        assert result["annual_expense"] == expected
+        assert result["schedule"][0]["depreciation"] == expected
+        assert Decimal(result["schedule"][-1]["book_value_end"]) == 0
+
     def test_straight_line_100_asset_5y_10_salvage(self) -> None:
         """cost=100, salvage=10, life=5 -> annual=18, year5 book_value_end=10"""
         result = REGISTRY.invoke(

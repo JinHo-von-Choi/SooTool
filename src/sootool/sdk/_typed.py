@@ -162,7 +162,7 @@ class _AccountingTools(Protocol):
         """정률법 감가상각 스케줄을 계산한다. 연도별 감가비 = 기초 장부가 x 감가율(rate, 0 초과 1 미만 Decimal 문자열)이며 장부가는 잔존가치 아래로 내려가지 않고 도달하면 이후 연도 감가비는 0 이다. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리한다. 감가율은 입력값 그대로 쓰며 내용연수로 역산하지 않는다."""
         ...
     def depreciation_straight_line(self, cost: Num, salvage: Num, life_years: int, decimals: int = 0, rounding: Num = 'HALF_EVEN') -> _m3.DepreciationStraightLineResult:
-        """정액법 감가상각 스케줄을 계산한다. 연 감가비 = (취득원가 - 잔존가치) / 내용연수(life_years, 1 이상 정수), 금액은 Decimal 문자열. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리하고 마지막 해는 장부가가 잔존가치에 맞도록 잔액을 상각한다. 월할이나 기중 취득 안분은 지원하지 않는다."""
+        """정액법 감가상각 스케줄을 계산한다. 연 감가비 = (취득원가 - 잔존가치) / 내용연수(life_years, 1 이상 정수), 취득원가와 잔존가치는 유한한 0 이상 Decimal 문자열이며 취득원가는 잔존가치 이상이어야 한다. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리하되 감가비는 남은 상각액을 넘지 않는다. 마지막 해는 소수 자릿수와 관계없이 잔액을 정확히 상각한다. 월할이나 기중 취득 안분은 지원하지 않는다."""
         ...
     def depreciation_units_of_production(self, cost: Num, salvage: Num, total_units: int, period_units: list[int], decimals: int = 0, rounding: Num = 'HALF_EVEN') -> _m3.DepreciationUnitsOfProductionResult:
         """생산량비례법 감가상각 스케줄을 계산한다. 기간 감가비 = (취득원가 - 잔존가치) / 총생산량 x 기간 생산량. total_units 는 1 이상 정수, period_units 는 기간별 생산량 정수 목록이며 금액은 Decimal 문자열. decimals(기본 0)자리로 rounding(기본 HALF_EVEN) 처리한다. 누적 생산량이 총생산량을 넘어도 오류 없이 장부가가 잔존가치에서 멈춘다."""
