@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, localcontext
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, power
@@ -218,8 +218,8 @@ def payback_period(
         formula="payback = prior_periods + unrecovered_balance / recovery_cashflow",
     )
     policy = _parse_policy(rounding)
-    if decimals < 0:
-        raise InvalidInputError("decimals는 0 이상이어야 합니다.")
+    if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
     if len(cashflows) < 2:
         raise InvalidInputError("cashflows는 초기 투자를 포함해 최소 2개 이상이어야 합니다.")
 
@@ -233,26 +233,33 @@ def payback_period(
     trace.input("rounding", rounding)
     trace.input("decimals", decimals)
 
-    cumulative = cashflows_d[0]
-    for period, cashflow in enumerate(cashflows_d[1:], start=1):
-        previous = cumulative
-        cumulative = add(cumulative, cashflow)
-        if cumulative < Decimal("0"):
-            continue
+    nonzero = [cashflow for cashflow in cashflows_d if cashflow != 0]
+    # Retain every input digit during accumulation, including small residuals
+    # after cancellation. Reserve carry digits and precision for interpolation.
+    highest_digit = max(cashflow.adjusted() for cashflow in nonzero)
+    lowest_digit = min(int(cashflow.as_tuple().exponent) for cashflow in nonzero)
+    precision = max(50, highest_digit - lowest_digit + len(str(len(cashflows_d))) + decimals + 10)
+    with localcontext(Context(prec=precision)):
+        cumulative = cashflows_d[0]
+        for period, cashflow in enumerate(cashflows_d[1:], start=1):
+            previous = cumulative
+            cumulative = add(cumulative, cashflow)
+            if cumulative < Decimal("0"):
+                continue
 
-        fraction = div(-previous, cashflow)
-        raw_period = D(period - 1) + fraction
-        trace.step("cumulative_before_recovery", previous)
-        trace.step("recovery_cashflow", cashflow)
-        trace.step("fractional_period", fraction)
+            fraction = div(-previous, cashflow)
+            raw_period = D(period - 1) + fraction
+            trace.step("cumulative_before_recovery", previous)
+            trace.step("recovery_cashflow", cashflow)
+            trace.step("fractional_period", fraction)
 
-        result = apply(raw_period, decimals, policy)
-        trace.output(str(result))
-        return {
-            "payback_period": str(result),
-            "recovered": True,
-            "trace": trace.to_dict(),
-        }
+            result = apply(raw_period, decimals, policy)
+            trace.output(str(result))
+            return {
+                "payback_period": str(result),
+                "recovered": True,
+                "trace": trace.to_dict(),
+            }
 
     trace.step("ending_cumulative_cashflow", cumulative)
     trace.output("not_recovered")
