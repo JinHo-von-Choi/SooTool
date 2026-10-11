@@ -70,6 +70,57 @@ class TestVatExtract:
         assert net + vat == Decimal("10500")
 
 
+class TestVatExtractPrecision:
+    @pytest.mark.parametrize(
+        ("gross", "rounding", "expected_net", "expected_vat"),
+        [
+            ("0", "DOWN", "0", "0"),
+            ("1", "HALF_EVEN", "0", "1"),
+            ("1", "HALF_UP", "1", "0"),
+            ("3", "HALF_EVEN", "2", "1"),
+        ],
+    )
+    def test_zero_and_rounding_boundaries(self, gross, rounding, expected_net, expected_vat):
+        result = REGISTRY.invoke("accounting.vat_extract", gross=gross, rate="1", rounding=rounding)
+        assert result["net"] == expected_net
+        assert result["vat"] == expected_vat
+
+    @pytest.mark.parametrize("field", ["gross", "rate"])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "bad", 0.1])
+    def test_invalid_numbers(self, field, value):
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("accounting.vat_extract", **{"gross": "110", "rate": "0.1", field: value})
+
+    @pytest.mark.parametrize(
+        "inputs", [{"gross": "-0.01"}, {"rate": "0"}, {"rate": "-0.1"}, {"rounding": "BAD"}],
+    )
+    def test_invalid_boundaries_and_policy(self, inputs):
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("accounting.vat_extract", **{"gross": "110", **inputs})
+
+    def test_large_amount_preserves_fraction(self):
+        gross = "2" + "0" * 60 + ".5"
+        result = REGISTRY.invoke("accounting.vat_extract", gross=gross, rate="1")
+        assert result["net"] == "1" + "0" * 60
+        assert result["vat"] == "1" + "0" * 60 + ".5"
+        assert result["trace"]["output"] == {"net": result["net"], "vat": result["vat"]}
+
+    def test_tiny_rate_does_not_round_divisor_to_one(self):
+        result = REGISTRY.invoke("accounting.vat_extract", gross="1", rate="1e-100")
+        assert result["net"] == "0"
+        assert result["vat"] == "1"
+
+    def test_precision_is_independent_of_caller_context(self):
+        with localcontext() as context:
+            context.prec = 3
+            context.rounding = ROUND_UP
+            result = REGISTRY.invoke("accounting.vat_extract", gross="11001.25")
+            assert context.prec == 3
+            assert context.rounding == ROUND_UP
+        assert result["net"] == "10001"
+        assert result["vat"] == "1000.25"
+
+
 class TestVatAdd:
     def test_vat_add_10000(self) -> None:
         """net=10000, rate=0.1 -> gross=11000, vat=1000"""
