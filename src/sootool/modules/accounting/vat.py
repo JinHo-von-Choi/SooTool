@@ -1,7 +1,7 @@
 """VAT (부가가치세) tools: extract and add."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, localcontext
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, mul, sub
@@ -130,6 +130,8 @@ def vat_add(
     net_d  = D(net)
     rate_d = D(rate)
 
+    if not net_d.is_finite() or not rate_d.is_finite():
+        raise InvalidInputError("net과 rate는 유한한 숫자여야 합니다.")
     if rate_d <= Decimal("0"):
         raise InvalidInputError("rate는 0 초과여야 합니다.")
     if net_d < Decimal("0"):
@@ -139,9 +141,18 @@ def vat_add(
     trace.input("rate",     rate)
     trace.input("rounding", rounding)
 
-    vat_raw = mul(net_d, rate_d)
-    vat     = apply(vat_raw, 0, policy)
-    gross   = add(net_d, vat)
+    # Preserve the full product and align the integer VAT with every net digit.
+    product_digits = len(net_d.as_tuple().digits) + len(rate_d.as_tuple().digits)
+    highest_digit = max(0, net_d.adjusted(), net_d.adjusted() + rate_d.adjusted() + 1)
+    lowest_digit = min(0, int(net_d.as_tuple().exponent))
+    precision = max(50, product_digits, highest_digit - lowest_digit + 3)
+    try:
+        with localcontext(Context(prec=precision)):
+            vat_raw = mul(net_d, rate_d)
+            vat = apply(vat_raw, 0, policy)
+            gross = add(net_d, vat)
+    except DecimalException as exc:
+        raise InvalidInputError("입력이 지원 가능한 Decimal 계산 범위를 벗어났습니다.") from exc
 
     trace.step("vat_raw", str(vat_raw))
     trace.step("vat",     str(vat))
