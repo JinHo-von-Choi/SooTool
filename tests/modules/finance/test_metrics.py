@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal
+from decimal import Decimal, localcontext
 
 import pytest
 
@@ -247,6 +247,56 @@ class TestCAGR:
 
 
 class TestPaybackPeriod:
+    @pytest.mark.parametrize(
+        ("last_cashflow", "expected", "recovered"),
+        [("0", None, False), ("0.01", "2.500000", True), ("0.005", "3.000000", True)],
+    )
+    def test_large_cashflows_preserve_small_unrecovered_balance(
+        self, last_cashflow: str, expected: str | None, recovered: bool,
+    ) -> None:
+        almost_recovered = "1" + "0" * 60
+        investment = almost_recovered + ".005"
+        result = REGISTRY.invoke(
+            "finance.payback_period",
+            cashflows=["-" + investment, "0", almost_recovered, last_cashflow],
+        )
+
+        assert result["payback_period"] == expected
+        assert result["recovered"] is recovered
+
+    def test_precision_does_not_depend_on_caller_context(self) -> None:
+        with localcontext() as context:
+            context.prec = 6
+            result = REGISTRY.invoke(
+                "finance.payback_period", cashflows=["-1", "3"], decimals=30,
+            )
+            assert context.prec == 6
+
+        assert result["payback_period"] == "0." + "3" * 30
+        assert result["trace"]["output"] == result["payback_period"]
+
+    def test_negative_and_zero_intermediate_cashflows(self) -> None:
+        result = REGISTRY.invoke(
+            "finance.payback_period", cashflows=["-100", "0", "-20", "240"],
+        )
+
+        assert result["payback_period"] == "2.500000"
+
+    @pytest.mark.parametrize("decimals", [True, False, 1.5, "2", None, -1])
+    def test_invalid_decimal_places_raise(self, decimals: object) -> None:
+        with pytest.raises(InvalidInputError, match="decimals"):
+            REGISTRY.invoke(
+                "finance.payback_period", cashflows=["-100", "200"], decimals=decimals,
+            )
+
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "bad", 1.5])
+    @pytest.mark.parametrize("index", [0, 1])
+    def test_invalid_cashflows_raise(self, value: object, index: int) -> None:
+        cashflows = ["-100", "200"]
+        cashflows[index] = value
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("finance.payback_period", cashflows=cashflows)
+
     def test_fractional_recovery_period(self) -> None:
         result = REGISTRY.invoke(
             "finance.payback_period",
