@@ -174,6 +174,9 @@ def depreciation_declining_balance(
     Formula: dep_year = book_value_beginning * rate
     Constraint: book_value never falls below salvage.
 
+    Rounded expenses are capped at the exact remaining depreciable amount,
+    even when that remainder has more digits than decimals.
+
     Args:
         cost:       취득원가 (Decimal string)
         salvage:    잔존가치 (Decimal string)
@@ -195,8 +198,14 @@ def depreciation_declining_balance(
     salvage_d = D(salvage)
     rate_d    = D(rate)
 
-    if life_years <= 0:
-        raise InvalidInputError("life_years는 1 이상이어야 합니다.")
+    if type(life_years) is not int or life_years <= 0:
+        raise InvalidInputError("life_years는 1 이상 정수여야 합니다.")
+    if type(decimals) is not int or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
+    if not all(value.is_finite() for value in (cost_d, salvage_d, rate_d)):
+        raise InvalidInputError("cost, salvage, rate는 유한한 숫자여야 합니다.")
+    if cost_d < 0 or salvage_d < 0:
+        raise InvalidInputError("cost와 salvage는 0 이상이어야 합니다.")
     if rate_d <= Decimal("0") or rate_d >= Decimal("1"):
         raise InvalidInputError("rate는 (0, 1) 범위여야 합니다.")
     if cost_d < salvage_d:
@@ -209,40 +218,28 @@ def depreciation_declining_balance(
     trace.input("decimals",   decimals)
     trace.input("rounding",   rounding)
 
+    highest_digit = max(cost_d.adjusted(), salvage_d.adjusted(), 0)
+    lowest_digit = min(
+        int(cost_d.as_tuple().exponent), int(salvage_d.as_tuple().exponent), -decimals,
+    )
+    precision = max(
+        50, highest_digit - lowest_digit + len(rate_d.as_tuple().digits) + 10,
+    )
     schedule: list[DecliningBalanceRow] = []
-    book_value = cost_d
-
-    for year in range(1, life_years + 1):
-        bv_start = book_value
-        dep_raw  = mul(bv_start, rate_d)
-        dep      = apply(dep_raw, decimals, policy)
-
-        # Do not depreciate below salvage
-        if sub(book_value, dep) < salvage_d:
-            dep = apply(sub(book_value, salvage_d), decimals, policy)
-
-        book_value = sub(book_value, dep)
-        # Clamp to salvage in case of rounding edge cases
-        if book_value < salvage_d:
-            book_value = salvage_d
-
-        schedule.append({
-            "year":             year,
-            "book_value_start": str(bv_start),
-            "depreciation":     str(dep),
-            "book_value_end":   str(book_value),
-        })
-
-        # Once at salvage, no more depreciation
-        if book_value <= salvage_d:
-            for remaining_year in range(year + 1, life_years + 1):
-                schedule.append({
-                    "year":             remaining_year,
-                    "book_value_start": str(salvage_d),
-                    "depreciation":     "0",
-                    "book_value_end":   str(apply(salvage_d, decimals, policy)),
-                })
-            break
+    with localcontext(Context(prec=precision)):
+        book_value = cost_d
+        for year in range(1, life_years + 1):
+            bv_start = book_value
+            remaining = sub(book_value, salvage_d)
+            dep_raw = mul(bv_start, rate_d)
+            dep = min(apply(dep_raw, decimals, policy), remaining)
+            book_value = sub(book_value, dep)
+            schedule.append({
+                "year":             year,
+                "book_value_start": str(bv_start),
+                "depreciation":     str(dep),
+                "book_value_end":   str(book_value),
+            })
 
     trace.output({"schedule_rows": len(schedule)})
 

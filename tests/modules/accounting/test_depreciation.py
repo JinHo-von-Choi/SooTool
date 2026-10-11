@@ -9,6 +9,7 @@ import sootool.modules.accounting  # noqa: F401
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.modules.accounting.depreciation import (
+    depreciation_declining_balance,
     depreciation_straight_line,
     depreciation_units_of_production,
 )
@@ -127,6 +128,63 @@ class TestStraightLine:
 
 
 class TestDecliningBalance:
+    @pytest.mark.parametrize("rounding", ["HALF_EVEN", "HALF_UP", "DOWN", "UP", "FLOOR", "CEIL"])
+    def test_fractional_salvage_preserves_expense_conservation(self, rounding: str) -> None:
+        result = REGISTRY.invoke(
+            "accounting.depreciation_declining_balance",
+            cost="10", salvage="1.5", rate="0.9", life_years=3, rounding=rounding,
+        )
+        previous = Decimal("10")
+        for row in result["schedule"]:
+            assert Decimal(row["book_value_start"]) == previous
+            expense = Decimal(row["depreciation"])
+            book_value = Decimal(row["book_value_end"])
+            assert previous - expense == book_value
+            assert expense >= 0
+            assert book_value == Decimal("1.5")
+            previous = book_value
+        assert [Decimal(row["depreciation"]) for row in result["schedule"]] == [
+            Decimal("8.5"), Decimal("0"), Decimal("0"),
+        ]
+
+    @pytest.mark.parametrize("cost,salvage", [("0", "0"), ("1.5", "1.5")])
+    def test_no_depreciable_base(self, cost: str, salvage: str) -> None:
+        result = depreciation_declining_balance(cost, salvage, "0.5", 2)
+        assert len(result["schedule"]) == 2
+        for row in result["schedule"]:
+            assert Decimal(row["depreciation"]) == 0
+            assert Decimal(row["book_value_start"]) == Decimal(cost)
+            assert Decimal(row["book_value_end"]) == Decimal(cost)
+
+    def test_precision_independent_of_caller_context(self) -> None:
+        cost = "0.300000000000000000000000000004"
+        expected = [
+            ("0.150000000000000000000000000002", "0.150000000000000000000000000002"),
+            ("0.075000000000000000000000000001", "0.075000000000000000000000000001"),
+        ]
+        with localcontext() as ctx:
+            ctx.prec = 6
+            ctx.rounding = ROUND_UP
+            result = depreciation_declining_balance(cost, "0", "0.5", 2, decimals=30)
+            assert ctx.prec == 6
+            assert ctx.rounding == ROUND_UP
+        assert [(row["depreciation"], row["book_value_end"]) for row in result["schedule"]] == expected
+
+    @pytest.mark.parametrize("overrides", [
+        {"cost": "-1"}, {"salvage": "-1"}, {"salvage": "11"},
+        {"cost": "NaN"}, {"cost": "sNaN"}, {"salvage": "Infinity"},
+        {"rate": "NaN"}, {"rate": "sNaN"}, {"rate": "Infinity"},
+        {"cost": "invalid"}, {"rate": "invalid"},
+        {"rate": "0"}, {"rate": "1"}, {"rate": "-0.1"}, {"rate": "1.1"},
+        {"life_years": 0}, {"life_years": -1}, {"life_years": 1.5}, {"life_years": True},
+        {"decimals": -1}, {"decimals": 1.5}, {"decimals": True}, {"rounding": "INVALID"},
+    ])
+    def test_invalid_inputs(self, overrides: dict) -> None:
+        kwargs = dict(cost="10", salvage="1", rate="0.5", life_years=2)
+        kwargs.update(overrides)
+        with pytest.raises(InvalidInputError):
+            depreciation_declining_balance(**kwargs)
+
     def test_declining_balance_no_undershoot_salvage(self) -> None:
         """Declining balance must stop at salvage if it would go below."""
         result = REGISTRY.invoke(
