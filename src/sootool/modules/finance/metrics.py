@@ -111,11 +111,13 @@ def roi(
         formula="ROI = net_profit / investment_cost",
     )
     policy = _parse_policy(rounding)
-    if decimals < 0:
-        raise InvalidInputError("decimals는 0 이상이어야 합니다.")
+    if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
 
     net_profit_d = D(net_profit)
     investment_cost_d = D(investment_cost)
+    if not net_profit_d.is_finite() or not investment_cost_d.is_finite():
+        raise InvalidInputError("net_profit와 investment_cost는 유한한 숫자여야 합니다.")
     if investment_cost_d <= Decimal("0"):
         raise InvalidInputError("investment_cost는 0보다 커야 합니다.")
 
@@ -124,10 +126,18 @@ def roi(
     trace.input("rounding", rounding)
     trace.input("decimals", decimals)
 
-    roi_raw = div(net_profit_d, investment_cost_d)
-    trace.step("roi_raw", str(roi_raw))
-
-    roi_value = apply(roi_raw, decimals, policy)
+    # Reserve output digits and input coefficient digits to distinguish values
+    # close to rounding ties without depending on the caller's Decimal context.
+    integer_digits = max(1, net_profit_d.adjusted() - investment_cost_d.adjusted() + 1)
+    precision = max(
+        50,
+        integer_digits + decimals + len(net_profit_d.as_tuple().digits)
+        + len(investment_cost_d.as_tuple().digits) + 10,
+    )
+    with localcontext(Context(prec=precision)):
+        roi_raw = div(net_profit_d, investment_cost_d)
+        trace.step("roi_raw", str(roi_raw))
+        roi_value = apply(roi_raw, decimals, policy)
     trace.output(str(roi_value))
     return {
         "roi": str(roi_value),

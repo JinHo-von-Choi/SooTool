@@ -78,6 +78,50 @@ class TestNPV:
 
 
 class TestROI:
+    @pytest.mark.parametrize("field", ["net_profit", "investment_cost"])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "bad", 1.5])
+    def test_rejects_invalid_values(self, field: str, value: object) -> None:
+        kwargs = {"net_profit": "10", "investment_cost": "100"}
+        kwargs[field] = value
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("finance.roi", **kwargs)
+
+    @pytest.mark.parametrize("decimals", [True, False, 1.5, "2", None, -1])
+    def test_rejects_invalid_decimal_places(self, decimals: object) -> None:
+        with pytest.raises(InvalidInputError, match="decimals"):
+            REGISTRY.invoke(
+                "finance.roi", net_profit="10", investment_cost="100", decimals=decimals,
+            )
+
+    @pytest.mark.parametrize(
+        ("net_profit", "investment_cost", "decimals", "expected"),
+        [
+            ("1", "3", 60, "0." + "3" * 60),
+            ("1" + "0" * 60, "1", 2, "1" + "0" * 60 + ".00"),
+            ("1.245" + "0" * 60 + "1", "1", 2, "1.25"),
+            ("0", "0.000001", 0, "0"),
+            ("0.000001", "0.000001", 0, "1"),
+        ],
+    )
+    def test_precision_and_boundaries(
+        self, net_profit: str, investment_cost: str, decimals: int, expected: str,
+    ) -> None:
+        result = REGISTRY.invoke(
+            "finance.roi", net_profit=net_profit, investment_cost=investment_cost,
+            decimals=decimals,
+        )
+        assert result["roi"] == expected
+        assert result["trace"]["output"] == expected
+
+    def test_precision_does_not_depend_on_caller_context(self) -> None:
+        with localcontext() as context:
+            context.prec = 6
+            result = REGISTRY.invoke(
+                "finance.roi", net_profit="1", investment_cost="3", decimals=30,
+            )
+            assert context.prec == 6
+        assert result["roi"] == "0." + "3" * 30
+
     def test_roi_standard_investment(self) -> None:
         result = REGISTRY.invoke(
             "finance.roi",
