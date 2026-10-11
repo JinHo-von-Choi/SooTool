@@ -236,6 +236,47 @@ class TestDecliningBalance:
 
 
 class TestUnitsOfProduction:
+    def test_independent_of_caller_decimal_context(self) -> None:
+        with localcontext() as context:
+            context.prec = 6
+            context.rounding = ROUND_UP
+            result = depreciation_units_of_production(
+                "0.300000000000000000000000000003", "0", 3,
+                [0, 1, 1, 1, 1], decimals=30,
+            )
+            assert context.prec == 6
+            assert context.rounding == ROUND_UP
+
+        assert [Decimal(row["depreciation"]) for row in result["schedule"]] == [
+            Decimal("0"), *[Decimal("0.100000000000000000000000000001")] * 3,
+            Decimal("0"),
+        ]
+        assert Decimal(result["schedule"][-1]["book_value_end"]) == 0
+
+    def test_large_cost_preserves_small_depreciable_base(self) -> None:
+        result = depreciation_units_of_production(
+            "1000000000000000000000000000000000000000000000000000000000000.03",
+            "1000000000000000000000000000000000000000000000000000000000000",
+            3, [0, 1, 1, 1, 1], decimals=2,
+        )
+        assert [Decimal(row["depreciation"]) for row in result["schedule"]] == [
+            Decimal("0"), Decimal("0.01"), Decimal("0.01"), Decimal("0.01"), Decimal("0"),
+        ]
+        assert Decimal(result["schedule"][-1]["book_value_end"]) == Decimal(
+            "1000000000000000000000000000000000000000000000000000000000000"
+        )
+
+    @pytest.mark.parametrize("overrides", [
+        {"cost": "sNaN"}, {"salvage": "NaN"}, {"salvage": "-Infinity"},
+        {"cost": 0.1}, {"period_units": None}, {"period_units": (1,)},
+        {"decimals": True},
+    ])
+    def test_additional_invalid_inputs(self, overrides: dict) -> None:
+        kwargs = dict(cost="10", salvage="1", total_units=10, period_units=[1])
+        kwargs.update(overrides)
+        with pytest.raises(InvalidInputError):
+            depreciation_units_of_production(**kwargs)
+
     @pytest.mark.parametrize("rounding", ["HALF_EVEN", "HALF_UP", "DOWN", "UP", "FLOOR", "CEIL"])
     def test_fractional_salvage_caps_expense_exactly(self, rounding: str) -> None:
         result = REGISTRY.invoke(
