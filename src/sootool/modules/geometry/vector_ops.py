@@ -1,7 +1,7 @@
 """Geometry vector tools: dot product, cross product, norm (L-p)."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, localcontext
 
 import mpmath
 
@@ -23,6 +23,21 @@ def _parse_decimal_list(values: list[str], name: str) -> list[Decimal]:
 
 class VectorDotResult(TracedResult):
     result: str
+
+
+def _exact_dot(a: list[Decimal], b: list[Decimal]) -> Decimal:
+    """Sum finite products with enough precision for every digit and sum carry."""
+    bounds = []
+    for x, y in zip(a, b, strict=True):
+        xt, yt = x.as_tuple(), y.as_tuple()
+        exponent = int(xt.exponent) + int(yt.exponent)
+        digits = len(xt.digits) + len(yt.digits)
+        bounds.append((exponent, exponent + digits))
+    # Align products at their smallest exponent, allowing carry from all terms.
+    precision = max(high for _, high in bounds) - min(low for low, _ in bounds)
+    precision += len(str(len(bounds)))
+    with localcontext(Context(prec=precision)):
+        return sum((x * y for x, y in zip(a, b, strict=True)), D("0"))
 
 
 @REGISTRY.tool(
@@ -59,7 +74,12 @@ def vector_dot(a: list[str], b: list[str]) -> VectorDotResult:
     if len(av) == 0:
         raise DomainConstraintError("빈 벡터에는 내적을 계산할 수 없습니다.")
 
-    result = sum((x * y for x, y in zip(av, bv, strict=True)), D("0"))
+    for name, values in (("a", av), ("b", bv)):
+        for i, value in enumerate(values):
+            if not value.is_finite():
+                raise InvalidInputError(f"{name}[{i}]은(는) 유한한 숫자여야 합니다.")
+
+    result = _exact_dot(av, bv)
 
     trace.step("result", str(result))
     trace.output({"result": str(result)})
