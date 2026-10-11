@@ -28,9 +28,12 @@ class ExpectedValueResult(TracedResult):
 
 def _parse_decimal(value: str, name: str) -> Decimal:
     try:
-        return D(value)
+        parsed = D(value)
     except Exception as exc:
         raise InvalidInputError(f"{name}은(는) 유효한 숫자 문자열이어야 합니다: {value!r}") from exc
+    if not parsed.is_finite():
+        raise InvalidInputError(f"{name}은(는) 유한한 숫자 문자열이어야 합니다: {value!r}")
+    return parsed
 
 
 @REGISTRY.tool(
@@ -46,8 +49,8 @@ def expected_value(
     """Compute the expected value of a discrete random variable.
 
     Args:
-        values:        List of outcome values as Decimal strings.
-        probabilities: List of corresponding probabilities as Decimal strings.
+        values:        List of finite outcome values as Decimal strings.
+        probabilities: List of finite corresponding probabilities as Decimal strings.
                        Must sum to 1 within tolerance 1e-9.
 
     Returns:
