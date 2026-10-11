@@ -316,28 +316,34 @@ def depreciation_units_of_production(
     trace.input("decimals",     decimals)
     trace.input("rounding",     rounding)
 
-    depreciable  = sub(cost_d, salvage_d)
-    rate_per_unit = div(depreciable, D(str(total_units)))
-
-    trace.step("depreciable_base", str(depreciable))
-    trace.step("rate_per_unit",    str(rate_per_unit))
-
+    highest_digit = max(cost_d.adjusted(), salvage_d.adjusted(), 0)
+    lowest_digit = min(
+        int(cost_d.as_tuple().exponent), int(salvage_d.as_tuple().exponent), -decimals,
+    )
+    unit_digits = max(len(str(total_units)), max((len(str(u)) for u in period_units), default=1))
+    precision = max(50, highest_digit - lowest_digit + unit_digits + 10)
     schedule: list[UnitsOfProductionRow] = []
-    book_value = cost_d
+    with localcontext(Context(prec=precision)):
+        depreciable = sub(cost_d, salvage_d)
+        rate_per_unit = div(depreciable, D(str(total_units)))
 
-    for i, units in enumerate(period_units):
-        period   = i + 1
-        dep_raw  = mul(rate_per_unit, D(str(units)))
-        dep      = apply(dep_raw, decimals, policy)
-        # Never depreciate below salvage
-        dep = min(dep, sub(book_value, salvage_d))
-        book_value = sub(book_value, dep)
-        schedule.append({
-            "period":         period,
-            "units":          units,
-            "depreciation":   str(dep),
-            "book_value_end": str(book_value),
-        })
+        trace.step("depreciable_base", str(depreciable))
+        trace.step("rate_per_unit", str(rate_per_unit))
+
+        book_value = cost_d
+        for i, units in enumerate(period_units):
+            period = i + 1
+            dep_raw = mul(rate_per_unit, D(str(units)))
+            dep = apply(dep_raw, decimals, policy)
+            # Never depreciate below salvage
+            dep = min(dep, sub(book_value, salvage_d))
+            book_value = sub(book_value, dep)
+            schedule.append({
+                "period":         period,
+                "units":          units,
+                "depreciation":   str(dep),
+                "book_value_end": str(book_value),
+            })
 
     trace.output({"schedule_rows": len(schedule)})
 
