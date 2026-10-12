@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
 import sootool.modules.engineering  # noqa: F401
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.modules.engineering.mechanical import mech_stress
 
 
 def _assert_close(actual: str, expected: Decimal, tol: Decimal = Decimal("1E-6")) -> None:
@@ -16,6 +17,49 @@ def _assert_close(actual: str, expected: Decimal, tol: Decimal = Decimal("1E-6")
 
 
 class TestMechStress:
+    @pytest.mark.parametrize(
+        ("force", "area", "expected"),
+        [("0", "1e-40", "0"), ("-1", "1e-40", "-1e40"), ("1e-40", "1", "1e-40")],
+    )
+    def test_boundaries(self, force: str, area: str, expected: str) -> None:
+        result = mech_stress(force, area)
+        assert Decimal(result["stress"]) == Decimal(expected)
+        assert result["trace"]["output"] == result["stress"]
+
+    @pytest.mark.parametrize("area", ["0", "-0", "-1e-40"])
+    def test_nonpositive_area(self, area: str) -> None:
+        with pytest.raises(InvalidInputError):
+            mech_stress("1", area)
+
+    @pytest.mark.parametrize("field", ["force", "area"])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "bad", 1.5])
+    def test_invalid_numbers(self, field: str, value: object) -> None:
+        inputs = {"force": "1", "area": "1"}
+        inputs[field] = value
+        with pytest.raises(InvalidInputError):
+            mech_stress(**inputs)
+
+    def test_precision_is_independent_of_caller_context(self) -> None:
+        with localcontext() as context:
+            context.prec = 6
+            context.rounding = ROUND_UP
+            context.traps[Inexact] = True
+            flags = context.flags.copy()
+            result = mech_stress("2", "3")
+            assert result["stress"] == "0." + "6" * 49 + "7"
+            assert context.prec == 6
+            assert context.rounding == ROUND_UP
+            assert context.traps[Inexact] is True
+            assert context.flags.copy() == flags
+
+    def test_half_even_at_fifty_significant_digits(self) -> None:
+        result = mech_stress("1." + "0" * 48 + "25", "1")
+        assert result["stress"] == "1." + "0" * 48 + "2"
+
+    def test_out_of_range_calculation_raises_input_error(self) -> None:
+        with pytest.raises(InvalidInputError, match="Decimal"):
+            mech_stress("1e999999", "1e-999999")
+
     def test_basic(self) -> None:
         r = REGISTRY.invoke("engineering.mech_stress", force="1000", area="0.01")
         assert Decimal(r["stress"]) == Decimal("100000")

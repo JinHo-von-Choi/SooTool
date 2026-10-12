@@ -12,7 +12,7 @@ ADR-001 Decimal 의무, ADR-003 감사 로그, ADR-007 stateless.
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, localcontext
 from typing import cast
 
 from sootool.core.audit import CalcTrace
@@ -49,17 +49,24 @@ class MechStressResult(TracedResult):
     version="1.0.0",
 )
 def mech_stress(force: str, area: str) -> MechStressResult:
-    """Compute stress σ = F / A."""
+    """Compute stress σ = F / A with an isolated 50-digit Decimal context."""
     trace = CalcTrace(tool="engineering.mech_stress", formula="σ = F / A")
-    f_d = D(force)
-    a_d = D(area)
-    if a_d <= _ZERO:
-        raise InvalidInputError("area는 0 초과여야 합니다.")
+    try:
+        with localcontext(Context(prec=50)):
+            f_d = D(force)
+            a_d = D(area)
+            for field, value in (("force", f_d), ("area", a_d)):
+                if not value.is_finite():
+                    raise InvalidInputError(f"{field}는 유한한 숫자여야 합니다.")
+            if a_d <= _ZERO:
+                raise InvalidInputError("area는 0 초과여야 합니다.")
+            stress = div(f_d, a_d)
+    except DecimalException as exc:
+        raise InvalidInputError("입력값이 50자리 Decimal 계산 범위를 벗어납니다.") from exc
 
     trace.input("force", force)
     trace.input("area",  area)
 
-    stress = div(f_d, a_d)
     trace.step("stress", str(stress))
     trace.output(str(stress))
 
