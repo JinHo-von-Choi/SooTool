@@ -567,7 +567,7 @@ class _GeometryTools(Protocol):
         """벡터의 L-p 노름 (Σ |v_i|^p)^(1/p) 을 계산한다. v 는 비어 있지 않은 Decimal 문자열 리스트, p 는 1 이상의 정수(기본 2, 유클리드 길이). mpmath 50자리 계산 후 유효숫자 30자리로 반환한다. 최댓값 노름(p=∞)과 정수가 아닌 p 는 지원하지 않는다."""
         ...
     def volume_cuboid(self, length: Num, width: Num, height: Num) -> _m48.VolumeCuboidResult:
-        """직육면체 부피 length * width * height 를 Decimal 로 계산한다. 세 값은 0 이상 Decimal 문자열이며 같은 길이 단위여야 하고 float 를 거치지 않는다. cm 와 m 처럼 단위를 섞어 넣으면 틀린 값이 나온다."""
+        """직육면체 부피 length * width * height 를 Decimal 로 계산한다. 세 값은 유한한 0 이상 Decimal 문자열이며 같은 길이 단위여야 한다. 입력 자릿수에 맞춰 정확히 곱하며 호출자의 Decimal 정밀도에 영향을 받지 않는다. 정확히 표현할 수 없는 결과는 입력 오류로 거부한다. cm 와 m 처럼 단위를 섞어 넣으면 틀린 값이 나온다."""
         ...
     def volume_cylinder(self, radius: Num, height: Num) -> _m48.VolumeCylinderResult:
         """원기둥 부피 π * r² * h 를 계산한다. radius(밑면 반지름)와 height 는 0 이상 Decimal 문자열이며 같은 길이 단위여야 한다. π 는 mpmath 50자리로 계산하고 유효숫자 30자리 문자열로 반환한다. 지름을 radius 로 넣으면 4배 큰 값이 나온다."""

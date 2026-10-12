@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import math
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
 import sootool.modules.geometry  # noqa: F401
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.modules.geometry.volume import volume_cuboid
 
 
 def _sphere(radius: str) -> dict:
@@ -114,3 +115,57 @@ class TestVolumeCuboid:
         v2 = _cuboid("4", "2", "3")["volume"]
         v3 = _cuboid("3", "4", "2")["volume"]
         assert v1 == v2 == v3
+
+
+class TestVolumeCuboidPrecision:
+    @pytest.mark.parametrize(("dimensions", "expected"), [
+        (("0", "0", "0"), "0"),
+        (("2", "-0", "4"), "0"),
+        (("1E-40", "1E-40", "1E-40"), "1E-120"),
+        (("1E+40", "1E+40", "1E+40"), "1E+120"),
+    ])
+    def test_boundaries(self, dimensions, expected):
+        assert Decimal(_cuboid(*dimensions)["volume"]) == Decimal(expected)
+
+    @pytest.mark.parametrize("field", ["length", "width", "height"])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "abc", 0.1])
+    def test_invalid_dimensions(self, field, value):
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("geometry.volume_cuboid", **{
+                "length": "2", "width": "3", "height": "4", field: value,
+            })
+
+    @pytest.mark.parametrize("field", ["length", "width", "height"])
+    def test_negative_dimensions(self, field):
+        with pytest.raises(DomainConstraintError):
+            REGISTRY.invoke("geometry.volume_cuboid", **{
+                "length": "2", "width": "3", "height": "4", field: "-0.001",
+            })
+
+    def test_exact_product_beyond_default_precision(self):
+        length = "123456789012345678901234567890123456789012345678901234567890"
+        expected = str(int(length) * 9 * 7)
+        result = _cuboid(length, "9", "7")
+        assert result["volume"] == expected
+        assert result["trace"]["output"] == {"volume": expected}
+
+    def test_independent_of_caller_decimal_context(self):
+        with localcontext() as context:
+            context.prec = 3
+            context.rounding = ROUND_UP
+            context.traps[Inexact] = True
+            context.clear_flags()
+            result = volume_cuboid("1.2345", "6.789", "0.125")
+            assert result["volume"] == "1.0476275625"
+            assert context.prec == 3
+            assert context.rounding == ROUND_UP
+            assert context.traps[Inexact]
+            assert not any(context.flags.values())
+
+    @pytest.mark.parametrize("dimensions", [
+        ("1E+999999", "10", "1"),
+        ("1E-999999", "1E-999999", "1"),
+    ])
+    def test_unrepresentable_product_raises_input_error(self, dimensions):
+        with pytest.raises(InvalidInputError, match="Decimal"):
+            _cuboid(*dimensions)

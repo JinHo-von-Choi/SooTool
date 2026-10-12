@@ -174,7 +174,7 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |vector_cross|1.0.0|0.1.0|light|high_precision||예|3차원 벡터의 외적 a × b 를 Decimal 로 계산한다. a, b 는 정확히 3개 원소의 Decimal 문자열 리스트이고 결과도 3개 원소 리스트다. 외적…|
 |vector_dot|1.0.0|0.1.0|light|high_precision||예|두 벡터의 내적 Σ a_i * b_i 를 Decimal 로 계산한다. a, b 는 같은 길이의 비어 있지 않은 Decimal 문자열 리스트이며 반올림 없는 정확…|
 |vector_norm|1.0.0|0.1.0|light|high_precision||예|벡터의 L-p 노름 (Σ \|v_i\|^p)^(1/p) 을 계산한다. v 는 비어 있지 않은 Decimal 문자열 리스트, p 는 1 이상의 정수(기본 2, 유…|
-|volume_cuboid|1.0.0|0.1.0|light|high_precision||예|직육면체 부피 length * width * height 를 Decimal 로 계산한다. 세 값은 0 이상 Decimal 문자열이며 같은 길이 단위여야 하고 f…|
+|volume_cuboid|1.0.0|0.1.0|light|high_precision||예|직육면체 부피 length * width * height 를 Decimal 로 계산한다. 세 값은 유한한 0 이상 Decimal 문자열이며 같은 길이 단위여야 …|
 |volume_cylinder|1.0.0|0.1.0|light|high_precision||예|원기둥 부피 π * r² * h 를 계산한다. radius(밑면 반지름)와 height 는 0 이상 Decimal 문자열이며 같은 길이 단위여야 한다. π 는 …|
 |volume_sphere|1.0.0|0.1.0|light|high_precision||예|구의 부피 (4/3) * π * r³ 를 계산한다. radius 는 0 이상 Decimal 문자열이며 결과 단위는 길이 단위의 세제곱이다. π 는 mpmath …|
 

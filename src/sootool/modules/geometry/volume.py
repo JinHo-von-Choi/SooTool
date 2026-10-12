@@ -1,7 +1,7 @@
 """Geometry volume tools: sphere, cylinder, cuboid."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, Inexact, localcontext
 
 import mpmath
 
@@ -127,7 +127,9 @@ class VolumeCuboidResult(TracedResult):
     name="volume_cuboid",
     description=(
         "직육면체 부피 length * width * height 를 Decimal 로 계산한다. "
-        "세 값은 0 이상 Decimal 문자열이며 같은 길이 단위여야 하고 float 를 거치지 않는다. "
+        "세 값은 유한한 0 이상 Decimal 문자열이며 같은 길이 단위여야 한다. "
+        "입력 자릿수에 맞춰 정확히 곱하며 호출자의 Decimal 정밀도에 영향을 받지 않는다. "
+        "정확히 표현할 수 없는 결과는 입력 오류로 거부한다. "
         "cm 와 m 처럼 단위를 섞어 넣으면 틀린 값이 나온다."
     ),
     version="1.0.0",
@@ -152,11 +154,22 @@ def volume_cuboid(length: str, width: str, height: str) -> VolumeCuboidResult:
     w  = _parse_decimal(width,  "width")
     h  = _parse_decimal(height, "height")
 
+    for field, value in (("length", ln), ("width", w), ("height", h)):
+        if not value.is_finite():
+            raise InvalidInputError(f"{field}는 유한한 숫자여야 합니다.")
+
     _require_non_negative(ln, "length")
     _require_non_negative(w, "width")
     _require_non_negative(h, "height")
 
-    volume = ln * w * h
+    # A product needs at most the sum of its operands' coefficient digits.
+    precision = max(50, sum(len(value.as_tuple().digits) for value in (ln, w, h)))
+    try:
+        with localcontext(Context(prec=precision)) as context:
+            context.traps[Inexact] = True
+            volume = ln * w * h
+    except DecimalException as exc:
+        raise InvalidInputError("부피가 지원하는 Decimal 범위를 벗어났습니다.") from exc
 
     trace.step("volume", str(volume))
     trace.output({"volume": str(volume)})
