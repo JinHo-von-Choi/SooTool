@@ -19,7 +19,7 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |depreciation_units_of_production|1.0.0|0.1.0|light|exact||예|생산량비례법 감가상각 스케줄을 계산한다. 기간 감가비 = (취득원가 - 잔존가치) / 총생산량 x 기간 생산량. total_units 는 1 이상 정수, per…|
 |dupont_3|1.0.0|0.1.0|light|exact||예|DuPont 3단계 분해로 ROE = 순이익률 x 총자산회전율 x 자기자본승수(재무레버리지)를 계산한다. 금액은 Decimal 문자열이며 매출, 총자산, 자기자…|
 |dupont_5|1.0.0|0.1.0|light|exact||예|DuPont 5단계 분해로 ROE = 세부담비율(순이익/세전이익) x 이자부담비율(세전이익/EBIT) x 영업이익률 x 총자산회전율 x 재무레버리지를 계산한다.…|
-|income_statement|1.0.0|0.1.0|light|exact||예|다단계 손익계산서: 매출에서 매출총이익, 영업이익, 세전이익, 당기순이익까지 단계별 이익과 이익률을 계산한다. 금액은 Decimal 문자열이며 매출과 매출원가는…|
+|income_statement|1.0.0|0.1.0|light|exact||예|다단계 손익계산서: 매출에서 매출총이익, 영업이익, 세전이익, 당기순이익까지 단계별 이익과 이익률을 계산한다. 금액은 유한한 Decimal 문자열이며 매출과 매…|
 |ratios|1.0.0|0.1.0|light|exact||예|재무상태표와 손익 항목으로 유동비율, 당좌비율, 부채/자기자본, 부채/총자산, 자기자본비율, ROE, ROA, 순이익률 8개를 한 번에 계산한다. 금액은 Dec…|
 |vat_add|1.0.0|0.1.0|light|exact||예|공급가액에 부가세를 더해 공급대가를 계산한다. 부가세 = 공급가액 x rate(기본 0.1)를 정수 자리로 rounding 처리하며 기본은 HALF_EVEN 으…|
 |vat_extract|1.0.0|0.1.0|light|exact||예|공급대가(부가세 포함 금액)에서 공급가액과 부가세를 역산한다. 공급가액 = gross / (1 + rate)를 정수 자리로 rounding(기본 DOWN, 절사…|
