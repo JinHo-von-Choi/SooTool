@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
@@ -16,6 +16,77 @@ def _assert_close(actual: str, expected: Decimal, tol: Decimal = Decimal("1E-6")
 
 
 class TestFourierHeatConduction:
+    @pytest.mark.parametrize("precision", [6, 80])
+    def test_fixed_precision_independent_of_caller_context(self, precision: int) -> None:
+        with localcontext() as context:
+            context.prec = precision
+            context.rounding = ROUND_UP
+            context.traps[Inexact] = True
+            context.clear_flags()
+            r = REGISTRY.invoke(
+                "engineering.fourier_heat_conduction",
+                thermal_conductivity="1", area="1",
+                temperature_hot="1", temperature_cold="0", thickness="3",
+            )
+            assert context.prec == precision
+            assert context.rounding == ROUND_UP
+            assert context.traps[Inexact] is True
+            assert not context.flags[Inexact]
+
+        assert r["heat_rate_w"] == "0." + "3" * 50
+        assert r["trace"]["output"] == r["heat_rate_w"]
+
+    def test_large_temperatures_preserve_small_gradient(self) -> None:
+        base = "1" + "0" * 60
+        r = REGISTRY.invoke(
+            "engineering.fourier_heat_conduction",
+            thermal_conductivity="2", area="3",
+            temperature_hot=base + ".001", temperature_cold=base,
+            thickness="0.002",
+        )
+        assert Decimal(r["heat_rate_w"]) == Decimal("3")
+
+    def test_intermediate_product_is_not_rounded_before_division(self) -> None:
+        r = REGISTRY.invoke(
+            "engineering.fourier_heat_conduction",
+            thermal_conductivity="1." + "0" * 49 + "5", area="1",
+            temperature_hot="1", temperature_cold="0",
+            thickness="1." + "0" * 49 + "5",
+        )
+        assert Decimal(r["heat_rate_w"]) == Decimal("1")
+
+    @pytest.mark.parametrize("field", [
+        "thermal_conductivity", "area", "temperature_hot", "temperature_cold", "thickness",
+    ])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "bad", 0.5])
+    def test_invalid_numbers_raise(self, field: str, value: object) -> None:
+        kwargs = dict(
+            thermal_conductivity="1", area="1", temperature_hot="1",
+            temperature_cold="0", thickness="1",
+        )
+        kwargs[field] = value
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("engineering.fourier_heat_conduction", **kwargs)
+
+    @pytest.mark.parametrize("field", ["thermal_conductivity", "area", "thickness"])
+    @pytest.mark.parametrize("value", ["0", "-0.001"])
+    def test_nonpositive_parameters_raise(self, field: str, value: str) -> None:
+        kwargs = dict(
+            thermal_conductivity="1", area="1", temperature_hot="1",
+            temperature_cold="0", thickness="1",
+        )
+        kwargs[field] = value
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("engineering.fourier_heat_conduction", **kwargs)
+
+    def test_negative_celsius_temperatures_are_valid(self) -> None:
+        r = REGISTRY.invoke(
+            "engineering.fourier_heat_conduction",
+            thermal_conductivity="1", area="1", temperature_hot="-10",
+            temperature_cold="-20", thickness="1",
+        )
+        assert Decimal(r["heat_rate_w"]) == Decimal("10")
+
     def test_basic(self) -> None:
         """k=0.5, A=1, ΔT=100, L=0.1 → Q = 500 W."""
         r = REGISTRY.invoke(

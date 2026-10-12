@@ -12,7 +12,7 @@ ADR-001 Decimal 의무, ADR-003 감사 로그, ADR-007 stateless.
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, localcontext
 from typing import cast
 
 import mpmath
@@ -76,6 +76,8 @@ def fourier_heat_conduction(
 
     Q = k · A · ΔT / L  (W)
     ΔT = T_hot − T_cold must be ≥ 0.
+    Inputs must be finite. Intermediate products are exact; the final quotient
+    uses 50 significant digits independently of the caller's Decimal context.
     """
     trace = CalcTrace(
         tool="engineering.fourier_heat_conduction",
@@ -86,6 +88,13 @@ def fourier_heat_conduction(
     th_d = D(temperature_hot)
     tc_d = D(temperature_cold)
     l_d  = D(thickness)
+
+    for name, value in (
+        ("thermal_conductivity", k_d), ("area", a_d),
+        ("temperature_hot", th_d), ("temperature_cold", tc_d), ("thickness", l_d),
+    ):
+        if not value.is_finite():
+            raise InvalidInputError(f"{name}는 유한한 숫자여야 합니다.")
 
     if k_d <= _ZERO:
         raise InvalidInputError("thermal_conductivity는 0 초과여야 합니다.")
@@ -102,8 +111,18 @@ def fourier_heat_conduction(
     trace.input("temperature_cold",     temperature_cold)
     trace.input("thickness",            thickness)
 
-    delta_t = th_d - tc_d
-    heat_rate = div(mul(k_d, mul(a_d, delta_t)), l_d)
+    highest_digit = max(th_d.adjusted(), tc_d.adjusted())
+    lowest_digit = min(int(th_d.as_tuple().exponent), int(tc_d.as_tuple().exponent))
+    precision = max(
+        50,
+        highest_digit - lowest_digit + 2
+        + len(k_d.as_tuple().digits) + len(a_d.as_tuple().digits),
+    )
+    with localcontext(Context(prec=precision)):
+        delta_t = th_d - tc_d
+        numerator = mul(k_d, a_d, delta_t)
+    with localcontext(Context(prec=50)):
+        heat_rate = div(numerator, l_d)
 
     trace.step("delta_t",   str(delta_t))
     trace.step("heat_rate", str(heat_rate))
