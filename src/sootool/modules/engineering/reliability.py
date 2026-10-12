@@ -11,7 +11,7 @@ exp·비정수 거듭제곱은 mpmath workdps(50) → mpmath_to_decimal(digits=3
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, localcontext
 from typing import cast
 
 import mpmath
@@ -118,8 +118,8 @@ class SystemReliabilityResult(TracedResult):
     description=(
         "직렬 시스템 신뢰도 R_sys = ΠR_i 를 계산한다. component_reliabilities 는 구성요소 신뢰도의 "
         "숫자 문자열 목록(1개 이상, 각 0 이상 1 이하)이며 백분율(99)이 아니라 소수(0.99)로 넣는다. "
-        "구성요소가 서로 독립이라고 가정하므로 고장이 연관된 경우에는 맞지 않다. 반올림 없이 "
-        "50자리 유효숫자."
+        "구성요소가 서로 독립이라고 가정하므로 고장이 연관된 경우에는 맞지 않다. 입력은 유한한 값이어야 하며 "
+        "호출자의 Decimal 설정과 독립적인 50자리 유효숫자 HALF_EVEN으로 계산한다."
     ),
     version="1.0.0",
 )
@@ -129,20 +129,22 @@ def series_reliability(component_reliabilities: list[str]) -> SystemReliabilityR
         tool="engineering.series_reliability",
         formula="R_sys = Π R_i",
     )
-    if not component_reliabilities:
-        raise InvalidInputError("component_reliabilities는 최소 1개 이상이어야 합니다.")
-    values = [D(r) for r in component_reliabilities]
-    for i, v in enumerate(values):
-        if v < _ZERO or v > _ONE:
-            raise InvalidInputError(
-                f"component_reliabilities[{i}]는 [0, 1] 범위여야 합니다."
-            )
+    if not isinstance(component_reliabilities, list) or not component_reliabilities:
+        raise InvalidInputError("component_reliabilities는 최소 1개 이상의 목록이어야 합니다.")
+
+    with localcontext(Context(prec=50)):
+        values = [D(r) for r in component_reliabilities]
+        for i, v in enumerate(values):
+            if not v.is_finite() or v < _ZERO or v > _ONE:
+                raise InvalidInputError(
+                    f"component_reliabilities[{i}]는 유한한 [0, 1] 범위 숫자여야 합니다."
+                )
+
+        product = _ONE
+        for v in values:
+            product = mul(product, v)
 
     trace.input("component_reliabilities", component_reliabilities)
-
-    product = _ONE
-    for v in values:
-        product = mul(product, v)
 
     trace.step("r_sys", str(product))
     trace.output(str(product))

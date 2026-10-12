@@ -438,7 +438,7 @@ class _EngineeringTools(Protocol):
         """도심 중립축에 대한 단면 이차모멘트 I 를 계산한다. rectangle(width, height: bh³/12), circle(diameter: πd⁴/64), i_beam(flange_width, flange_thickness, web_height, web_thickness: BH³/12 − (B−t_w)·web_height³/12, H = web_height + 2·flange_thickness). 치수는 모두 0 초과이고 m 로 넣으면 m⁴. rectangle 의 height 는 굽힘 방향 치수이며 중공 단면은 지원하지 않는다. π 는 30자리."""
         ...
     def series_reliability(self, component_reliabilities: list[Num]) -> _m32.SystemReliabilityResult:
-        """직렬 시스템 신뢰도 R_sys = ΠR_i 를 계산한다. component_reliabilities 는 구성요소 신뢰도의 숫자 문자열 목록(1개 이상, 각 0 이상 1 이하)이며 백분율(99)이 아니라 소수(0.99)로 넣는다. 구성요소가 서로 독립이라고 가정하므로 고장이 연관된 경우에는 맞지 않다. 반올림 없이 50자리 유효숫자."""
+        """직렬 시스템 신뢰도 R_sys = ΠR_i 를 계산한다. component_reliabilities 는 구성요소 신뢰도의 숫자 문자열 목록(1개 이상, 각 0 이상 1 이하)이며 백분율(99)이 아니라 소수(0.99)로 넣는다. 구성요소가 서로 독립이라고 가정하므로 고장이 연관된 경우에는 맞지 않다. 입력은 유한한 값이어야 하며 호출자의 Decimal 설정과 독립적인 50자리 유효숫자 HALF_EVEN으로 계산한다."""
         ...
     def shear_stress(self, mode: Num, shear_force: Num, area: Num | None = None, first_moment_q: Num | None = None, inertia: Num | None = None, width: Num | None = None) -> _m23.ShearStressResult:
         """횡전단응력 τ 를 모드별로 계산한다. average 는 V/A, rectangular_max 는 1.5V/A(직사각형 단면 중립축의 최대값, area 필요), general 은 V·Q/(I·b)(first_moment_q, inertia, width 필요). shear_force 는 N, area 는 m²(0 초과)이고 결과는 Pa. 원형이나 I형 단면에 rectangular_max 를 쓰면 틀리며 필수 인자가 빠지면 오류. 반올림 없음."""
