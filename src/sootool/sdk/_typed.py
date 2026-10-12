@@ -174,7 +174,7 @@ class _AccountingTools(Protocol):
         """DuPont 5단계 분해로 ROE = 세부담비율(순이익/세전이익) x 이자부담비율(세전이익/EBIT) x 영업이익률 x 총자산회전율 x 재무레버리지를 계산한다. 금액은 Decimal 문자열이며 세전이익, EBIT, 매출, 총자산, 자기자본은 0 이 아니어야 한다. 각 값은 decimals(기본 6)자리 HALF_EVEN 반올림이다."""
         ...
     def income_statement(self, revenue: Num, cost_of_sales: Num, operating_expenses: Num = '0', other_income: Num = '0', other_expenses: Num = '0', interest_expense: Num = '0', tax_expense: Num = '0') -> _m1.AccountingIncomeStatementResult:
-        """다단계 손익계산서: 매출에서 매출총이익, 영업이익, 세전이익, 당기순이익까지 단계별 이익과 이익률을 계산한다. 금액은 Decimal 문자열이며 매출과 매출원가는 0 이상이어야 한다. 이익은 반올림하지 않고 이익률은 소수 6자리 (0.25 = 25%)로 반올림하며 매출이 0 이면 0 이다. 비용 항목은 양수로 입력한다."""
+        """다단계 손익계산서: 매출에서 매출총이익, 영업이익, 세전이익, 당기순이익까지 단계별 이익과 이익률을 계산한다. 금액은 유한한 Decimal 문자열이며 매출과 매출원가는 0 이상이어야 한다. 50자리 Decimal 정밀도로 계산하며 이익에 별도 반올림을 적용하지 않는다. 이익률은 소수 6자리 HALF_EVEN(0.25 = 25%)이며 매출이 0 이면 0 이다. 계산 범위 초과는 입력 오류다. 비용 항목은 양수로 입력한다."""
         ...
     def ratios(self, current_assets: Num, current_liabilities: Num, inventory: Num, total_assets: Num, total_liabilities: Num, total_equity: Num, net_income: Num, revenue: Num, decimals: int = 4) -> _m5.AccountingRatiosResult:
         """재무상태표와 손익 항목으로 유동비율, 당좌비율, 부채/자기자본, 부채/총자산, 자기자본비율, ROE, ROA, 순이익률 8개를 한 번에 계산한다. 금액은 Decimal 문자열이며 비율은 배수(0.5 = 50%)로 decimals(기본 4)자리 HALF_EVEN 반올림한다. 분모(유동부채, 자기자본, 총자산, 매출)가 0 이면 오류이며 백분율로 쓰려면 직접 100 을 곱한다."""

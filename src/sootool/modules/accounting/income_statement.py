@@ -32,8 +32,9 @@ class AccountingIncomeStatementResult(TracedResult):
     name="income_statement",
     description=(
         "다단계 손익계산서: 매출에서 매출총이익, 영업이익, 세전이익, 당기순이익까지 단계별 이익과 이익률을 계산한다. "
-        "금액은 Decimal 문자열이며 매출과 매출원가는 0 이상이어야 한다. 이익은 반올림하지 않고 이익률은 소수 6자리 "
-        "(0.25 = 25%)로 반올림하며 매출이 0 이면 0 이다. 비용 항목은 양수로 입력한다."
+        "금액은 유한한 Decimal 문자열이며 매출과 매출원가는 0 이상이어야 한다. 50자리 Decimal 정밀도로 계산하며 "
+        "이익에 별도 반올림을 적용하지 않는다. 이익률은 소수 6자리 HALF_EVEN(0.25 = 25%)이며 매출이 0 이면 0 이다. "
+        "계산 범위 초과는 입력 오류다. 비용 항목은 양수로 입력한다."
     ),
     version="1.0.0",
 )
@@ -76,6 +77,18 @@ def accounting_income_statement(
     interest = D(interest_expense)
     tax    = D(tax_expense)
 
+    for field, value in (
+        ("revenue", rev),
+        ("cost_of_sales", cogs),
+        ("operating_expenses", opex),
+        ("other_income", oi),
+        ("other_expenses", oe),
+        ("interest_expense", interest),
+        ("tax_expense", tax),
+    ):
+        if not value.is_finite():
+            raise InvalidInputError(f"{field}는 유한한 숫자여야 합니다.")
+
     if rev < Decimal("0"):
         raise InvalidInputError("revenue는 0 이상이어야 합니다.")
     if cogs < Decimal("0"):
@@ -89,27 +102,32 @@ def accounting_income_statement(
     trace.input("interest_expense",   interest_expense)
     trace.input("tax_expense",        tax_expense)
 
-    gross_profit     = rev - cogs
-    operating_income = gross_profit - opex
-    pretax_income    = operating_income + oi - oe - interest
-    net_income       = pretax_income - tax
+    try:
+        with localcontext(Context(prec=50)):
+            gross_profit     = rev - cogs
+            operating_income = gross_profit - opex
+            pretax_income    = operating_income + oi - oe - interest
+            net_income       = pretax_income - tax
 
-    def margin(v: Decimal) -> str:
-        if rev == Decimal("0"):
-            return "0"
-        m = v / rev
-        return str(m.quantize(Decimal("0.000001")))
+            def margin(v: Decimal) -> str:
+                if rev == Decimal("0"):
+                    return "0"
+                m = v / rev
+                return str(round_apply(m, 6, RoundingPolicy.HALF_EVEN))
 
-    out = {
-        "gross_profit":     str(gross_profit),
-        "gross_margin":     margin(gross_profit),
-        "operating_income": str(operating_income),
-        "operating_margin": margin(operating_income),
-        "pretax_income":    str(pretax_income),
-        "pretax_margin":    margin(pretax_income),
-        "net_income":       str(net_income),
-        "net_margin":       margin(net_income),
-    }
+            out = {
+                "gross_profit":     str(gross_profit),
+                "gross_margin":     margin(gross_profit),
+                "operating_income": str(operating_income),
+                "operating_margin": margin(operating_income),
+                "pretax_income":    str(pretax_income),
+                "pretax_margin":    margin(pretax_income),
+                "net_income":       str(net_income),
+                "net_margin":       margin(net_income),
+            }
+    except DecimalException as exc:
+        raise InvalidInputError("입력값이 50자리 Decimal 계산 범위를 벗어납니다.") from exc
+
     trace.output(out)
     return {
         "gross_profit": out["gross_profit"],

@@ -1,7 +1,7 @@
 """Tests for accounting.income_statement."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
@@ -49,3 +49,76 @@ class TestIncomeStatement:
     def test_trace(self):
         r = call(revenue="100", cost_of_sales="50")
         assert r["trace"]["tool"] == "accounting.income_statement"
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "expected_income", "expected_margin"),
+    [
+        ({"revenue": "0", "cost_of_sales": "1"}, "-1", "0"),
+        ({"revenue": "1", "cost_of_sales": "1"}, "0", "0.000000"),
+        ({"revenue": "1", "cost_of_sales": "2"}, "-1", "-1.000000"),
+    ],
+)
+def test_profit_boundaries(kwargs, expected_income, expected_margin):
+    result = call(**kwargs)
+    for field in ("gross_profit", "operating_income", "pretax_income", "net_income"):
+        assert result[field] == expected_income
+    for field in ("gross_margin", "operating_margin", "pretax_margin", "net_margin"):
+        assert result[field] == expected_margin
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "revenue", "cost_of_sales", "operating_expenses", "other_income",
+        "other_expenses", "interest_expense", "tax_expense",
+    ],
+)
+@pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "invalid", 0.1])
+def test_invalid_line_items(field, value):
+    inputs = {"revenue": "100", "cost_of_sales": "50", field: value}
+    with pytest.raises(InvalidInputError):
+        call(**inputs)
+
+
+def test_negative_cost_of_sales_rejected():
+    with pytest.raises(InvalidInputError):
+        call(revenue="1", cost_of_sales="-0.01")
+
+
+@pytest.mark.parametrize(
+    ("cost_of_sales", "expected"),
+    [("0.8765435", "0.123456"), ("0.8765425", "0.123458")],
+)
+def test_margin_half_even_ties(cost_of_sales, expected):
+    with localcontext() as context:
+        context.rounding = ROUND_UP
+        result = call(revenue="1", cost_of_sales=cost_of_sales)
+    assert result["net_margin"] == expected
+
+
+def test_caller_context_does_not_change_profit_or_margins():
+    inputs = {
+        "revenue": "1.000000000000000003",
+        "cost_of_sales": "1.000000000000000001",
+        "operating_expenses": "0.000000000000000001",
+    }
+    with localcontext() as context:
+        context.prec = 6
+        context.rounding = ROUND_UP
+        context.traps[Inexact] = True
+        context.clear_flags()
+        result = call(**inputs)
+        assert context.prec == 6
+        assert context.rounding == ROUND_UP
+        assert context.traps[Inexact]
+        assert not any(context.flags.values())
+    assert Decimal(result["gross_profit"]) == Decimal("0.000000000000000002")
+    assert Decimal(result["net_income"]) == Decimal("0.000000000000000001")
+    assert result["net_margin"] == "0.000000"
+    assert result["trace"]["output"]["net_income"] == result["net_income"]
+
+
+def test_unrepresentable_margin_raises_domain_error():
+    with pytest.raises(InvalidInputError, match="Decimal"):
+        call(revenue="1e-100", cost_of_sales="1")
