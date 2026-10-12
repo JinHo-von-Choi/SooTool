@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import concurrent.futures
 import math
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
 import sootool.modules.geometry  # noqa: F401
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.modules.geometry.area import area_rectangle
 
 
 def _circle(radius: str) -> dict:
@@ -96,6 +97,59 @@ class TestAreaTriangle:
 
 
 class TestAreaRectangle:
+    @pytest.mark.parametrize(("width", "height", "expected"), [
+        ("0", "0", "0"),
+        ("5", "-0", "0"),
+        ("1E-40", "1E-40", "1E-80"),
+        ("1E+40", "1E+40", "1E+80"),
+    ])
+    def test_boundaries(self, width: str, height: str, expected: str) -> None:
+        assert Decimal(_rectangle(width, height)["area"]) == Decimal(expected)
+
+    @pytest.mark.parametrize("field", ["width", "height"])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "abc", 0.1])
+    def test_invalid_dimensions(self, field: str, value: object) -> None:
+        inputs = {"width": "2", "height": "3", field: value}
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("geometry.area_rectangle", **inputs)
+
+    @pytest.mark.parametrize("field", ["width", "height"])
+    def test_negative_dimension(self, field: str) -> None:
+        with pytest.raises(DomainConstraintError):
+            REGISTRY.invoke("geometry.area_rectangle", **{"width": "2", "height": "3", field: "-0.001"})
+
+    def test_exact_product_beyond_default_precision(self) -> None:
+        width = "123456789012345678901234567890123456789012345678901234567890"
+        result = _rectangle(width, "9")
+        expected = str(int(width) * 9)
+        assert result["area"] == expected
+        assert result["trace"]["output"] == {"area": expected}
+
+    def test_independent_of_caller_decimal_context(self) -> None:
+        with localcontext() as context:
+            context.prec = 3
+            context.rounding = ROUND_UP
+            context.Emax = 5
+            context.Emin = -5
+            context.traps[Inexact] = True
+            context.clear_flags()
+            result = area_rectangle("123456.789", "0.987654321")
+            assert result["area"] == "121932.631112635269"
+            assert context.prec == 3
+            assert context.rounding == ROUND_UP
+            assert context.Emax == 5
+            assert context.Emin == -5
+            assert context.traps[Inexact]
+            assert not any(context.flags.values())
+
+    @pytest.mark.parametrize(("width", "height"), [
+        ("1E+999999", "10"),
+        ("1E-999999", "1E-100"),
+    ])
+    def test_unrepresentable_product_raises_domain_error(self, width: str, height: str) -> None:
+        with pytest.raises(InvalidInputError, match="Decimal"):
+            _rectangle(width, height)
+
     def test_area_rectangle_3_4(self) -> None:
         result = _rectangle("3", "4")
         assert result["area"] == "12"

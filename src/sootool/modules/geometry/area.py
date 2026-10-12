@@ -1,7 +1,7 @@
 """Geometry area tools: circle, triangle, rectangle, polygon (shoelace)."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, Inexact, localcontext
 
 import mpmath
 
@@ -122,7 +122,8 @@ class AreaRectangleResult(TracedResult):
     name="area_rectangle",
     description=(
         "직사각형 넓이 width * height 를 Decimal 로 계산한다. "
-        "두 값은 0 이상 Decimal 문자열이며 단위는 같아야 하고 float 를 거치지 않는다. "
+        "두 값은 유한한 0 이상 Decimal 문자열이며 단위는 같아야 한다. "
+        "입력 자릿수에 맞춰 정확히 곱하며 호출자의 Decimal 정밀도에 영향을 받지 않는다. "
         "대각선 길이나 둘레를 넣으면 의미 없는 값이 나온다. "
         "정사각형은 두 값에 같은 변 길이를 넣는다."
     ),
@@ -145,12 +146,22 @@ def area_rectangle(width: str, height: str) -> AreaRectangleResult:
     w = _parse_decimal(width,  "width")
     h = _parse_decimal(height, "height")
 
+    if not w.is_finite() or not h.is_finite():
+        raise InvalidInputError("width와 height는 유한한 숫자여야 합니다.")
+
     if w < 0:
         raise DomainConstraintError(f"width 는 음수가 될 수 없습니다: {w}")
     if h < 0:
         raise DomainConstraintError(f"height 는 음수가 될 수 없습니다: {h}")
 
-    area = w * h
+    # A product needs at most the sum of its operands' coefficient digits.
+    precision = max(50, len(w.as_tuple().digits) + len(h.as_tuple().digits))
+    try:
+        with localcontext(Context(prec=precision)) as context:
+            context.traps[Inexact] = True
+            area = w * h
+    except DecimalException as exc:
+        raise InvalidInputError("넓이가 지원하는 Decimal 범위를 벗어났습니다.") from exc
 
     trace.step("area", str(area))
     trace.output({"area": str(area)})
