@@ -537,7 +537,7 @@ class _GeometryTools(Protocol):
         """다각형 넓이를 신발끈 공식(Shoelace)으로 계산한다. vertices 는 [[x, y], ...] 형태 Decimal 문자열 좌표이고 꼭짓점 3개 이상을 변을 따라 순서대로 준다. 마지막 점은 첫 점과 자동으로 이어지며 결과는 항상 0 이상이다. 변이 서로 교차하거나 점 순서가 뒤섞이면 실제 면적과 다르다."""
         ...
     def area_rectangle(self, width: Num, height: Num) -> _m44.AreaRectangleResult:
-        """직사각형 넓이 width * height 를 Decimal 로 계산한다. 두 값은 0 이상 Decimal 문자열이며 단위는 같아야 하고 float 를 거치지 않는다. 대각선 길이나 둘레를 넣으면 의미 없는 값이 나온다. 정사각형은 두 값에 같은 변 길이를 넣는다."""
+        """직사각형 넓이 width * height 를 Decimal 로 계산한다. 두 값은 유한한 0 이상 Decimal 문자열이며 단위는 같아야 한다. 입력 자릿수에 맞춰 정확히 곱하며 호출자의 Decimal 정밀도에 영향을 받지 않는다. 대각선 길이나 둘레를 넣으면 의미 없는 값이 나온다. 정사각형은 두 값에 같은 변 길이를 넣는다."""
         ...
     def area_triangle(self, base: Num, height: Num) -> _m44.AreaTriangleResult:
         """삼각형 넓이 (base * height) / 2 를 Decimal 로 계산한다. base 는 밑변, height 는 그 밑변에 수직인 높이이며 둘 다 0 이상 Decimal 문자열, 단위는 같아야 한다. float 를 거치지 않는다. 비스듬한 변의 길이를 height 로 넣으면 틀리므로 수직 높이를 넣는다."""
