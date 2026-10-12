@@ -7,7 +7,7 @@
 |`geometry.area_circle`|원의 넓이 π * r² 를 계산한다.|mpmath|
 |`geometry.area_polygon`|다각형 넓이를 신발끈 공식(Shoelace)으로 계산한다.|mpmath|
 |`geometry.area_rectangle`|직사각형 넓이 width * height 를 Decimal 로 정확히 계산한다.|Decimal|
-|`geometry.area_triangle`|삼각형 넓이 (base * height) / 2 를 Decimal 로 계산한다.|mpmath|
+|`geometry.area_triangle`|삼각형 넓이 (base * height) / 2 를 Decimal 로 정확히 계산한다.|Decimal|
 |`geometry.haversine`|하버사인 공식으로 두 지점의 지구 표면 대원 거리(km)를 계산한다.|mpmath|
 |`geometry.matrix_determinant`|정방행렬 M 의 행렬식을 계산한다.|float64(근사)|
 |`geometry.matrix_inverse`|정방행렬의 역행렬을 numpy.linalg.inv(float64)로 계산한다.|float64(근사)|
@@ -25,13 +25,14 @@
 ## 계산 방식
 
 - 직사각형 넓이는 Decimal로 정확히 곱하고 Decimal 문자열로 돌려준다.
+- 삼각형 넓이는 밑변과 수직 높이의 곱을 Decimal로 정확히 반으로 나누고 Decimal 문자열로 돌려준다.
 - 직육면체 부피는 Decimal로 정확히 곱하고 Decimal 문자열로 돌려준다.
 - 그 외 넓이·부피·벡터·하버사인은 Decimal 입력을 받아 mpmath(50자리)로 계산하고 Decimal 문자열로 돌려준다.
 - 행렬 곱은 Decimal로 계산한다. 행렬식은 3×3 이하에서 Decimal 전개, 그보다 크면 numpy float64를 쓴다.
 - 역행렬과 연립방정식 풀이는 numpy `linalg`(float64)를 쓴다. 결과는 근사값이다.
 - 행렬 한 변의 상한은 200이다(`SOOTOOL_LIMIT_MATRIX_DIM`).
 
-직사각형 넓이와 직육면체 부피는 유한한 0 이상 입력을 자릿수에 맞춘 독립 Decimal 컨텍스트에서 정확히 곱한다. 호출자의 정밀도·반올림 설정에 영향을 받지 않으며, NaN·무한대와 Decimal 범위를 벗어나 정확히 표현할 수 없는 결과는 `invalid_input` 오류로 거부한다.
+삼각형·직사각형 넓이와 직육면체 부피는 유한한 0 이상 입력을 자릿수에 맞춘 독립 Decimal 컨텍스트에서 정확히 계산한다. 호출자의 정밀도·반올림 설정에 영향을 받지 않으며, NaN·무한대와 Decimal 범위를 벗어나 정확히 표현할 수 없는 결과는 `invalid_input` 오류로 거부한다.
 
 ## 오류
 

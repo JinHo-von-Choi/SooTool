@@ -540,7 +540,7 @@ class _GeometryTools(Protocol):
         """직사각형 넓이 width * height 를 Decimal 로 계산한다. 두 값은 유한한 0 이상 Decimal 문자열이며 단위는 같아야 한다. 입력 자릿수에 맞춰 정확히 곱하며 호출자의 Decimal 정밀도에 영향을 받지 않는다. 대각선 길이나 둘레를 넣으면 의미 없는 값이 나온다. 정사각형은 두 값에 같은 변 길이를 넣는다."""
         ...
     def area_triangle(self, base: Num, height: Num) -> _m44.AreaTriangleResult:
-        """삼각형 넓이 (base * height) / 2 를 Decimal 로 계산한다. base 는 밑변, height 는 그 밑변에 수직인 높이이며 둘 다 0 이상 Decimal 문자열, 단위는 같아야 한다. float 를 거치지 않는다. 비스듬한 변의 길이를 height 로 넣으면 틀리므로 수직 높이를 넣는다."""
+        """삼각형 넓이 (base * height) / 2 를 Decimal 로 계산한다. base 는 밑변, height 는 그 밑변에 수직인 높이이며 둘 다 유한한 0 이상 Decimal 문자열, 단위는 같아야 한다. 입력 자릿수에 맞춰 정확히 계산하며 호출자의 Decimal 정밀도에 영향을 받지 않는다. 비스듬한 변의 길이를 height 로 넣으면 틀리므로 수직 높이를 넣는다."""
         ...
     def haversine(self, lat1: Num, lon1: Num, lat2: Num, lon2: Num, earth_radius_km: Num = '6371') -> _m45.HaversineResult:
         """하버사인 공식으로 두 지점의 지구 표면 대원 거리(km)를 계산한다. 위도(-90~90)와 경도(-180~180)는 도 단위 Decimal 문자열이고 지구 반지름 기본값은 6371km 다. mpmath 50자리 계산 후 유효숫자 30자리로 반환한다. 구면 근사이므로 실제 도로 거리나 타원체 거리와 다르며 라디안을 넣으면 안 된다."""
