@@ -5,11 +5,12 @@ Date: 2026-04-23
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, localcontext
 from typing import TypedDict
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
+from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import TracedResult
 
@@ -83,6 +84,10 @@ def accounting_cashflow_operating(
     d_ap      = D(change_in_payables)
     d_wc      = D(change_in_other_wc)
 
+    amounts = (ni, dep, amort, other_nc, d_ar, d_inv, d_ap, d_wc)
+    if any(not amount.is_finite() for amount in amounts):
+        raise InvalidInputError("금액은 유한한 숫자여야 합니다.")
+
     trace.input("net_income",            net_income)
     trace.input("depreciation",          depreciation)
     trace.input("amortization",          amortization)
@@ -92,17 +97,23 @@ def accounting_cashflow_operating(
     trace.input("change_in_payables",    change_in_payables)
     trace.input("change_in_other_wc",    change_in_other_wc)
 
-    noncash_add = dep + amort + other_nc
-    wc_adjust   = (-d_ar) + (-d_inv) + d_ap + d_wc
-
-    cfo: Decimal = ni + noncash_add + wc_adjust
+    # Align every input's digits and reserve space for carries across eight terms.
+    highest_digit = max(amount.adjusted() for amount in amounts)
+    lowest_digit = min(int(amount.as_tuple().exponent) for amount in amounts)
+    precision = max(1, highest_digit - lowest_digit + 2)
+    receivables_adj = d_ar.copy_negate()
+    inventory_adj = d_inv.copy_negate()
+    with localcontext(Context(prec=precision)):
+        noncash_add = dep + amort + other_nc
+        wc_adjust = receivables_adj + inventory_adj + d_ap + d_wc
+        cfo: Decimal = ni + noncash_add + wc_adjust
 
     breakdown: CashflowBreakdown = {
         "net_income":       str(ni),
         "noncash_add":      str(noncash_add),
         "working_capital":  str(wc_adjust),
-        "receivables_adj":  str(-d_ar),
-        "inventory_adj":    str(-d_inv),
+        "receivables_adj":  str(receivables_adj),
+        "inventory_adj":    str(inventory_adj),
         "payables_adj":     str(d_ap),
         "other_wc_adj":     str(d_wc),
     }
