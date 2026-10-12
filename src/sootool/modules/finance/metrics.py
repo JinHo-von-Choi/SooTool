@@ -189,16 +189,24 @@ def cagr(
     trace.input("rounding", rounding)
     trace.input("decimals", decimals)
 
-    ratio = div(ending_d, beginning_d)
-    trace.step("growth_ratio", str(ratio))
-    if periods == 1:
-        # Subtract before dividing to preserve changes smaller than the precision of 1.
-        cagr_raw = div(ending_d - beginning_d, beginning_d)
-    else:
-        cagr_raw = ratio ** div(Decimal("1"), D(periods)) - Decimal("1")
-    trace.step("cagr_raw", str(cagr_raw))
+    # Reserve input and output digits for the root and subtraction near 1,
+    # including large growth ratios, independently of the caller's context.
+    precision = max(
+        50,
+        max(len(beginning_d.as_tuple().digits), len(ending_d.as_tuple().digits))
+        + abs(ending_d.adjusted() - beginning_d.adjusted()) + decimals + 20,
+    )
+    with localcontext(Context(prec=precision)):
+        ratio = div(ending_d, beginning_d)
+        trace.step("growth_ratio", str(ratio))
+        if periods == 1:
+            # Subtract before dividing to preserve changes smaller than the precision of 1.
+            cagr_raw = div(ending_d - beginning_d, beginning_d)
+        else:
+            cagr_raw = ratio ** div(Decimal("1"), D(periods)) - Decimal("1")
+        trace.step("cagr_raw", str(cagr_raw))
 
-    cagr_value = apply(cagr_raw, decimals, policy)
+        cagr_value = apply(cagr_raw, decimals, policy)
     trace.output(str(cagr_value))
     return {
         "cagr": str(cagr_value),
