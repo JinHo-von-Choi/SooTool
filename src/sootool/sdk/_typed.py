@@ -177,7 +177,7 @@ class _AccountingTools(Protocol):
         """다단계 손익계산서: 매출에서 매출총이익, 영업이익, 세전이익, 당기순이익까지 단계별 이익과 이익률을 계산한다. 금액은 유한한 Decimal 문자열이며 매출과 매출원가는 0 이상이어야 한다. 50자리 Decimal 정밀도로 계산하며 이익에 별도 반올림을 적용하지 않는다. 이익률은 소수 6자리 HALF_EVEN(0.25 = 25%)이며 매출이 0 이면 0 이다. 계산 범위 초과는 입력 오류다. 비용 항목은 양수로 입력한다."""
         ...
     def ratios(self, current_assets: Num, current_liabilities: Num, inventory: Num, total_assets: Num, total_liabilities: Num, total_equity: Num, net_income: Num, revenue: Num, decimals: int = 4) -> _m5.AccountingRatiosResult:
-        """재무상태표와 손익 항목으로 유동비율, 당좌비율, 부채/자기자본, 부채/총자산, 자기자본비율, ROE, ROA, 순이익률 8개를 한 번에 계산한다. 금액은 Decimal 문자열이며 비율은 배수(0.5 = 50%)로 decimals(기본 4)자리 HALF_EVEN 반올림한다. 분모(유동부채, 자기자본, 총자산, 매출)가 0 이면 오류이며 백분율로 쓰려면 직접 100 을 곱한다."""
+        """재무상태표와 손익 항목으로 유동비율, 당좌비율, 부채/자기자본, 부채/총자산, 자기자본비율, ROE, ROA, 순이익률 8개를 한 번에 계산한다. 금액은 유한한 Decimal 문자열이며 호출자 설정과 독립적인 50자리 정밀도로 계산한다. 비율은 배수(0.5 = 50%)로 decimals(기본 4)자리 HALF_EVEN 반올림한다. decimals는 0 이상 정수이고 계산 범위 초과는 입력 오류다. 분모(유동부채, 자기자본, 총자산, 매출)가 0 이면 오류이며 백분율로 쓰려면 직접 100 을 곱한다."""
         ...
     def vat_add(self, net: Num, rate: Num = '0.1', rounding: Num = 'HALF_EVEN') -> _m6.VatAddResult:
         """공급가액에 부가세를 더해 공급대가를 계산한다. 부가세 = 공급가액 x rate(기본 0.1)를 정수 자리로 rounding 처리하며 기본은 HALF_EVEN 으로 vat_extract 의 기본(DOWN)과 다르다. 금액은 Decimal 문자열. 공급대가에서 공급가액을 구하려면 vat_extract 를 쓴다."""
