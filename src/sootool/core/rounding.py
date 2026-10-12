@@ -7,9 +7,13 @@ from decimal import (
     ROUND_HALF_EVEN,
     ROUND_HALF_UP,
     ROUND_UP,
+    Context,
     Decimal,
+    localcontext,
 )
 from enum import StrEnum
+
+from sootool.core.errors import InvalidInputError
 
 
 class RoundingPolicy(StrEnum):
@@ -39,5 +43,19 @@ def apply(value: Decimal, decimals: int, policy: RoundingPolicy) -> Decimal:
 
 
 def truncate_to_unit(value: Decimal, unit: Decimal) -> Decimal:
-    """unit 원 미만 끝수를 버린다(unit=10 이면 10원 미만, 1000 이면 천원 미만 버림)."""
-    return apply(value / unit, 0, RoundingPolicy.DOWN) * unit
+    """유한한 value를 양수 unit의 배수로 0 방향 절사한다.
+
+    호출자의 Decimal 정밀도와 관계없이 단위 미만의 나머지를 정확히 버린다.
+    unit=10 이면 10원 미만, unit=1000 이면 천원 미만 끝수를 버린다.
+    """
+    if not value.is_finite():
+        raise InvalidInputError("value는 유한한 숫자여야 합니다.")
+    if not unit.is_finite() or unit <= 0:
+        raise InvalidInputError("unit는 유한한 양수여야 합니다.")
+
+    highest_digit = max(value.adjusted(), unit.adjusted())
+    lowest_digit = min(int(value.as_tuple().exponent), int(unit.as_tuple().exponent))
+    precision = max(1, highest_digit - lowest_digit + 2)
+    with localcontext(Context(prec=precision)):
+        # Remainder avoids rounding a quotient across an integer boundary.
+        return (value - value % unit).quantize(unit).copy_sign(value)
