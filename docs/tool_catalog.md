@@ -165,7 +165,7 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |area_circle|1.0.0|0.1.0|light|high_precision||예|원의 넓이 π * r² 를 계산한다. radius 는 0 이상 Decimal 문자열이며 단위는 자유(결과는 그 단위의 제곱). π 는 mpmath 50자리로 계…|
 |area_polygon|1.0.0|0.1.0|light|high_precision||예|다각형 넓이를 신발끈 공식(Shoelace)으로 계산한다. vertices 는 [[x, y], ...] 형태 Decimal 문자열 좌표이고 꼭짓점 3개 이상을 …|
 |area_rectangle|1.0.0|0.1.0|light|high_precision||예|직사각형 넓이 width * height 를 Decimal 로 계산한다. 두 값은 유한한 0 이상 Decimal 문자열이며 단위는 같아야 한다. 입력 자릿수에 …|
-|area_triangle|1.0.0|0.1.0|light|high_precision||예|삼각형 넓이 (base * height) / 2 를 Decimal 로 계산한다. base 는 밑변, height 는 그 밑변에 수직인 높이이며 둘 다 0 이상 …|
+|area_triangle|1.0.0|0.1.0|light|high_precision||예|삼각형 넓이 (base * height) / 2 를 Decimal 로 계산한다. base 는 밑변, height 는 그 밑변에 수직인 높이이며 둘 다 유한한 0…|
 |haversine|1.0.0|0.1.0|light|high_precision||예|하버사인 공식으로 두 지점의 지구 표면 대원 거리(km)를 계산한다. 위도(-90~90)와 경도(-180~180)는 도 단위 Decimal 문자열이고 지구 반지…|
 |matrix_determinant|1.0.0|0.1.0|light|approximate||예|정방행렬 M 의 행렬식을 계산한다. M 은 n×n Decimal 문자열 2차원 리스트(n 은 200 이하). n 이 3 이하면 Decimal 로 정확히 전개하고…|
 |matrix_inverse|1.0.0|0.1.0|light|approximate||예|정방행렬의 역행렬을 numpy.linalg.inv(float64)로 계산한다. M 은 n×n Decimal 문자열 2차원 리스트(n 은 200 이하). 결과 원…|

@@ -77,8 +77,8 @@ class AreaTriangleResult(TracedResult):
     name="area_triangle",
     description=(
         "삼각형 넓이 (base * height) / 2 를 Decimal 로 계산한다. "
-        "base 는 밑변, height 는 그 밑변에 수직인 높이이며 둘 다 0 이상 Decimal 문자열, 단위는 같아야 한다. "
-        "float 를 거치지 않는다. "
+        "base 는 밑변, height 는 그 밑변에 수직인 높이이며 둘 다 유한한 0 이상 Decimal 문자열, 단위는 같아야 한다. "
+        "입력 자릿수에 맞춰 정확히 계산하며 호출자의 Decimal 정밀도에 영향을 받지 않는다. "
         "비스듬한 변의 길이를 height 로 넣으면 틀리므로 수직 높이를 넣는다."
     ),
     version="1.0.0",
@@ -100,12 +100,22 @@ def area_triangle(base: str, height: str) -> AreaTriangleResult:
     b = _parse_decimal(base,   "base")
     h = _parse_decimal(height, "height")
 
+    if not b.is_finite() or not h.is_finite():
+        raise InvalidInputError("base와 height는 유한한 숫자여야 합니다.")
+
     if b < 0:
         raise DomainConstraintError(f"base 는 음수가 될 수 없습니다: {b}")
     if h < 0:
         raise DomainConstraintError(f"height 는 음수가 될 수 없습니다: {h}")
 
-    area = (b * h) / D("2")
+    # Halving an exact product may require one more coefficient digit.
+    precision = max(50, len(b.as_tuple().digits) + len(h.as_tuple().digits) + 1)
+    try:
+        with localcontext(Context(prec=precision)) as context:
+            context.traps[Inexact] = True
+            area = (b * h) / D("2")
+    except DecimalException as exc:
+        raise InvalidInputError("넓이가 지원하는 Decimal 범위를 벗어났습니다.") from exc
 
     trace.step("area", str(area))
     trace.output({"area": str(area)})
