@@ -7,7 +7,7 @@ All inputs/outputs Decimal strings. No float. (ADR-008)
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, localcontext
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D
@@ -40,8 +40,10 @@ def _safe_div(numerator: Decimal, denominator: Decimal, field: str) -> Decimal:
     name="ratios",
     description=(
         "재무상태표와 손익 항목으로 유동비율, 당좌비율, 부채/자기자본, 부채/총자산, 자기자본비율, ROE, ROA, 순이익률 "
-        "8개를 한 번에 계산한다. 금액은 Decimal 문자열이며 비율은 배수(0.5 = 50%)로 decimals(기본 4)자리 HALF_EVEN "
-        "반올림한다. 분모(유동부채, 자기자본, 총자산, 매출)가 0 이면 오류이며 백분율로 쓰려면 직접 100 을 곱한다."
+        "8개를 한 번에 계산한다. 금액은 유한한 Decimal 문자열이며 호출자 설정과 독립적인 50자리 정밀도로 계산한다. "
+        "비율은 배수(0.5 = 50%)로 decimals(기본 4)자리 HALF_EVEN "
+        "반올림한다. decimals는 0 이상 정수이고 계산 범위 초과는 입력 오류다. "
+        "분모(유동부채, 자기자본, 총자산, 매출)가 0 이면 오류이며 백분율로 쓰려면 직접 100 을 곱한다."
     ),
     version="1.0.0",
 )
@@ -85,10 +87,18 @@ def accounting_ratios(
     ni  = D(net_income)
     rev = D(revenue)
 
+    for field, value in (
+        ("current_assets", ca), ("current_liabilities", cl), ("inventory", inv),
+        ("total_assets", ta), ("total_liabilities", tl), ("total_equity", te),
+        ("net_income", ni), ("revenue", rev),
+    ):
+        if not value.is_finite():
+            raise InvalidInputError(f"{field}는 유한한 숫자여야 합니다.")
+
     if ca < Decimal("0") or cl < Decimal("0") or inv < Decimal("0") or ta < Decimal("0"):
         raise InvalidInputError("자산·부채·재고는 0 이상이어야 합니다.")
-    if decimals < 0:
-        raise InvalidInputError("decimals는 0 이상이어야 합니다.")
+    if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
 
     trace.input("current_assets",      current_assets)
     trace.input("current_liabilities", current_liabilities)
@@ -98,15 +108,20 @@ def accounting_ratios(
     trace.input("total_equity",        total_equity)
     trace.input("net_income",          net_income)
     trace.input("revenue",             revenue)
+    trace.input("decimals",            decimals)
 
-    cr  = round_apply(_safe_div(ca, cl, "current_liabilities"), decimals, RoundingPolicy.HALF_EVEN)
-    qr  = round_apply(_safe_div(ca - inv, cl, "current_liabilities"), decimals, RoundingPolicy.HALF_EVEN)
-    de_ = round_apply(_safe_div(tl, te, "total_equity"), decimals, RoundingPolicy.HALF_EVEN)
-    dr  = round_apply(_safe_div(tl, ta, "total_assets"), decimals, RoundingPolicy.HALF_EVEN)
-    er  = round_apply(_safe_div(te, ta, "total_assets"), decimals, RoundingPolicy.HALF_EVEN)
-    roe = round_apply(_safe_div(ni, te, "total_equity"), decimals, RoundingPolicy.HALF_EVEN)
-    roa = round_apply(_safe_div(ni, ta, "total_assets"), decimals, RoundingPolicy.HALF_EVEN)
-    nm  = round_apply(_safe_div(ni, rev, "revenue"), decimals, RoundingPolicy.HALF_EVEN)
+    try:
+        with localcontext(Context(prec=50)):
+            cr  = round_apply(_safe_div(ca, cl, "current_liabilities"), decimals, RoundingPolicy.HALF_EVEN)
+            qr  = round_apply(_safe_div(ca - inv, cl, "current_liabilities"), decimals, RoundingPolicy.HALF_EVEN)
+            de_ = round_apply(_safe_div(tl, te, "total_equity"), decimals, RoundingPolicy.HALF_EVEN)
+            dr  = round_apply(_safe_div(tl, ta, "total_assets"), decimals, RoundingPolicy.HALF_EVEN)
+            er  = round_apply(_safe_div(te, ta, "total_assets"), decimals, RoundingPolicy.HALF_EVEN)
+            roe = round_apply(_safe_div(ni, te, "total_equity"), decimals, RoundingPolicy.HALF_EVEN)
+            roa = round_apply(_safe_div(ni, ta, "total_assets"), decimals, RoundingPolicy.HALF_EVEN)
+            nm  = round_apply(_safe_div(ni, rev, "revenue"), decimals, RoundingPolicy.HALF_EVEN)
+    except DecimalException as exc:
+        raise InvalidInputError("입력값 또는 decimals가 50자리 Decimal 계산 범위를 벗어납니다.") from exc
 
     out = {
         "current_ratio":   str(cr),
