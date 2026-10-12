@@ -10,7 +10,7 @@ import pytest
 import sootool.modules.geometry  # noqa: F401
 from sootool.core.errors import DomainConstraintError, InvalidInputError
 from sootool.core.registry import REGISTRY
-from sootool.modules.geometry.area import area_rectangle, area_triangle
+from sootool.modules.geometry.area import area_polygon, area_rectangle, area_triangle
 
 
 def _circle(radius: str) -> dict:
@@ -225,6 +225,62 @@ class TestAreaRectangle:
 
 
 class TestAreaPolygon:
+    def test_independent_of_caller_decimal_context(self) -> None:
+        with localcontext() as context:
+            context.prec = 3
+            context.rounding = ROUND_UP
+            context.Emax = 5
+            context.Emin = -5
+            context.traps[Inexact] = True
+            context.clear_flags()
+            result = area_polygon([
+                ["0", "0"], ["123456.789", "0"], ["0", "0.987654321"],
+            ])
+            assert result["area"] == "60966.3155563176345"
+            assert result["trace"]["output"] == {"area": result["area"]}
+            assert context.prec == 3
+            assert context.rounding == ROUND_UP
+            assert context.Emax == 5
+            assert context.Emin == -5
+            assert context.traps[Inexact]
+            assert not any(context.flags.values())
+
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_fractional_area_beyond_default_precision(self, reverse: bool) -> None:
+        origin = "1" + "0" * 60
+        vertices = [
+            [origin, origin], [origin + ".125", origin],
+            [origin, origin + ".25"],
+        ]
+        if reverse:
+            vertices.reverse()
+        with localcontext() as context:
+            context.prec = 50
+            assert Decimal(area_polygon(vertices)["area"]) == Decimal("0.015625")
+
+    def test_exact_area_beyond_default_precision(self) -> None:
+        base = "123456789012345678901234567890123456789012345678901234567891"
+        product = int(base) * 9
+        with localcontext() as context:
+            context.prec = 50
+            result = area_polygon([["0", "0"], [base, "0"], ["0", "9"]])
+        assert result["area"] == f"{product // 2}.5"
+
+    @pytest.mark.parametrize("height, expected", [("0", "0"), ("1E-40", "5E-81")])
+    def test_zero_and_tiny_area(self, height: str, expected: str) -> None:
+        result = _polygon([["0", "0"], ["1E-40", "0"], ["0", height]])
+        assert Decimal(result["area"]) == Decimal(expected)
+
+    @pytest.mark.parametrize("coordinate", ["1E+999999", "1E-999999"])
+    def test_unrepresentable_area_raises_input_error(self, coordinate: str) -> None:
+        with pytest.raises(InvalidInputError, match="Decimal"):
+            _polygon([["0", "0"], [coordinate, "0"], ["0", coordinate]])
+
+    @pytest.mark.parametrize("coordinate", [0.1, None, "not-a-number"])
+    def test_invalid_coordinate_types(self, coordinate: object) -> None:
+        with pytest.raises(InvalidInputError):
+            area_polygon([["0", "0"], [coordinate, "0"], ["0", "1"]])
+
     @pytest.mark.parametrize("reverse", [False, True])
     def test_small_square_at_large_coordinates(self, reverse: bool) -> None:
         low = "1000000000000000000000000000000"

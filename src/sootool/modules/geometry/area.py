@@ -239,9 +239,22 @@ def area_polygon(vertices: list[list[str]]) -> AreaPolygonResult:
             raise InvalidInputError(f"vertices[{i}]의 좌표는 유한한 숫자여야 합니다.")
         points.append((x, y))
 
-    total = _shoelace_sum(points)
-
-    area = abs(total) / D("2")
+    # Align nonzero coordinates to a common exponent. Translation needs one
+    # extra digit, products twice that span, and summation adds carry digits.
+    coordinates = [value for point in points for value in point if value]
+    span = (
+        max(value.adjusted() for value in coordinates)
+        - min(value.as_tuple().exponent for value in coordinates) + 1
+        if coordinates else 1
+    )
+    precision = max(50, 2 * (span + 1) + len(str(2 * len(points))) + 1)
+    try:
+        with localcontext(Context(prec=precision)) as context:
+            context.traps[Inexact] = True
+            total = _shoelace_sum(points)
+            area = total.copy_abs() / D("2")
+    except DecimalException as exc:
+        raise InvalidInputError("넓이가 지원하는 Decimal 범위를 벗어났습니다.") from exc
 
     trace.step("shoelace_sum", str(total))
     trace.step("area",         str(area))
