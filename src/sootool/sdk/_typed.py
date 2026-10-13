@@ -510,7 +510,7 @@ class _FinanceTools(Protocol):
         """단순 투자회수기간을 계산한다. cashflows 의 index 0 은 음수인 초기 투자이고 이후 값은 기간별 현금흐름이다. 누적 현금흐름이 처음 0 이상이 되는 기간 안에서 선형 보간하며, 회수되지 않으면 payback_period=null 과 recovered=false 를 반환한다. 화폐의 시간가치는 반영하지 않으며 decimals(기본 6)자리로 rounding(기본 HALF_EVEN) 처리한다."""
         ...
     def pv(self, future_value: Num, rate: Num, periods: int, rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m41.PvResult:
-        """미래 현금흐름의 현재가치를 계산한다. PV = FV / (1+r)^n. future_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."""
+        """미래 현금흐름의 현재가치를 계산한다. PV = FV / (1+r)^n. future_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. 금액과 이율은 유한해야 하며 decimals는 0 이상 정수다. 호출자 설정과 독립적인 50자리 정밀도로 계산하고 계산 범위 초과는 입력 오류다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."""
         ...
     def roi(self, net_profit: Num, investment_cost: Num, rounding: Num = 'HALF_EVEN', decimals: int = 4) -> _m39.RoiResult:
         """투자수익률(ROI)을 계산한다. ROI = net_profit / investment_cost. net_profit 은 손실이면 음수인 Decimal 문자열이고 investment_cost 는 0보다 커야 한다. 결과는 배수(0.25 = 25%)이며 decimals(기본 4)자리로 rounding(기본 HALF_EVEN) 처리한다. 기간을 반영한 연환산 수익률은 아니다."""

@@ -8,7 +8,7 @@ import pytest
 import sootool.modules.finance  # noqa: F401
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
-from sootool.modules.finance.tvm import fv
+from sootool.modules.finance.tvm import fv, pv
 
 
 class TestPV:
@@ -206,3 +206,73 @@ def test_fv_unrepresentable_result(kwargs):
     inputs.update(kwargs)
     with pytest.raises(InvalidInputError, match="Decimal"):
         fv(**inputs)
+
+
+@pytest.mark.parametrize(
+    ("amount", "rate", "decimals", "rounding", "expected"),
+    [
+        ("0", "0.05", 2, "HALF_EVEN", "0.00"),
+        ("-110", "0.1", 2, "HALF_EVEN", "-100.00"),
+        ("2.5", "0", 0, "HALF_EVEN", "2"),
+        ("3.5", "-0", 0, "HALF_EVEN", "4"),
+        ("1.005", "0", 2, "HALF_EVEN", "1.00"),
+        ("1.015", "0", 2, "HALF_EVEN", "1.02"),
+        ("1.005", "0", 2, "HALF_UP", "1.01"),
+    ],
+)
+def test_pv_boundaries(amount, rate, decimals, rounding, expected):
+    result = pv(amount, rate, 1, decimals=decimals, rounding=rounding)
+    assert result["pv"] == expected
+    assert result["trace"]["tool"] == "finance.pv"
+    assert result["trace"]["output"] == expected
+
+
+@pytest.mark.parametrize("field", ["future_value", "rate"])
+@pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "invalid", 0.1])
+def test_pv_invalid_numbers(field, value):
+    kwargs = {"future_value": "100", "rate": "0.1", "periods": 1}
+    kwargs[field] = value
+    with pytest.raises(InvalidInputError):
+        pv(**kwargs)
+
+
+@pytest.mark.parametrize("field", ["periods", "decimals"])
+@pytest.mark.parametrize("value", [-1, True, False, 1.5, "2", None])
+def test_pv_invalid_integer_options(field, value):
+    kwargs = {"future_value": "100", "rate": "0.1", "periods": 1}
+    kwargs[field] = value
+    with pytest.raises(InvalidInputError, match=field):
+        pv(**kwargs)
+
+
+def test_pv_invalid_rounding():
+    with pytest.raises(InvalidInputError, match="반올림"):
+        pv("100", "0.1", 1, rounding="invalid")
+
+
+def test_pv_precision_and_context_isolation():
+    with localcontext() as context:
+        context.prec = 6
+        context.rounding = ROUND_UP
+        context.traps[Inexact] = True
+        context.Emax = 9
+        context.Emin = -9
+        context.clear_flags()
+        result = pv("1.000000000000000003", "0.000000000000000001", 2, decimals=18)
+        recurring = pv("1", "2", 1, decimals=18)
+        assert context.prec == 6
+        assert context.rounding == ROUND_UP
+        assert context.traps[Inexact]
+        assert context.Emax == 9
+        assert context.Emin == -9
+        assert not any(context.flags.values())
+    assert result["pv"] == "1.000000000000000001"
+    assert recurring["pv"] == "0.333333333333333333"
+
+
+@pytest.mark.parametrize("kwargs", [{"future_value": "1e100"}, {"decimals": 100}, {"rate": "1e999999"}])
+def test_pv_unrepresentable_result(kwargs):
+    inputs = {"future_value": "1", "rate": "0.1", "periods": 2}
+    inputs.update(kwargs)
+    with pytest.raises(InvalidInputError, match="Decimal"):
+        pv(**inputs)
