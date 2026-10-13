@@ -165,6 +165,69 @@ class TestElasticModulusRelate:
 
 
 class TestTorqueRotationalPower:
+    @pytest.mark.parametrize(
+        ("torque", "angular_velocity", "expected"),
+        [("0", "-10", "0"), ("-10", "0", "0"),
+         ("-0.25", "-0.4", "0.10"), ("0.25", "-0.4", "-0.10")],
+    )
+    def test_signed_and_zero_boundaries(self, torque, angular_velocity, expected) -> None:
+        result = REGISTRY.invoke(
+            "engineering.torque_rotational_power",
+            torque=torque, angular_velocity=angular_velocity,
+        )
+        assert Decimal(result["power"]) == Decimal(expected)
+        assert result["trace"]["output"] == result["power"]
+
+    @pytest.mark.parametrize("field", ["torque", "angular_velocity"])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "bad", 0.1])
+    def test_invalid_numbers(self, field, value) -> None:
+        inputs = {"torque": "10", "angular_velocity": "2"}
+        inputs[field] = value
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("engineering.torque_rotational_power", **inputs)
+
+    def test_precision_is_independent_of_caller_context(self) -> None:
+        with localcontext() as context:
+            context.prec = 6
+            context.rounding = ROUND_UP
+            context.traps[Inexact] = True
+            context.clear_flags()
+            result = REGISTRY.invoke(
+                "engineering.torque_rotational_power",
+                torque="1.234567890123456789", angular_velocity="9",
+            )
+            assert context.prec == 6
+            assert context.rounding == ROUND_UP
+            assert context.traps[Inexact] is True
+            assert not context.flags[Inexact]
+
+        assert result["power"] == "11.111111011111111101"
+        assert result["trace"]["output"] == result["power"]
+
+    def test_fifty_digit_half_even_rounding(self) -> None:
+        with localcontext() as context:
+            context.prec = 80
+            context.rounding = ROUND_UP
+            result = REGISTRY.invoke(
+                "engineering.torque_rotational_power",
+                torque="1." + "0" * 48 + "25", angular_velocity="1",
+            )
+        assert result["power"] == "1." + "0" * 48 + "2"
+
+    def test_product_is_rounded_once(self) -> None:
+        result = REGISTRY.invoke(
+            "engineering.torque_rotational_power",
+            torque="1." + "0" * 48 + "25", angular_velocity="2",
+        )
+        assert result["power"] == "2." + "0" * 48 + "5"
+
+    def test_decimal_overflow_is_input_error(self) -> None:
+        with pytest.raises(InvalidInputError, match="Decimal"):
+            REGISTRY.invoke(
+                "engineering.torque_rotational_power",
+                torque="1e999999", angular_velocity="10",
+            )
+
     def test_basic(self) -> None:
         """τ=100, ω=10 → P=1000 W."""
         r = REGISTRY.invoke(
