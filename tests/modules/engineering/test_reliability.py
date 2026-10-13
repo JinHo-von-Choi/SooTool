@@ -10,7 +10,7 @@ import pytest
 import sootool.modules.engineering  # noqa: F401
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
-from sootool.modules.engineering.reliability import series_reliability
+from sootool.modules.engineering.reliability import parallel_reliability, series_reliability
 
 
 def _assert_close(actual: str, expected: Decimal, tol: Decimal = Decimal("1E-6")) -> None:
@@ -187,6 +187,76 @@ class TestParallelReliability:
                 "engineering.parallel_reliability",
                 component_reliabilities=[],
             )
+
+
+    @pytest.mark.parametrize("values,expected", [
+        (["0"], "0"), (["1"], "1"), (["0", "0"], "0"),
+        (["0", "0.125"], "0.125"), (["0.125", "0.8"], "0.825"),
+    ])
+    def test_exact_boundaries(self, values: list[str], expected: str) -> None:
+        result = parallel_reliability(values)
+        assert Decimal(result["reliability"]) == Decimal(expected)
+        assert result["trace"]["output"] == result["reliability"]
+
+    @pytest.mark.parametrize("value", [
+        "NaN", "sNaN", "Infinity", "-Infinity", "invalid", 0.5,
+        "-0.000000000000000000000000000001", "1.000000000000000000000000000001",
+    ])
+    def test_invalid_component(self, value) -> None:
+        with pytest.raises(InvalidInputError):
+            parallel_reliability(["0.9", value])
+
+    @pytest.mark.parametrize("values", [None, "0.9", (), []])
+    def test_invalid_component_list(self, values) -> None:
+        with pytest.raises(InvalidInputError):
+            parallel_reliability(values)
+
+    @pytest.mark.parametrize("registered", [False, True])
+    def test_precision_and_caller_context_are_isolated(self, registered: bool) -> None:
+        values = ["0.123456789012345678901234567890", "0.25"]
+        with localcontext() as caller:
+            caller.prec = 6
+            caller.rounding = ROUND_UP
+            caller.traps[Inexact] = True
+            caller.Emax = 9
+            caller.Emin = -9
+            caller.clear_flags()
+            if registered:
+                result = REGISTRY.invoke(
+                    "engineering.parallel_reliability", component_reliabilities=values,
+                )
+            else:
+                result = parallel_reliability(values)
+            assert caller.prec == 6
+            assert caller.rounding == ROUND_UP
+            assert caller.traps[Inexact]
+            assert (caller.Emax, caller.Emin) == (9, -9)
+            assert not any(caller.flags.values())
+        assert Decimal(result["reliability"]) == Decimal(
+            "0.3425925917592592591759259259175"
+        )
+
+    @pytest.mark.parametrize("values,expected", [
+        (["1E-60"], "1E-60"),
+        (["1E-60", "1E-60"], "2E-60"),
+    ])
+    def test_tiny_reliabilities_are_preserved(self, values: list[str], expected: str) -> None:
+        result = parallel_reliability(values)
+        assert Decimal(result["reliability"]) == Decimal(expected)
+
+    def test_fifty_digit_half_even_rounding(self) -> None:
+        value = "0." + "1" * 49 + "25"
+        result = parallel_reliability([value])
+        assert Decimal(result["reliability"]) == Decimal("0." + "1" * 49 + "2")
+
+    def test_invalid_component_after_guaranteed_component(self) -> None:
+        with localcontext() as caller:
+            for signal in caller.traps:
+                caller.traps[signal] = False
+            caller.clear_flags()
+            with pytest.raises(InvalidInputError, match=r"component_reliabilities\[1\]"):
+                parallel_reliability(["1", "sNaN"])
+            assert not any(caller.flags.values())
 
 
 class TestWeibullReliability:
