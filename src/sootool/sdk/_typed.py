@@ -402,7 +402,7 @@ class _EngineeringTools(Protocol):
         """이상적 연산증폭기의 폐루프 전압 이득을 구한다. configuration='inverting'이면 -Rf/Rin, 'non_inverting'이면 1+Rf/Rin. feedback_resistance와 input_resistance는 0 초과 Decimal 문자열(Ω)이고 gain 은 배율이다(dB 아님, db_convert로 변환). 오용 주의: 유한 개방 이득, 대역폭, 포화 전압은 반영하지 않는다."""
         ...
     def parallel_reliability(self, component_reliabilities: list[Num]) -> _m32.SystemReliabilityResult:
-        """병렬(중복) 시스템 신뢰도 R_sys = 1 − Π(1 − R_i)를 계산한다. component_reliabilities 는 구성요소 신뢰도의 숫자 문자열 목록(1개 이상, 각 0 이상 1 이하)이며 소수로 넣는다(0.99). 하나라도 작동하면 시스템이 작동하는 구조이며 구성요소가 독립이라고 가정한다. 구성요소 k개 이상이 필요한 k-of-n 구조에는 쓸 수 없다. 반올림 없이 50자리 유효숫자."""
+        """병렬(중복) 시스템 신뢰도 R_sys = 1 − Π(1 − R_i)를 계산한다. component_reliabilities 는 구성요소 신뢰도의 숫자 문자열 목록(1개 이상, 각 0 이상 1 이하)이며 소수로 넣는다(0.99). 하나라도 작동하면 시스템이 작동하는 구조이며 구성요소가 독립이라고 가정한다. 구성요소 k개 이상이 필요한 k-of-n 구조에는 쓸 수 없다. 입력은 유한한 값이어야 하며 호출자의 Decimal 설정과 독립적인 50자리 유효숫자 HALF_EVEN으로 계산한다."""
         ...
     def pid_discrete_output(self, kp: Num, ki: Num, kd: Num, sample_time: Num, error_curr: Num, error_prev: Num, error_prev2: Num, output_prev: Num) -> _m26.PidDiscreteOutputResult:
         """속도형(velocity form) 이산 PID의 새 출력 u_k=u_{k-1}+Δu를 구한다. Δu=Kp·Δe+Ki·e·Ts+Kd·(Δe−Δe_prev)/Ts. kp, ki, kd, sample_time Ts(0 초과), error_curr, error_prev, error_prev2, output_prev 는 Decimal 문자열. 반환: output, delta_u, p_term, i_term, d_term. 적분항은 현재 오차 e에 Ts를 곱하는 방식이며 출력 포화와 anti-windup은 없다."""

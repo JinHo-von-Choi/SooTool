@@ -161,7 +161,8 @@ def series_reliability(component_reliabilities: list[str]) -> SystemReliabilityR
         "병렬(중복) 시스템 신뢰도 R_sys = 1 − Π(1 − R_i)를 계산한다. component_reliabilities 는 "
         "구성요소 신뢰도의 숫자 문자열 목록(1개 이상, 각 0 이상 1 이하)이며 소수로 넣는다(0.99). "
         "하나라도 작동하면 시스템이 작동하는 구조이며 구성요소가 독립이라고 가정한다. 구성요소 k개 "
-        "이상이 필요한 k-of-n 구조에는 쓸 수 없다. 반올림 없이 50자리 유효숫자."
+        "이상이 필요한 k-of-n 구조에는 쓸 수 없다. 입력은 유한한 값이어야 하며 "
+        "호출자의 Decimal 설정과 독립적인 50자리 유효숫자 HALF_EVEN으로 계산한다."
     ),
     version="1.0.0",
 )
@@ -171,21 +172,25 @@ def parallel_reliability(component_reliabilities: list[str]) -> SystemReliabilit
         tool="engineering.parallel_reliability",
         formula="R_sys = 1 − Π(1 − R_i)",
     )
-    if not component_reliabilities:
-        raise InvalidInputError("component_reliabilities는 최소 1개 이상이어야 합니다.")
-    values = [D(r) for r in component_reliabilities]
-    for i, v in enumerate(values):
-        if v < _ZERO or v > _ONE:
-            raise InvalidInputError(
-                f"component_reliabilities[{i}]는 [0, 1] 범위여야 합니다."
-            )
+    if not isinstance(component_reliabilities, list) or not component_reliabilities:
+        raise InvalidInputError("component_reliabilities는 최소 1개 이상의 목록이어야 합니다.")
+
+    with localcontext(Context(prec=50)):
+        values = [D(r) for r in component_reliabilities]
+        for i, v in enumerate(values):
+            if not v.is_finite() or v < _ZERO or v > _ONE:
+                raise InvalidInputError(
+                    f"component_reliabilities[{i}]는 유한한 [0, 1] 범위 숫자여야 합니다."
+                )
+
+        fail_product = _ONE
+        r_sys = _ZERO
+        for v in values:
+            fail_product = mul(fail_product, _ONE - v)
+            # Accumulate successes to avoid cancellation for tiny probabilities.
+            r_sys += mul(_ONE - r_sys, v)
 
     trace.input("component_reliabilities", component_reliabilities)
-
-    fail_product = _ONE
-    for v in values:
-        fail_product = mul(fail_product, _ONE - v)
-    r_sys = _ONE - fail_product
 
     trace.step("fail_product", str(fail_product))
     trace.step("r_sys",        str(r_sys))
