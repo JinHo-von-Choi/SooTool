@@ -465,7 +465,7 @@ class _EngineeringTools(Protocol):
         """균형 3상 회로의 피상, 유효, 무효 전력을 선간 값으로 구한다. S=√3·V_LL·I_L, P=S·cosφ, Q=√(S²−P²). line_voltage(V)와 line_current(A)는 0 초과, power_factor는 -1 이상 1 이하 Decimal 문자열. connection('wye'/'delta')은 검증만 하고 수식은 같다. Q는 항상 0 이상이라 진상 지상을 구분하지 못한다."""
         ...
     def torque_rotational_power(self, torque: Num, angular_velocity: Num) -> _m30.TorqueRotationalPowerResult:
-        """회전 일률 P = τ·ω (W)를 계산한다. torque 는 N·m, angular_velocity 는 rad/s 이다. rpm 을 그대로 넣으면 틀리므로 ω = 2π·rpm/60 으로 먼저 환산해야 한다. 두 값의 부호는 그대로 곱해진다. 반올림 없이 50자리 유효숫자."""
+        """회전 일률 P = τ·ω (W)를 계산한다. torque 는 N·m, angular_velocity 는 rad/s 이다. rpm 을 그대로 넣으면 틀리므로 ω = 2π·rpm/60 으로 먼저 환산해야 한다. 두 값의 부호는 그대로 곱해진다. 유한한 Decimal 문자열만 허용하며 호출자의 Decimal 설정과 독립적으로 50자리 유효숫자 HALF_EVEN으로 계산한다. 계산 범위 초과는 입력 오류다."""
         ...
     def weibull_reliability(self, shape: Num, scale: Num, time: Num) -> _m32.WeibullReliabilityResult:
         """2모수 와이블 분포의 신뢰도 R(t) = exp(−(t/η)^β)와 불신뢰도를 계산한다. shape β 와 scale η 는 0 초과, time 은 η 와 같은 단위의 0 이상 값이다(0 이면 R = 1). β < 1 은 초기 고장, β = 1 은 우발 고장, β > 1 은 마모 고장에 해당한다. 위치모수 γ 는 지원하지 않는다. 거듭제곱과 exp 는 30자리 유효숫자."""

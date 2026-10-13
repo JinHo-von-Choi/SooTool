@@ -247,23 +247,31 @@ class TorqueRotationalPowerResult(TracedResult):
     description=(
         "회전 일률 P = τ·ω (W)를 계산한다. torque 는 N·m, angular_velocity 는 rad/s 이다. "
         "rpm 을 그대로 넣으면 틀리므로 ω = 2π·rpm/60 으로 먼저 환산해야 한다. 두 값의 부호는 "
-        "그대로 곱해진다. 반올림 없이 50자리 유효숫자."
+        "그대로 곱해진다. 유한한 Decimal 문자열만 허용하며 호출자의 Decimal 설정과 독립적으로 "
+        "50자리 유효숫자 HALF_EVEN으로 계산한다. 계산 범위 초과는 입력 오류다."
     ),
     version="1.0.0",
 )
 def torque_rotational_power(torque: str, angular_velocity: str) -> TorqueRotationalPowerResult:
-    """Compute rotational power P = τ · ω."""
+    """Compute rotational power P = τ · ω in an isolated 50-digit context."""
     trace = CalcTrace(
         tool="engineering.torque_rotational_power",
         formula="P = τ × ω",
     )
-    tau_d   = D(torque)
-    omega_d = D(angular_velocity)
+    try:
+        with localcontext(Context(prec=50)):
+            tau_d = D(torque)
+            omega_d = D(angular_velocity)
+            for field, value in (("torque", tau_d), ("angular_velocity", omega_d)):
+                if not value.is_finite():
+                    raise InvalidInputError(f"{field}는 유한한 숫자여야 합니다.")
+            power = tau_d * omega_d
+    except DecimalException as exc:
+        raise InvalidInputError("입력값이 50자리 Decimal 계산 범위를 벗어납니다.") from exc
 
     trace.input("torque",           torque)
     trace.input("angular_velocity", angular_velocity)
 
-    power = mul(tau_d, omega_d)
     trace.step("power", str(power))
     trace.output(str(power))
 
