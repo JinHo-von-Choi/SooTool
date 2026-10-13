@@ -1,11 +1,14 @@
 """Tests for finance TVM tools: finance.pv and finance.fv."""
 from __future__ import annotations
 
+from decimal import ROUND_UP, Inexact, localcontext
+
 import pytest
 
 import sootool.modules.finance  # noqa: F401
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.modules.finance.tvm import fv
 
 
 class TestPV:
@@ -139,3 +142,67 @@ class TestFV:
                 rate="0.05",
                 periods=0,
             )
+
+
+@pytest.mark.parametrize(
+    ("amount", "rate", "periods", "decimals", "expected"),
+    [
+        ("0", "0.05", 1, 2, "0.00"),
+        ("-100", "0.1", 1, 2, "-110.00"),
+        ("2.5", "0", 1, 0, "2"),
+        ("3.5", "-0", 1, 0, "4"),
+        ("1.005", "0", 1, 2, "1.00"),
+        ("1.015", "0", 1, 2, "1.02"),
+    ],
+)
+def test_fv_boundaries(amount, rate, periods, decimals, expected):
+    result = fv(amount, rate, periods, decimals=decimals)
+    assert result["fv"] == expected
+    assert result["trace"]["tool"] == "finance.fv"
+    assert result["trace"]["output"] == expected
+
+
+@pytest.mark.parametrize("field", ["present_value", "rate"])
+@pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "invalid", 0.1])
+def test_fv_invalid_numbers(field, value):
+    kwargs = {"present_value": "100", "rate": "0.1", "periods": 1}
+    kwargs[field] = value
+    with pytest.raises(InvalidInputError):
+        fv(**kwargs)
+
+
+@pytest.mark.parametrize("field", ["periods", "decimals"])
+@pytest.mark.parametrize("value", [-1, True, False, 1.5, "2", None])
+def test_fv_invalid_integer_options(field, value):
+    kwargs = {"present_value": "100", "rate": "0.1", "periods": 1}
+    kwargs[field] = value
+    with pytest.raises(InvalidInputError, match=field):
+        fv(**kwargs)
+
+
+def test_fv_precision_and_context_isolation():
+    with localcontext() as context:
+        context.prec = 6
+        context.rounding = ROUND_UP
+        context.traps[Inexact] = True
+        context.Emax = 9
+        context.Emin = -9
+        context.clear_flags()
+        result = fv("1.000000000000000001", "0.000000000000000001", 2, decimals=18)
+        recurring = fv("1", "0.1", 3, decimals=2)
+        assert context.prec == 6
+        assert context.rounding == ROUND_UP
+        assert context.traps[Inexact]
+        assert context.Emax == 9
+        assert context.Emin == -9
+        assert not any(context.flags.values())
+    assert result["fv"] == "1.000000000000000003"
+    assert recurring["fv"] == "1.33"
+
+
+@pytest.mark.parametrize("kwargs", [{"present_value": "1e100"}, {"decimals": 100}, {"rate": "1e999999"}])
+def test_fv_unrepresentable_result(kwargs):
+    inputs = {"present_value": "1", "rate": "0.1", "periods": 2}
+    inputs.update(kwargs)
+    with pytest.raises(InvalidInputError, match="Decimal"):
+        fv(**inputs)

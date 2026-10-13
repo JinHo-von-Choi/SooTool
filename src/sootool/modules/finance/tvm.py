@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, localcontext
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, power
@@ -117,7 +117,8 @@ def pv(
     description=(
         "현재 금액의 미래가치를 계산한다. FV = PV x (1+r)^n, 기간마다 복리. present_value 와 rate(기간당 이율, 0 이상, "
         "예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. "
-        "연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."
+        "금액과 이율은 유한해야 하며 decimals는 0 이상 정수다. 호출자 설정과 독립적인 50자리 정밀도로 계산하고 "
+        "계산 범위 초과는 입력 오류다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."
     ),
     version="1.0.0",
 )
@@ -146,10 +147,10 @@ def fv(
     )
     policy = _parse_policy(rounding)
 
-    pv_d   = D(present_value)
-    rate_d = D(rate)
-    _validate_rate(rate_d)
-    _validate_periods(periods)
+    if isinstance(periods, bool) or not isinstance(periods, int) or periods <= 0:
+        raise InvalidInputError("periods는 1 이상 정수여야 합니다.")
+    if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
 
     trace.input("present_value", present_value)
     trace.input("rate",          rate)
@@ -157,15 +158,28 @@ def fv(
     trace.input("rounding",      rounding)
     trace.input("decimals",      decimals)
 
-    one_plus_r     = add(Decimal("1"), rate_d)
-    growth_factor  = power(one_plus_r, periods)
-    trace.step("(1+r)",   str(one_plus_r))
-    trace.step("(1+r)^n", str(growth_factor))
+    try:
+        with localcontext(Context(prec=50)):
+            pv_d   = D(present_value)
+            rate_d = D(rate)
+            for field, value in (("present_value", pv_d), ("rate", rate_d)):
+                if not value.is_finite():
+                    raise InvalidInputError(f"{field}는 유한한 숫자여야 합니다.")
+            _validate_rate(rate_d)
 
-    fv_raw = pv_d * growth_factor
-    trace.step("fv_raw", str(fv_raw))
+            one_plus_r    = add(Decimal("1"), rate_d)
+            growth_factor = power(one_plus_r, periods)
+            trace.step("(1+r)",   str(one_plus_r))
+            trace.step("(1+r)^n", str(growth_factor))
 
-    fv_val = apply(fv_raw, decimals, policy)
+            fv_raw = pv_d * growth_factor
+            trace.step("fv_raw", str(fv_raw))
+            fv_val = apply(fv_raw, decimals, policy)
+    except InvalidInputError:
+        raise
+    except DecimalException as exc:
+        raise InvalidInputError("입력값 또는 decimals가 50자리 Decimal 계산 범위를 벗어납니다.") from exc
+
     trace.output(str(fv_val))
 
     return {

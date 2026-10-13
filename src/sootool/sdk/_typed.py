@@ -492,7 +492,7 @@ class _FinanceTools(Protocol):
         """연속복리 보유비용 모형의 선물 이론가격을 계산한다. F = S x exp((r - q) x T). spot 은 양수, risk_free_rate 와 dividend_yield(q, 기본 0)는 연속복리 연율, time_to_expiry 는 0 초과 연 단위, 모두 Decimal 문자열. 결과는 소수 8자리. 이산복리 이율을 그대로 넣으면 값이 어긋난다."""
         ...
     def fv(self, present_value: Num, rate: Num, periods: int, rounding: Num = 'HALF_EVEN', decimals: int = 2) -> _m41.FvResult:
-        """현재 금액의 미래가치를 계산한다. FV = PV x (1+r)^n, 기간마다 복리. present_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."""
+        """현재 금액의 미래가치를 계산한다. FV = PV x (1+r)^n, 기간마다 복리. present_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. 금액과 이율은 유한해야 하며 decimals는 0 이상 정수다. 호출자 설정과 독립적인 50자리 정밀도로 계산하고 계산 범위 초과는 입력 오류다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."""
         ...
     def irr(self, cashflows: list[Num], guess: Num = '0.1', max_iter: int = 100, tol: Num = '1e-10') -> _m39.IrrResult:
         """내부수익률(IRR), 즉 NPV 를 0 으로 만드는 기간 수익률을 구한다. cashflows 는 2개 이상이며 index 0 이 t=0, 양수와 음수가 모두 있어야 한다. 뉴턴법이 실패하면 -0.99 이상 10 이하 구간 이분법을 쓰고 max_iter 는 10000 이하. 해를 못 찾으면 irr=null, converged=false 를 돌려준다. 월별 현금흐름의 결과는 연율이 아니라 월 수익률이다."""
