@@ -43,8 +43,8 @@ def _validate_rate(rate_d: Decimal) -> None:
 
 
 def _validate_periods(periods: int) -> None:
-    if periods <= 0:
-        raise InvalidInputError("periods는 1 이상이어야 합니다.")
+    if isinstance(periods, bool) or not isinstance(periods, int) or periods <= 0:
+        raise InvalidInputError("periods는 1 이상 정수여야 합니다.")
 
 
 @REGISTRY.tool(
@@ -53,7 +53,8 @@ def _validate_periods(periods: int) -> None:
     description=(
         "미래 현금흐름의 현재가치를 계산한다. PV = FV / (1+r)^n. future_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 "
         "Decimal 문자열, periods 는 1 이상 정수. decimals(기본 2)자리로 rounding(기본 HALF_EVEN) 처리한다. "
-        "연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."
+        "금액과 이율은 유한해야 하며 decimals는 0 이상 정수다. 호출자 설정과 독립적인 50자리 정밀도로 계산하고 "
+        "계산 범위 초과는 입력 오류다. 연이율과 월 단위 기간 수처럼 단위가 다른 값을 섞어 넣지 않는다."
     ),
     version="1.0.0",
 )
@@ -82,10 +83,9 @@ def pv(
     )
     policy = _parse_policy(rounding)
 
-    fv_d   = D(future_value)
-    rate_d = D(rate)
-    _validate_rate(rate_d)
     _validate_periods(periods)
+    if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
 
     trace.input("future_value", future_value)
     trace.input("rate",         rate)
@@ -93,16 +93,29 @@ def pv(
     trace.input("rounding",     rounding)
     trace.input("decimals",     decimals)
 
-    one_plus_r = add(Decimal("1"), rate_d)
-    trace.step("(1+r)", str(one_plus_r))
+    try:
+        with localcontext(Context(prec=50)):
+            fv_d   = D(future_value)
+            rate_d = D(rate)
+            for field, value in (("future_value", fv_d), ("rate", rate_d)):
+                if not value.is_finite():
+                    raise InvalidInputError(f"{field}는 유한한 숫자여야 합니다.")
+            _validate_rate(rate_d)
 
-    discount_factor = power(one_plus_r, periods)
-    trace.step("(1+r)^n", str(discount_factor))
+            one_plus_r = add(Decimal("1"), rate_d)
+            trace.step("(1+r)", str(one_plus_r))
 
-    pv_raw = div(fv_d, discount_factor)
-    trace.step("pv_raw", str(pv_raw))
+            discount_factor = power(one_plus_r, periods)
+            trace.step("(1+r)^n", str(discount_factor))
 
-    pv_val = apply(pv_raw, decimals, policy)
+            pv_raw = div(fv_d, discount_factor)
+            trace.step("pv_raw", str(pv_raw))
+            pv_val = apply(pv_raw, decimals, policy)
+    except InvalidInputError:
+        raise
+    except DecimalException as exc:
+        raise InvalidInputError("입력값 또는 decimals가 50자리 Decimal 계산 범위를 벗어납니다.") from exc
+
     trace.output(str(pv_val))
 
     return {
