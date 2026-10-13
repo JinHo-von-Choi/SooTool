@@ -1,7 +1,7 @@
 """Electrical engineering tools: Ohm's law, power equations, resistor networks."""
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, localcontext
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, mul
@@ -320,28 +320,34 @@ def resistor_parallel(resistors: list[str]) -> ResistorNetworkResult:
     Formula: 1/R_total = 1/R₁ + 1/R₂ + … + 1/Rₙ
 
     Args:
-        resistors: List of resistance values as Decimal strings (all > 0).
+        resistors: List of finite resistance values as Decimal strings (all > 0).
 
     Returns:
         {total: str, trace}
 
     Raises:
-        InvalidInputError: If fewer than 1 resistor given or any value ≤ 0.
+        InvalidInputError: If inputs are empty, non-finite, non-positive, or out of range.
     """
     trace = CalcTrace(tool="engineering.resistor_parallel", formula="1/R_total = Σ(1/Rᵢ)")
 
     if not resistors:
         raise InvalidInputError("resistors 리스트는 최소 1개 이상이어야 합니다.")
 
-    values = [D(r) for r in resistors]
-    for i, v in enumerate(values):
-        if v <= _ZERO:
-            raise InvalidInputError(f"resistors[{i}]는 0 초과여야 합니다. 입력값: {resistors[i]!r}")
+    try:
+        with localcontext(Context(prec=50)):
+            values = [D(r) for r in resistors]
+            for i, v in enumerate(values):
+                if not v.is_finite() or v <= _ZERO:
+                    raise InvalidInputError(
+                        f"resistors[{i}]는 유한한 0 초과 숫자여야 합니다. 입력값: {resistors[i]!r}"
+                    )
+
+            reciprocal_sum = add(*[div(Decimal("1"), v) for v in values])
+            total = div(Decimal("1"), reciprocal_sum)
+    except DecimalException as exc:
+        raise InvalidInputError("입력값이 50자리 Decimal 계산 범위를 벗어납니다.") from exc
 
     trace.input("resistors", resistors)
-
-    reciprocal_sum = add(*[div(Decimal("1"), v) for v in values])
-    total          = div(Decimal("1"), reciprocal_sum)
 
     trace.step("sum_of_reciprocals", str(reciprocal_sum))
     trace.step("total", str(total))
