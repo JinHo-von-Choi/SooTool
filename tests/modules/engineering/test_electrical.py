@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal, localcontext
+from decimal import ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
@@ -189,6 +189,46 @@ class TestResistorSeries:
 
 
 class TestResistorParallel:
+    @pytest.mark.parametrize(("resistors", "expected"), [
+        (["3"], "3"),
+        (["1E+400", "1E+400"], "5E+399"),
+        (["1E-400", "1E-400"], "5E-401"),
+    ])
+    def test_decimal_boundaries(self, resistors: list[str], expected: str) -> None:
+        result = REGISTRY.invoke("engineering.resistor_parallel", resistors=resistors)
+        assert Decimal(result["total"]) == Decimal(expected)
+        assert result["trace"]["output"] == result["total"]
+
+    @pytest.mark.parametrize("value", [
+        "0", "-1", "NaN", "sNaN", "Infinity", "-Infinity", "invalid", 0.1,
+    ])
+    @pytest.mark.parametrize("index", [0, 1])
+    def test_invalid_resistance(self, value: object, index: int) -> None:
+        resistors = ["10", "20"]
+        resistors[index] = value
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("engineering.resistor_parallel", resistors=resistors)
+
+    @pytest.mark.parametrize("precision", [6, 80])
+    def test_precision_independent_of_caller_context(self, precision: int) -> None:
+        with localcontext() as context:
+            context.prec = precision
+            context.rounding = ROUND_UP
+            context.traps[Inexact] = True
+            context.clear_flags()
+            result = REGISTRY.invoke("engineering.resistor_parallel", resistors=["1", "2"])
+            assert context.prec == precision
+            assert context.rounding == ROUND_UP
+            assert context.traps[Inexact] is True
+            assert not any(context.flags.values())
+
+        assert result["total"] == "0." + "6" * 49 + "7"
+        assert result["trace"]["output"] == result["total"]
+
+    def test_decimal_overflow_becomes_domain_error(self) -> None:
+        with pytest.raises(InvalidInputError, match="Decimal"):
+            REGISTRY.invoke("engineering.resistor_parallel", resistors=["1E-1000000"])
+
     def test_resistor_parallel_two_equal(self) -> None:
         """[10, 10] → total=5 (two equal resistors in parallel)."""
         result = REGISTRY.invoke("engineering.resistor_parallel", resistors=["10", "10"])
