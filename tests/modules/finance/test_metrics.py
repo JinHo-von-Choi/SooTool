@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal, localcontext
+from decimal import ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
@@ -12,6 +12,70 @@ from sootool.core.registry import REGISTRY
 
 
 class TestNPV:
+    @pytest.mark.parametrize("field", ["rate", "cashflow"])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "bad", 1.5])
+    def test_invalid_numbers_raise(self, field: str, value: object) -> None:
+        kwargs = {"rate": "0.1", "cashflows": ["-100", "110"]}
+        if field == "rate":
+            kwargs["rate"] = value
+        else:
+            kwargs["cashflows"] = ["-100", value]
+        with pytest.raises(InvalidInputError):
+            REGISTRY.invoke("finance.npv", **kwargs)
+
+    @pytest.mark.parametrize("decimals", [True, False, 1.5, "2", None, -1])
+    def test_invalid_decimal_places_raise(self, decimals: object) -> None:
+        with pytest.raises(InvalidInputError, match="decimals"):
+            REGISTRY.invoke("finance.npv", rate="0", cashflows=["1"], decimals=decimals)
+
+    @pytest.mark.parametrize(
+        ("rate", "cashflows", "decimals", "expected"),
+        [
+            ("0", ["0", "0"], 0, "0"),
+            ("0", ["-100", "40", "60"], 2, "0.00"),
+            ("0", ["-1" + "0" * 60, "1" + "0" * 60 + ".0051"], 2, "0.01"),
+            ("2", ["0", "1"], 60, "0." + "3" * 60),
+            ("1", ["-100", "0", "400"], 2, "0.00"),
+            ("1e-60", ["-1", "1"], 60, "-1E-60"),
+            ("0", ["1.245" + "0" * 60 + "1"], 2, "1.25"),
+            ("0", ["1" + "0" * 60], 2, "1" + "0" * 60 + ".00"),
+        ],
+    )
+    def test_precision_and_boundaries(
+        self, rate: str, cashflows: list[str], decimals: int, expected: str,
+    ) -> None:
+        result = REGISTRY.invoke("finance.npv", rate=rate, cashflows=cashflows, decimals=decimals)
+        assert result["npv"] == expected
+        assert result["trace"]["output"] == expected
+
+    @pytest.mark.parametrize(("rounding", "expected"), [("HALF_EVEN", "1.24"), ("HALF_UP", "1.25")])
+    def test_rounding_tie(self, rounding: str, expected: str) -> None:
+        result = REGISTRY.invoke(
+            "finance.npv", rate="1", cashflows=["0", "2.49"], rounding=rounding,
+        )
+        assert result["npv"] == expected
+
+    def test_independent_of_caller_context(self) -> None:
+        with localcontext() as context:
+            context.prec = 6
+            context.rounding = ROUND_UP
+            context.traps[Inexact] = True
+            context.clear_flags()
+            result = REGISTRY.invoke("finance.npv", rate="2", cashflows=["0", "1"], decimals=30)
+            assert context.prec == 6
+            assert context.rounding == ROUND_UP
+            assert context.traps[Inexact]
+            assert not any(context.flags.values())
+        assert result["npv"] == "0." + "3" * 30
+
+    def test_invalid_rounding_raises(self) -> None:
+        with pytest.raises(InvalidInputError, match="반올림 정책"):
+            REGISTRY.invoke("finance.npv", rate="0", cashflows=["1"], rounding="bad")
+
+    def test_decimal_range_error_is_input_error(self) -> None:
+        with pytest.raises(InvalidInputError, match="계산 범위"):
+            REGISTRY.invoke("finance.npv", rate="0", cashflows=["1e1000000"])
+
     def test_npv_standard_textbook(self) -> None:
         """rate=0.1, cf=[-100, 50, 60, 70] -> NPV ~ 47.03"""
         result = REGISTRY.invoke(
