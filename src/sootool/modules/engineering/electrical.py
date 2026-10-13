@@ -274,27 +274,34 @@ def resistor_series(resistors: list[str]) -> ResistorNetworkResult:
     Formula: R_total = R₁ + R₂ + … + Rₙ
 
     Args:
-        resistors: List of resistance values as Decimal strings (all > 0).
+        resistors: List of finite resistance values as Decimal strings (all > 0).
 
     Returns:
         {total: str, trace}
 
     Raises:
-        InvalidInputError: If fewer than 1 resistor given or any value ≤ 0.
+        InvalidInputError: If inputs are empty, non-finite, non-positive, or out of range.
     """
     trace = CalcTrace(tool="engineering.resistor_series", formula="R_total = ΣRᵢ")
 
     if not resistors:
         raise InvalidInputError("resistors 리스트는 최소 1개 이상이어야 합니다.")
 
-    values = [D(r) for r in resistors]
-    for i, v in enumerate(values):
-        if v <= _ZERO:
-            raise InvalidInputError(f"resistors[{i}]는 0 초과여야 합니다. 입력값: {resistors[i]!r}")
+    try:
+        with localcontext(Context(prec=50)):
+            values = [D(r) for r in resistors]
+            for i, v in enumerate(values):
+                if not v.is_finite() or v <= _ZERO:
+                    raise InvalidInputError(
+                        f"resistors[{i}]는 유한한 0 초과 숫자여야 합니다. 입력값: {resistors[i]!r}"
+                    )
+
+            total = add(*values)
+    except DecimalException as exc:
+        raise InvalidInputError("입력값이 50자리 Decimal 계산 범위를 벗어납니다.") from exc
 
     trace.input("resistors", resistors)
 
-    total = add(*values)
     trace.step("total", str(total))
     trace.output(str(total))
 

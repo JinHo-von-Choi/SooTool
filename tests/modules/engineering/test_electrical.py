@@ -9,6 +9,7 @@ import pytest
 import sootool.modules.engineering  # noqa: F401, triggers REGISTRY auto-registration
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.modules.engineering.electrical import resistor_series
 
 
 class TestElectricalOhm:
@@ -186,6 +187,53 @@ class TestResistorSeries:
     def test_resistor_series_zero_raises(self) -> None:
         with pytest.raises(InvalidInputError):
             REGISTRY.invoke("engineering.resistor_series", resistors=["10", "0", "5"])
+
+    @pytest.mark.parametrize(("resistors", "expected"), [
+        (["1E-400"], "1E-400"),
+        (["1E+400", "1E+400"], "2E+400"),
+        (["0.1", "0.2"], "0.3"),
+    ])
+    def test_decimal_boundaries(self, resistors, expected) -> None:
+        result = REGISTRY.invoke("engineering.resistor_series", resistors=resistors)
+        assert Decimal(result["total"]) == Decimal(expected)
+        assert result["trace"]["output"] == result["total"]
+
+    @pytest.mark.parametrize("value", [
+        "0", "-1", "NaN", "sNaN", "Infinity", "-Infinity", "invalid", 0.1,
+    ])
+    @pytest.mark.parametrize("index", [0, 1])
+    def test_invalid_resistance(self, value, index) -> None:
+        resistors = ["10", "20"]
+        resistors[index] = value
+        with pytest.raises(InvalidInputError):
+            resistor_series(resistors)
+
+    @pytest.mark.parametrize("precision", [6, 80])
+    @pytest.mark.parametrize("last_digit", ["2", "3"])
+    @pytest.mark.parametrize("use_registry", [False, True])
+    def test_half_even_precision_isolated(self, precision, last_digit, use_registry) -> None:
+        # The 51st digit is a tie; the 50th digit determines HALF_EVEN rounding.
+        value = "0." + "1" * 49 + last_digit + "5"
+        with localcontext() as context:
+            context.prec = precision
+            context.rounding = ROUND_UP
+            context.traps[Inexact] = True
+            context.clear_flags()
+            if use_registry:
+                result = REGISTRY.invoke("engineering.resistor_series", resistors=[value])
+            else:
+                result = resistor_series([value])
+            assert context.prec == precision
+            assert context.rounding == ROUND_UP
+            assert context.traps[Inexact]
+            assert not any(context.flags.values())
+        rounded_digit = "2" if last_digit == "2" else "4"
+        assert result["total"] == "0." + "1" * 49 + rounded_digit
+        assert result["trace"]["output"] == result["total"]
+
+    def test_decimal_overflow_becomes_domain_error(self) -> None:
+        with pytest.raises(InvalidInputError, match="Decimal"):
+            resistor_series(["9E+999999", "9E+999999"])
 
 
 class TestResistorParallel:
