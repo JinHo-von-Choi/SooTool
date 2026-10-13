@@ -9,7 +9,7 @@ Date: 2026-04-22
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, localcontext
 from typing import Any, cast
 
 from sootool.core.audit import CalcTrace
@@ -44,7 +44,9 @@ def realestate_rental_yield(
     rounding:        str       = "HALF_EVEN",
     decimals:        int       = 2,
 ) -> RealestateRentalYieldResult:
-    """Calculate rental yield.
+    """Calculate rental yield with an isolated, input-sized Decimal context.
+
+    Amounts must be finite; decimals must be a nonnegative integer.
 
     Args:
         annual_rent:     연간 임대 수입 (원, Decimal string)
@@ -77,6 +79,11 @@ def realestate_rental_yield(
     price    = D(property_price)
     expenses = D(annual_expenses)
 
+    if any(not value.is_finite() for value in (rent, price, expenses)):
+        raise InvalidInputError("금액은 유한한 숫자여야 합니다.")
+    if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
+
     if rent < Decimal("0"):
         raise InvalidInputError("annual_rent는 0 이상이어야 합니다.")
     if price <= Decimal("0"):
@@ -89,16 +96,24 @@ def realestate_rental_yield(
     trace.input("annual_expenses", annual_expenses)
     trace.input("yield_type",      yield_type)
 
-    if yield_type == "gross":
-        numerator = rent
-    else:
-        numerator = rent - expenses
-
-    raw_ratio = numerator / price
-    raw_pct   = raw_ratio * D("100")
-
-    rounding_policy = RoundingPolicy(rounding)
-    yield_pct = round_apply(raw_pct, decimals, rounding_policy)
+    # Preserve cancellation in net income and digits near rounding boundaries.
+    amounts = [rent] if yield_type == "gross" else [rent, expenses]
+    nonzero = [value for value in amounts if value != 0]
+    highest_digit = max((value.adjusted() for value in nonzero), default=0)
+    lowest_digit = min((int(value.as_tuple().exponent) for value in nonzero), default=0)
+    integer_digits = max(1, highest_digit - price.adjusted() + 3)
+    precision = max(
+        50,
+        highest_digit - lowest_digit + integer_digits
+        + decimals + len(price.as_tuple().digits) + 10,
+    )
+    try:
+        with localcontext(Context(prec=precision)):
+            numerator = rent if yield_type == "gross" else rent - expenses
+            raw_pct = numerator / price * D("100")
+            yield_pct = round_apply(raw_pct, decimals, RoundingPolicy(rounding))
+    except DecimalException as exc:
+        raise InvalidInputError("입력값 또는 decimals가 Decimal 계산 범위를 벗어납니다.") from exc
 
     trace.step("numerator", str(numerator))
     trace.step("raw_pct",   str(raw_pct))
