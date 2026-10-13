@@ -10,7 +10,7 @@ ADR-001 Decimal, ADR-003 trace, ADR-007 stateless.
 """
 from __future__ import annotations
 
-from decimal import Decimal
+from decimal import Context, Decimal, DecimalException, localcontext
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, div, mul
@@ -141,21 +141,31 @@ def max_power_transfer(
     v_th: str,
     r_th: str,
 ) -> MaxPowerTransferResult:
-    """Return optimal load resistance and maximum transferable power."""
+    """Return optimal load and maximum power using an isolated 50-digit context.
+
+    Inputs must be finite, with positive resistance. Decimal range errors are
+    reported as InvalidInputError.
+    """
     trace = CalcTrace(
         tool="engineering.max_power_transfer",
         formula="R_L = R_th; P_max = V_th² / (4 R_th)",
     )
     v_d = D(v_th)
     r_d = D(r_th)
+    if not v_d.is_finite() or not r_d.is_finite():
+        raise InvalidInputError("v_th와 r_th는 유한한 숫자여야 합니다.")
     if r_d <= _ZERO:
         raise InvalidInputError("r_th는 0 초과여야 합니다.")
 
     trace.input("v_th", v_th)
     trace.input("r_th", r_th)
 
-    v_sq = mul(v_d, v_d)
-    p_max = div(v_sq, mul(_FOUR, r_d))
+    try:
+        with localcontext(Context(prec=50)):
+            v_sq = mul(v_d, v_d)
+            p_max = div(v_sq, mul(_FOUR, r_d))
+    except DecimalException as exc:
+        raise InvalidInputError("입력값이 Decimal 계산 범위를 벗어납니다.") from exc
 
     trace.step("v_squared", str(v_sq))
     trace.step("p_max",     str(p_max))

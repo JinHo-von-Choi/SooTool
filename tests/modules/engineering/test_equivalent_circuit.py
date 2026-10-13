@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import concurrent.futures
-from decimal import Decimal
+from decimal import ROUND_UP, Decimal, Inexact, localcontext
 
 import pytest
 
 import sootool.modules.engineering  # noqa: F401
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
+from sootool.modules.engineering.equivalent_circuit import max_power_transfer
 
 
 def _assert_close(actual: str, expected: Decimal, tol: Decimal = Decimal("1E-6")) -> None:
@@ -84,6 +85,58 @@ class TestNortonEquivalent:
 
 
 class TestMaxPowerTransfer:
+    @pytest.mark.parametrize(
+        ("voltage", "resistance", "expected"),
+        [("0", "1", "0"), ("-0", "1", "0"), ("0.000002", "1e-12", "1")],
+    )
+    def test_zero_voltage_and_small_positive_resistance(
+        self, voltage: str, resistance: str, expected: str,
+    ) -> None:
+        result = REGISTRY.invoke(
+            "engineering.max_power_transfer", v_th=voltage, r_th=resistance,
+        )
+        assert Decimal(result["max_power"]) == Decimal(expected)
+        assert Decimal(result["optimal_load"]) == Decimal(resistance)
+        assert result["trace"]["output"]["max_power"] == result["max_power"]
+
+    @pytest.mark.parametrize("field", ["v_th", "r_th"])
+    @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "bad", 1.5])
+    def test_invalid_numbers(self, field: str, value: object) -> None:
+        inputs = {"v_th": "12", "r_th": "4"}
+        inputs[field] = value
+        with pytest.raises(InvalidInputError):
+            max_power_transfer(**inputs)
+
+    @pytest.mark.parametrize("resistance", ["-0", "0.000", "-1", "-1e-50"])
+    def test_nonpositive_resistance(self, resistance: str) -> None:
+        with pytest.raises(InvalidInputError, match="r_th"):
+            max_power_transfer(v_th="12", r_th=resistance)
+
+    def test_precision_is_independent_of_caller_context(self) -> None:
+        with localcontext() as context:
+            context.prec = 6
+            context.rounding = ROUND_UP
+            context.traps[Inexact] = True
+            context.Emax = 9
+            context.Emin = -9
+            context.clear_flags()
+            result = max_power_transfer(v_th="1", r_th="3")
+            large = max_power_transfer(v_th="1e10", r_th="0.25")
+            assert context.prec == 6
+            assert context.rounding == ROUND_UP
+            assert context.traps[Inexact]
+            assert context.Emax == 9
+            assert context.Emin == -9
+            assert not any(context.flags.values())
+
+        assert result["max_power"] == "0.08" + "3" * 49
+        assert Decimal(large["max_power"]) == Decimal("1e20")
+        assert result["trace"]["output"]["max_power"] == result["max_power"]
+
+    def test_decimal_overflow_is_input_error(self) -> None:
+        with pytest.raises(InvalidInputError, match="Decimal"):
+            max_power_transfer(v_th="1e999999", r_th="1")
+
     def test_basic(self) -> None:
         """V_th=12, R_th=4 → R_L=4, P_max = 144/16 = 9 W."""
         r = REGISTRY.invoke(
