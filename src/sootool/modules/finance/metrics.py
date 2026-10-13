@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 
-from decimal import Context, Decimal, localcontext
+from decimal import Context, Decimal, DecimalException, localcontext
 
 from sootool.core.audit import CalcTrace
 from sootool.core.decimal_ops import D, add, div, power
@@ -307,6 +307,9 @@ def npv(
 ) -> NpvResult:
     """Compute Net Present Value.
 
+    Uses an isolated Decimal context sized for input and output digits.
+    Inputs must be finite; decimals must be a nonnegative integer.
+
     Args:
         rate:       할인율 (Decimal string, >= 0)
         cashflows:  현금흐름 목록. index 0 = t=0 (초기 투자는 음수).
@@ -322,24 +325,44 @@ def npv(
     )
     policy = _parse_policy(rounding)
 
+    if isinstance(decimals, bool) or not isinstance(decimals, int) or decimals < 0:
+        raise InvalidInputError("decimals는 0 이상 정수여야 합니다.")
     if not cashflows:
         raise InvalidInputError("cashflows는 최소 1개 이상이어야 합니다.")
 
     rate_d = D(rate)
+    if not rate_d.is_finite():
+        raise InvalidInputError("rate는 유한한 숫자여야 합니다.")
     if rate_d < Decimal("0"):
         raise InvalidInputError("rate는 0 이상이어야 합니다.")
 
     cashflows_d = [D(cf) for cf in cashflows]
+    if any(not cf.is_finite() for cf in cashflows_d):
+        raise InvalidInputError("cashflows는 유한한 숫자여야 합니다.")
 
     trace.input("rate",       rate)
     trace.input("cashflows",  cashflows)
     trace.input("rounding",   rounding)
     trace.input("decimals",   decimals)
 
-    npv_raw = _npv_decimal(rate_d, cashflows_d)
-    trace.step("npv_raw", str(npv_raw))
-
-    npv_val = apply(npv_raw, decimals, policy)
+    # Retain small residuals after cancellation and the full discount-factor
+    # coefficients, with guard digits for division and final rounding.
+    nonzero = [cf for cf in cashflows_d if cf != 0]
+    highest_digit = max((cf.adjusted() for cf in nonzero), default=0)
+    lowest_digit = min((int(cf.as_tuple().exponent) for cf in nonzero), default=0)
+    rate_digits = max(0, rate_d.adjusted()) - min(0, int(rate_d.as_tuple().exponent)) + 2
+    precision = max(
+        50,
+        max(0, highest_digit) - min(lowest_digit, -decimals)
+        + rate_digits * (len(cashflows_d) - 1) + len(str(len(cashflows_d))) + 10,
+    )
+    try:
+        with localcontext(Context(prec=precision)):
+            npv_raw = _npv_decimal(rate_d, cashflows_d)
+            trace.step("npv_raw", str(npv_raw))
+            npv_val = apply(npv_raw, decimals, policy)
+    except DecimalException as exc:
+        raise InvalidInputError("입력값 또는 decimals가 Decimal 계산 범위를 벗어납니다.") from exc
     trace.output(str(npv_val))
 
     return {
