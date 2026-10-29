@@ -61,6 +61,8 @@
 | 중첩 배치 최대 스레드 | 5,393 | **58** |
 
 > **원격 반영 상태**: 2026-10-30 03:21(KST) **릴리스 0.3.0 완료.** PR #42(수정)·#43(버전) 를 CI 통과로 병합하고 태그 `v0.3.0` → GitHub Release → PyPI → MCP Registry 게시까지 끝났다. `io.github.JinHo-von-Choi/sootool` 0.3.0 이 레지스트리에 등록됐고, PyPI `sootool==0.3.0` 을 설치해 동작을 확인했다. master 브랜치 보호(CI 3종 필수 검사 + 관리자 강제)가 살아 있어 이제부터 붉은 CI 커밋은 병합되지 않는다.
+>
+> **0.3.1 반영 상태**: 2026-10-30 20:13(KST) **릴리스 0.3.1 완료.** PR #45 하나로 보류 결함 4건 수정 + 버전 상향을 함께 반영하고 CI 3종 green 으로 병합했다(`55bc36f`). 태그 `v0.3.1` → GitHub Release → PyPI(whl+sdist, provenance 포함) → MCP Registry(`io.github.JinHo-von-Choi/sootool` 0.3.1, status active / isLatest true) 게시까지 끝났다. PyPI `sootool==0.3.1` 을 별도 venv 에 설치해 §9 의 6가지 수정을 실제 패키지에서 재확인했다.
 
 
 **아직 미반영(판정 필요)**
@@ -70,6 +72,8 @@
 - ~~`core.calc` 의 `Tuple` 화이트리스트 정리, 파이프라인 스냅샷 크기 상한~~ — **0.3.1 에서 반영 완료**(§9).
 
 > **0.3.1 반영 상태**: 위 보류 4건은 모두 0.3.1 로 수정·검증했다(§9). 남은 것은 "실행 중인 스레드를 강제 종료할 수 없다"는 Python 플랫폼 제약 하나뿐이며, 이는 응답 wall-clock 계약(ADR-023 R2)으로 보장된다.
+>
+> **0.3.1 릴리스 완료**: PR #45 → CI 3종 green → `55bc36f` 병합 → 태그 `v0.3.1` → GitHub Release → PyPI → MCP Registry 게시까지 끝났다(2026-10-30 20:13 KST).
 
 ---
 
