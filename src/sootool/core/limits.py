@@ -9,6 +9,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any, Final
 
 from sootool.core.errors import InputLimitError
@@ -34,6 +37,7 @@ _DEFAULTS: Final[dict[str, int]] = {
     "ARG_LIST_ITEMS":         100_000,
     "ARG_DEPTH":              16,
     "ARG_NODES":              1_000_000,
+    "ORCHESTRATION_DEPTH":    2,
 }
 
 
@@ -92,3 +96,31 @@ def validate_argument_sizes(arguments: dict[str, Any]) -> None:
             if len(value) > max_items:
                 raise InputLimitError(path, max_items, len(value))
             stack.extend((f"{path}.{key}", item, depth + 1) for key, item in value.items())
+
+
+# 배치/파이프라인의 중첩 실행 깊이. core.batch 는 읽기 전용이라 자기 자신을 다시 호출할 수
+# 있고, 호출할 때마다 새 ThreadPoolExecutor 를 만든다. 깊이 제한이 없으면 한 요청이
+# 16 x 16 x 16 … 형태로 스레드를 곱해 만들어 수천 스레드와 수백 MB 를 점유할 수 있다.
+# 컨텍스트 변수로 깊이를 세어 한계를 넘으면 호출을 거부한다.
+_ORCHESTRATION_DEPTH: ContextVar[int] = ContextVar(
+    "sootool_orchestration_depth", default=0,
+)
+
+
+@contextmanager
+def orchestration_scope() -> Iterator[None]:
+    """오케스트레이션(배치/파이프라인) 실행 깊이를 1 증가시키고 종료 시 복원한다.
+
+    한도(``ORCHESTRATION_DEPTH``)를 넘으면 InputLimitError 를 낸다. 스레드로 복사되는
+    컨텍스트(contextvars.copy_context) 덕분에 워커 스레드는 부모 깊이를 그대로 물려받아
+    중첩 호출이 누적 깊이를 올린다.
+    """
+    depth = _ORCHESTRATION_DEPTH.get()
+    cap   = limit("ORCHESTRATION_DEPTH")
+    if depth >= cap:
+        raise InputLimitError("orchestration_depth", cap, depth + 1)
+    token = _ORCHESTRATION_DEPTH.set(depth + 1)
+    try:
+        yield
+    finally:
+        _ORCHESTRATION_DEPTH.reset(token)

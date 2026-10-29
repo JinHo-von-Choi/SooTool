@@ -83,9 +83,42 @@ def _add_hint(response: dict[str, Any], hint: dict[str, Any]) -> None:
                 hints.append(hint)
 
 
+# 정책 파일을 실제로 유효하게 만든 감사 동작. activate 는 새로 활성화하고, rollback 은
+# 이전 버전으로 되돌리고, import 는 외부 정책 묶음을 설치한다. 셋 다 결과적으로 어떤
+# 정책 파일이 현재 유효한 버전이 되는 원인이므로 감사 id 전파 대상이다.
+_AUDIT_ACTIVATING_ACTIONS = frozenset({"activate", "rollback", "import"})
+
+
 def _resolve_audit_id(source: str, policy_version: dict[str, Any]) -> str | None:
-    """For override policies, look up the most recent activate audit entry."""
+    """덮어쓰기 정책의 출처 감사 id를 찾는다.
+
+    ADR-016: "audit_id 는 계산 도구 trace 에 ``policy_audit_id`` 로 전파된다."
+    정책 파일의 sha256 로 감사 로그를 역순 탐색해, 그 해시를 유효하게 만든 가장 최근
+    항목을 찾는다. sha256 이 다르면 같은 파일명이 다른 내용이거나 다른 연도 버전이므로
+    구분할 수 없다.
+
+    정책이 패키지 기본값이면 전파할 감사 id 가 없다(사용자가 바꾼 적이 없다).
+    """
     if source != "override":
         return None
-    # We don't cache the audit lookup, it's a one-time read per response
-    return None  # Filled in by tools that have the draft_id available
+
+    sha = policy_version.get("sha256")
+    if not sha:
+        return None
+
+    try:
+        from sootool.policy_mgmt.audit import read_entries
+        entries = read_entries()
+    except OSError:
+        return None
+
+    # 감사 로그는 append-only 이므로 뒤에서부터 찾으면 가장 최근 항목이 먼저 나온다.
+    for entry in reversed(entries):
+        if entry.get("action") not in _AUDIT_ACTIVATING_ACTIONS:
+            continue
+        if entry.get("sha256_after") != sha:
+            continue
+        audit_id = entry.get("audit_id")
+        if audit_id:
+            return str(audit_id)
+    return None

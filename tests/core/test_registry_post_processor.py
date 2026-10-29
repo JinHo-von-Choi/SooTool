@@ -72,7 +72,7 @@ class TestPostProcessorRegistration:
         assert "_meta" not in result
 
 
-class TestPostProcessorOnlyForTraceDicts:
+class TestPostProcessorScope:
     def test_non_dict_result_skips_processors(self) -> None:
         r = ToolRegistry()
         called: list[bool] = []
@@ -90,22 +90,29 @@ class TestPostProcessorOnlyForTraceDicts:
         assert result == 42
         assert called == []
 
-    def test_dict_without_trace_skips_processors(self) -> None:
+    def test_dict_without_trace_still_triggers_processors(self) -> None:
+        """``trace`` 키가 없어도 후처리기는 동작한다.
+
+        2026-10-30 감사에서 후처리기 게이트가 ``"trace" in result`` 여부였기에
+        ``core.batch`` / ``core.pipeline`` 봉투에 ``_meta.integrity`` 와 ``_meta.hints`` 가
+        붙지 않았다(ADR-021·ADR-015 위반). 도구 결과의 공통 기반은 ``ToolResult`` 이므로
+        dict 결과 전체가 후처리기 대상이다.
+        """
         r = ToolRegistry()
-        called: list[bool] = []
+        called: list[str] = []
 
         @r.tool(namespace="t", name="notrace")
         def _notrace() -> dict[str, Any]:
             return {"result": "ok"}
 
         def proc(resp: dict[str, Any], name: str) -> dict[str, Any]:
-            called.append(True)
+            called.append(name)
             return resp
 
         r.register_post_processor(proc)
         result = r.invoke("t.notrace")
         assert result == {"result": "ok"}
-        assert called == []
+        assert called == ["t.notrace"]
 
     def test_dict_with_trace_triggers_processors(self) -> None:
         r = ToolRegistry()

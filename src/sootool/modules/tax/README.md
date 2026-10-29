@@ -24,6 +24,27 @@
 
 엔진 열은 도구가 정의된 모듈이 쓰는 가장 거친 수치 엔진이다. Decimal은 정확, mpmath는 지정 자릿수(기본 50자리), float64는 배정밀도 근사다. 인자와 기본값은 `sootool tools describe <도구>`로 확인한다.
 
+## 내부 자료형 및 캐스팅 정책
+
+### 내부 자료형
+
+Decimal 전 구간 모듈이다. float64, numpy, mpmath 를 쓰지 않으므로 경계 변환도 없다.
+
+### 캐스팅 정책
+
+- 입력 숫자는 전부 십진 문자열이며 `core.decimal_ops.D()` 로 Decimal 로 읽는다. float 입력은 받지 않는다.
+- 계산 결과는 `str(Decimal)` 또는 `str(round_apply(...))` 로 문자열 직렬화한다. `core.cast` 의 `decimal_to_float64`, `float64_to_decimal_str`, `mpmath_to_decimal` 은 쓰지 않는다.
+- 반올림은 `core.rounding.apply(value, decimals, policy)`(= `round_apply`) 로 한다. 누진 구간 세액과 유효세율은 `progressive.py` 의 `_calc_progressive(total_tax, brackets, rounding, decimals)` 가 처리하고, 유효세율은 `round_apply(total_tax / taxable_income, 8, RoundingPolicy.HALF_UP)` 로 고정된다.
+- 정책 인자가 있는 도구는 `progressive.py` 의 `_parse_rounding(rounding)` 이 `RoundingPolicy` 를 해석한다. 법령이 정한 절사·반올림은 `RoundingPolicy.DOWN`(예: 지방소득세 `kr_local_income_tax` 는 `decimals` 기본 0이라 원 미만을 버린다. 종합소득세 결정세액도 DOWN) 과 `RoundingPolicy.HALF_UP`(예: 양도소득세 `capital_gains_kr`) 로 고정돼 있다.
+- 세율표·공제액·한도는 `sootool.policy_mgmt.loader.load` 로 정책 YAML(`policies/tax/*.yaml`)에서 읽는다. 워크로우 세액공제(`_credits.py`)도 같은 정책 파일의 값을 `D()` 로 읽어 쓴다.
+- `kr_comprehensive_income_tax` 는 개인별·연말정산 계산의 허브 역할이라 `payroll.kr_year_end_tax_settlement` 도 이 모듈의 `_calc_progressive` 와 `_credits.py` 를 공유한다.
+
+### 정밀도 한계
+
+- 계산은 `decimal_ops` 컨텍스트(정밀도 50자리)에서 돈다. 결과는 십진 문자열이므로 소수점은 정확하다.
+- 나눗셈이 반복 소수가 되는 값(유효세율, 세율 적용 금액)은 컨텍스트 정밀도에서 멈춘 뒤 지정 자릿수로 반올림된다.
+- 세율표와 한도가 정책 파일에 묶여 있어 정책 연도나 `include_proposed` 설정이 바뀌면 결과가 달라진다. 응답의 `policy_version` 으로 확인한다.
+
 ## 정책 파일
 
 `src/sootool/policies/tax/` 아래 파일에 세율표, 공제액, 한도가 근거 조문(`citations`), 시행일(`effective_date`, `effective_to`), 상태(`status`)와 함께 있다. 연중에 바뀌는 값은 `이름_연도@시행일.yaml`로 나뉘고 호출의 `as_of`로 고른다. 국회 확정 전 개정안은 `status: proposed`이며 `include_proposed=true`일 때만 쓴다. 모든 패키지 정책은 `policy_mgmt/schemas.py`의 구조 스키마로 검증된다.

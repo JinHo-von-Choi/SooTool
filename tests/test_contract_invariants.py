@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import pytest
 
@@ -77,3 +78,25 @@ def test_every_calculation_result_declares_a_typed_result_with_optional_extras_a
 def test_public_sdk_names_exist():
     assert {"Namespace", "Tool", "namespaces"} <= set(sdk.__all__)
     assert set(sdk.namespaces()) == set(NAMESPACE_MODULES)
+
+
+def test_every_module_readme_documents_its_casting_policy():
+    """ADR-008: 각 모듈 README에 "내부 자료형 및 캐스팅 정책" 섹션이 의무다.
+
+    2026-10-30 감사에서 README가 없는 모듈 7개와, 캐스팅 정책 섹션이 없는 모듈 11개가
+    확인돼 자료형 이원화 정책이 문서로 고정돼 있지 않았다.
+    """
+    modules_dir = Path(__file__).resolve().parents[1] / "src" / "sootool" / "modules"
+    missing_readme: list[str] = []
+    missing_section: list[str] = []
+    for module_dir in sorted(modules_dir.iterdir()):
+        if not module_dir.is_dir() or module_dir.name.startswith("__"):
+            continue
+        readme = module_dir / "README.md"
+        if not readme.is_file():
+            missing_readme.append(module_dir.name)
+            continue
+        if "내부 자료형 및 캐스팅 정책" not in readme.read_text(encoding="utf-8"):
+            missing_section.append(module_dir.name)
+    assert not missing_readme, f"README.md 가 없는 모듈: {missing_readme}"
+    assert not missing_section, f"캐스팅 정책 섹션이 없는 모듈: {missing_section}"

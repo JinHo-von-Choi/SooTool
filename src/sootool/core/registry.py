@@ -202,7 +202,12 @@ class ToolRegistry:
         try:
             with scope:
                 result = entry.fn(**kwargs)
-            if isinstance(result, dict) and "trace" in result:
+            # ADR-021: 모든 도구 응답에 _meta.integrity 를, ADR-015: 모든 도구 응답에
+            # _meta.hints 를 주입한다. 이전에는 "trace" 키 존재로 도구 결과를 판별했는데,
+            # core.batch / core.pipeline 응답에는 trace 키가 없어(결과 TypedDict 에 trace 가
+            # 없다) 봉투에 영수증과 힌트가 붙지 않았다. 도구 결과의 공통 기반은 ToolResult
+            # 이므로 dict 결과 전체를 후처리기 대상으로 삼는다.
+            if isinstance(result, dict):
                 for proc in self._post_processors:
                     try:
                         result = proc(result, full_name)

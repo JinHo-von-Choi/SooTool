@@ -167,9 +167,37 @@ def _strip_meta(value: Any) -> Any:
     return value
 
 
+# 응답 본문에 들어가는 변동(volatile) 필드. 실행 시각이나 난수에 의존하므로 같은 입력에도
+# 값이 달라진다. 이 필드들을 결과 해시에서 제외해야 ADR-011 의 결정론(동일 입력 → 동일
+# result_hash)이 유지된다. core.batch / core.pipeline 응답에만 등장한다.
+#   - elapsed_ms / total_time_ms : 항목·전체 실행 시간
+#   - pipeline_id                 : 파이프라인 실행마다 새로 발급되는 UUID
+VOLATILE_RESULT_FIELDS: frozenset[str] = frozenset({
+    "elapsed_ms",
+    "total_time_ms",
+    "pipeline_id",
+})
+
+
+def _strip_volatile(value: Any) -> Any:
+    """모든 중첩 수준에서 변동 필드를 제거한다."""
+    if isinstance(value, dict):
+        return {
+            k: _strip_volatile(v)
+            for k, v in value.items()
+            if k not in VOLATILE_RESULT_FIELDS
+        }
+    if isinstance(value, (list, tuple)):
+        return [_strip_volatile(x) for x in value]
+    return value
+
+
 def result_hash(result: dict[str, Any]) -> str:
-    """응답 본문(result, trace 등)의 정규화 JSON sha256. ``_meta`` 는 제외한다."""
-    return _sha256_hex(_canonical_json(_strip_meta(result)))
+    """응답 본문(result, trace 등)의 정규화 JSON sha256.
+
+    ``_meta`` 와 변동 필드(실행 시간·파이프라인 UUID)는 제외한다.
+    """
+    return _sha256_hex(_canonical_json(_strip_volatile(_strip_meta(result))))
 
 
 def integrity_stamp(

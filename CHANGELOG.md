@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-REGISTRY 수치: 18 domains, 275 base tools, 10 admin policy-management tools (0.2.0 대비 base 3개 증가: finance.roi, finance.cagr, finance.payback_period).
+REGISTRY 수치: 18 domains, 276 base tools, 10 admin policy-management tools (0.2.0 대비 base 4개 증가: finance.roi, finance.cagr, finance.payback_period, accounting.break_even).
 
 ### Added
 
@@ -22,6 +22,23 @@ REGISTRY 수치: 18 domains, 275 base tools, 10 admin policy-management tools (0
 ### Removed
 
 - 저장소 평가 메모 `Requirements.md`.
+
+### Fixed
+
+- **음력 조견표 교정 (정확도)**: `datetime` 계열의 음력 표가 손으로 옮겨적혀져 있어 2020~2030 중 11개 해의 월 길이 합이 실제 음력 연 길이와 1일 어긋나 있었다. 음력 월 시작일 136건 중 47건이 틀렸고, 그 결과 **추석 날짜가 2027~2030년 4년 연속 1일씩 잘못** 반환되었다(2027 +1일, 2028~2030 −1일). KASI 조견표 기준으로 표를 재생성하고, 알려진 설날·추석 날짜 11년분과 월 시작일 136건을 고정하는 회귀 테스트를 추가했다. 음력 표의 불변식(`sum(lengths) == 다음 해 설날 − 올해 설날`)을 검증하는 테스트도 함께 들어갔다.
+- **CI 차단 해제**: `geometry.area_polygon` 의 `Decimal.as_tuple().exponent` 처리에서 mypy strict가 실패하던 오류를 수정해 `mypy src/sootool scripts` 가 통과한다. CI 가 마지막 성공(2026-10-08) 이후 Mypy 단계에서 실패해 pytest·정책 해시 검증·도구 수 대조·MCP 스모크·빌드가 2주간 실행되지 않았다.
+- `core.batch` / `core.pipeline` 응답 봉투에 `_meta.integrity` 와 `_meta.hints` 가 붙지 않던 문제(ADR-021·ADR-015 위반)를 수정했다. 후처리기 판정 조건이 `"trace" in result` 여부였으나 두 도구 결과에는 `trace` 키가 없었다. 실행 시간·파이프라인 UUID 같은 변동 필드는 결과 해시에서 제외해 동일 입력 → 동일 `result_hash` 를 유지한다.
+- `core.pipeline` 이 의존 실패 목록을 `set` 순회로 만들어 같은 입력에도 프로세스마다 오류 메시지 순서와 `result_hash` 가 달라지던 문제(ADR-011 위반)를 수정했다. step 선언 순서로 순회한다.
+- 중첩 `core.batch` / `core.pipeline` 이 호출할 때마다 새 스레드 풀을 만들어 스레드 수를 곱셈으로 늘리던 문제를 막았다. 실행 깊이 한도(`SOOTOOL_LIMIT_ORCHESTRATION_DEPTH`, 기본 2)를 넘는 중첩은 `input_limit` 오류로 거부된다. 16항목 4단계 중첩에서 최대 스레드 수가 5,393개에서 65개로 줄었다.
+- `tax.kr_corporate` 의 최소세액이 `quantize()` 를 반올림 정책 없이 호출해 호출자의 `rounding` 지시를 무시하던 문제(ADR-002 위반)를 수정했다. `base_tax` 와 같은 반올림 헬퍼를 쓰도록 통일해, 이제 `rounding` 값에 따라 최소세액이 달라진다.
+- 정책 덮어쓰기(`policy_source=override`)를 사용한 계산 결과의 `policy_audit_id` 가 항상 `None` 이던 문제(ADR-016 위반)를 수정했다. 정책 파일의 sha256 로 감사 로그를 역순 탐색해 그 파일을 유효하게 만든 감사 항목을 찾아 전파한다.
+- `core.calc` 이 `decimal.Overflow` 와 `round()` 의 `quantize` 실패를 잡지 못해 `internal_error` 로 새어나가던 문제(ADR-017·ADR-025 위반)를 수정했다. 두 경우 모두 `domain_constraint` 로 분류된다.
+- `CHANGELOG.md` 의 base tools 수 선언(275)이 실제(276)와 어긋나 CI 가드 단계가 실패하던 문제를 바로잡았다.
+
+### Added
+
+- ADR-019 도구 수 단일 소스 가드를 pytest로도 옮겼다(`tests/test_tool_count_guard.py`). README 첫 문단·카탈로그 헤더·`pyproject.toml` description·`CHANGELOG.md` `[Unreleased]` 절의 숫자가 레지스트리와 일치하는지 검사한다. CI 가드 단계에 도달하지 않아도 pytest 단계에서 드리프트가 드러난다.
+- `SOOTOOL_LIMIT_ORCHESTRATION_DEPTH` 환경변수로 배치·파이프라인 중첩 깊이 한도를 조정할 수 있다(기본 2).
 
 ## [0.2.0] - 2026-10-04
 

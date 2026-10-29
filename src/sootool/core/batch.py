@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, NotRequired, TypedDict
 
 from sootool.core.errors import SooToolError
+from sootool.core.limits import orchestration_scope
 from sootool.core.registry import ToolRegistry
 from sootool.core.request_context import submit_with_context
 from sootool.core.result_types import ToolResult
@@ -54,6 +55,11 @@ class BatchExecutor:
     deterministic: bool = True
 
     def run(self, items: list[dict[str, Any]]) -> BatchResult:
+        # 중첩 배치로 인한 스레드 풀 증폭을 막는다(limits.orchestration_scope).
+        with orchestration_scope():
+            return self._run(items)
+
+    def _run(self, items: list[dict[str, Any]]) -> BatchResult:
         if len(items) > self.max_items:
             raise BatchLimitError(f"배치 항목 수 {len(items)} > 한도 {self.max_items}")
         ids = [it["id"] for it in items]

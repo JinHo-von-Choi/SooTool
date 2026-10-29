@@ -13,6 +13,7 @@ from typing import Any, NotRequired, TypedDict
 
 from sootool.core.batch import ExecutionError
 from sootool.core.errors import DomainConstraintError, SooToolError
+from sootool.core.limits import orchestration_scope
 from sootool.core.registry import ToolRegistry
 from sootool.core.request_context import submit_with_context
 from sootool.core.result_types import ToolResult
@@ -153,6 +154,11 @@ class PipelineExecutor:
     pipeline_timeout_s: float = 30.0
 
     def run(self, steps: list[dict[str, Any]]) -> PipelineResult:
+        # 중첩 배치/파이프라인으로 인한 스레드 풀 증폭을 막는다.
+        with orchestration_scope():
+            return self._run(steps)
+
+    def _run(self, steps: list[dict[str, Any]]) -> PipelineResult:
         if len(steps) > self.max_steps:
             raise DomainConstraintError(
                 f"파이프라인 step 수 {len(steps)} > max_steps {self.max_steps}"
@@ -255,9 +261,15 @@ class PipelineExecutor:
                     }
                     continue
 
+                # ADR-011 결정론: graph[step_id] 는 set 이라 순회 순서가 프로세스마다
+                # 달라진다(PYTHONHASHSEED). 그 순서를 그대로 오류 메시지에 담으면 같은 입력에
+                # 다른 응답 본문과 다른 result_hash 가 나온다. step 선언 순서(by_id)를 따라
+                # 순회해 결정론을 보장한다.
                 deps_failed = [
-                    d for d in graph[step_id]
-                    if (step_results[d]["status"] if d in step_results else None) != "ok" and d not in skip_ids
+                    d for d in by_id
+                    if d in graph[step_id]
+                    and (step_results[d]["status"] if d in step_results else None) != "ok"
+                    and d not in skip_ids
                 ]
                 if deps_failed:
                     step_results[step_id] = {

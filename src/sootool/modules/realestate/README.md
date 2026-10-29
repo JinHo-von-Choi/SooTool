@@ -17,6 +17,28 @@
 
 엔진 열은 도구가 정의된 모듈이 쓰는 가장 거친 수치 엔진이다. Decimal은 정확, mpmath는 지정 자릿수(기본 50자리), float64는 배정밀도 근사다. 인자와 기본값은 `sootool tools describe <도구>`로 확인한다.
 
+## 내부 자료형 및 캐스팅 정책
+
+### 내부 자료형
+
+Decimal 전 구간 모듈이다. float64, numpy, mpmath 를 쓰지 않으므로 경계 변환도 없다.
+
+### 캐스팅 정책
+
+- 입력 숫자는 전부 십진 문자열이며 `core.decimal_ops.D()` 로 Decimal 로 읽는다. float 입력은 받지 않는다.
+- 계산 결과는 `str(Decimal)` 또는 `str(round_apply(...))` 로 문자열 직렬화한다. `core.cast` 의 `decimal_to_float64`, `float64_to_decimal_str`, `mpmath_to_decimal` 은 쓰지 않는다.
+- 반올림은 `core.rounding.apply(value, decimals, policy)`(= `round_apply`) 로 한다. 세금 계열은 법정 계산 방식에 맞춰 `RoundingPolicy.FLOUR`(원 단위 절사), `RoundingPolicy.HALF_UP`(원 단위 반올림), `RoundingPolicy.CEIL`(상한 초과분 올림), `RoundingPolicy.DOWN` 을 쓴다. 세부 규칙은 "도구별 규칙 요약" 절을 따른다.
+- 누진 구간 세액은 `sootool.modules.tax.progressive._calc_progressive` 를 재사용하고, `kr_comprehensive` 의 종합부동산세 구간은 `RoundingPolicy.HALF_UP`, 감면 한도는 `RoundingPolicy.CEIL` 로 처리한다.
+- `kr_transfer_tax` 는 계산 자체를 `tax.capital_gains_kr` 에 위임하므로 캐스팅도 그 모듈을 그대로 따른다.
+- `rental_yield` 만 `localcontext(Context(prec=precision))` 로 입력 자릿수에 맞춘 가변 정밀도 컨텍스트를 쓴다. 나머지는 기본 컨텍스트에서 계산한다.
+- 세율·한도·계수는 `sootool.policy_mgmt.loader.load` 로 정책 YAML(`policies/realestate/*.yaml`)에서 읽는다.
+
+### 정밀도 한계
+
+- 계산은 `decimal_ops` 컨텍스트(정밀도 50자리)에서 돈다. 결과는 십진 문자열이므로 소수점은 정확하다.
+- 나눗셈이 반복 소수가 되는 값(DSR·LTV·DTI 비율, 임대수익률)은 컨텍스트 정밀도에서 멈춘 뒤 지정 자릿수로 반올림된다.
+- 세율과 한도가 정책 파일에 묶여 있어 정책 연도나 `include_proposed` 설정이 바뀌면 결과가 달라진다. `kr_comprehensive_2027.yaml` 은 `status: proposed` 이므로 기본으로는 쓰이지 않는다.
+
 ## 정책 파일
 
 |파일|내용|

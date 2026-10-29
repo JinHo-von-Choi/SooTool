@@ -19,6 +19,26 @@
 
 엔진 열은 도구가 정의된 모듈이 쓰는 가장 거친 수치 엔진이다. Decimal은 정확, mpmath는 지정 자릿수(기본 50자리), float64는 배정밀도 근사다. 인자와 기본값은 `sootool tools describe <도구>`로 확인한다.
 
+## 내부 자료형 및 캐스팅 정책
+
+### 내부 자료형
+
+Decimal 전 구간 모듈이다. float64, numpy, mpmath 를 쓰지 않으므로 경계 변환도 없다. 위 표의 엔진 열이 전부 Decimal 인 이유다.
+
+### 캐스팅 정책
+
+- 입력 숫자는 전부 십진 문자열이며 `core.decimal_ops.D()` 로 Decimal 로 읽는다. float 입력은 받지 않는다.
+- 계산 결과는 `str(Decimal)` 또는 `str(round_apply(...))` 로 문자열 직렬화한다. `core.cast` 의 `decimal_to_float64`, `float64_to_decimal_str`, `mpmath_to_decimal` 은 쓰지 않는다.
+- 반올림은 `core.rounding.apply(value, decimals, policy)`(= `round_apply`) 로만 한다. 정책과 자릿수는 위 "반올림 기본값" 표를 따른다.
+- Decimal 컨텍스트는 도구마다 다르다. `income_statement` 와 `ratios` 는 `localcontext(Context(prec=50))` 로 고정 50자리를 쓰고, `cashflow`·`depreciation`·`vat` 는 입력 자릿수에서 파생한 가변 정밀도(최소 50자리)를 쓴다. 어느 쪽이든 호출자의 Decimal 설정을 따르지 않는다.
+- `balance`(분개 검증)는 `core.decimal_ops.add` / `sub` 로 합계만 내고 반올림하지 않는다.
+
+### 정밀도 한계
+
+- 계산은 위 컨텍스트 정밀도에서 돈다. 결과는 십진 문자열이므로 소수점은 정확하다.
+- 나눗셈이 반복 소수가 되는 값(이익률, 재무비율)은 컨텍스트 정밀도에서 멈춘 뒤 지정 자릿수로 반올림된다.
+- 모든 계산은 전역 상태 없이 동작하므로 `core.batch` 로 병렬 호출해도 결과가 같다.
+
 ## 반올림 기본값
 
 `income_statement`는 모든 항목에 유한한 Decimal 문자열을 받으며 매출과 매출원가는 0 이상이어야 한다. 호출자의 Decimal 설정과 독립적인 50자리 정밀도로 계산한다. 이익 금액에는 별도 반올림을 적용하지 않고 이익률은 소수 6자리 HALF_EVEN으로 반환한다. 매출이 0이면 모든 이익률은 `0`이며 계산 범위를 초과하면 입력 오류를 반환한다.

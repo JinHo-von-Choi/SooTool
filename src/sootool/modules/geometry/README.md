@@ -22,6 +22,36 @@
 
 엔진 열은 도구가 정의된 모듈이 쓰는 가장 거친 수치 엔진이다. Decimal은 정확, mpmath는 지정 자릿수(기본 50자리), float64는 배정밀도 근사다. 인자와 기본값은 `sootool tools describe <도구>`로 확인한다.
 
+## 내부 자료형 및 캐스팅 정책
+
+### 내부 자료형
+
+mixed 모듈이다. 위 "계산 방식" 절이 이미 도구별 경계를 설명하므로 여기서는 도구별로 실제 계산에 쓰이는 자료형을 정리한다. 위 표의 엔진 열은 모듈 단위의 거친 분류이고, 아래 표는 도구별 실제 경로다.
+
+|도구|내부 자료형|
+|-|-|
+|`area_rectangle`, `area_triangle`, `area_polygon`, `volume_cuboid`|Decimal|
+|`vector_dot`, `vector_cross`|Decimal|
+|`matrix_multiply`|Decimal|
+|`matrix_determinant`|Decimal (3×3 이하) / float64 (4×4 이상)|
+|`matrix_inverse`, `matrix_solve`|float64 (numpy.linalg)|
+|`area_circle`, `haversine`, `volume_cylinder`, `volume_sphere`, `vector_norm`|Decimal + mpmath|
+
+### 캐스팅 정책
+
+- 입력 숫자는 전부 십진 문자열이며 `core.decimal_ops.D()` 로 읽는다. float 입력은 받지 않는다.
+- mpmath 경로(`area_circle`, `haversine`, `volume_cylinder`, `volume_sphere`, `vector_norm`): `mpmath.workdps(50)`(`_MPMATH_DPS`) 안에서 계산하고 `mpmath.nstr(value, 30, strip_zeros=False)` 로 30자리 문자열을 만든 뒤 `D()` 로 Decimal 에 읽는다. `core.cast.mpmath_to_decimal` 을 쓰지 않는 점이 다른 모듈과 다르다.
+- Decimal 경로(`area_rectangle`, `area_triangle`, `area_polygon`, `volume_cuboid`, `vector_dot`): `localcontext(Context(prec=precision))` 로 입력 자릿수에 맞춘 독립 컨텍스트에서 계산하고 `context.traps[Inexact] = True` 로 정확히 떨어지지 않는 결과를 `DecimalException` 으로 거른다. `vector_cross` 는 컨텍스트를 열지 않고 Decimal 산술만 한다.
+- 행렬 경로: `matrix_multiply` 와 `matrix_determinant`(3×3 이하)는 Decimal 로 직접 계산한다. `matrix_determinant` 의 4×4 이상은 `_decimal_matrix_to_float()` 로 `np.float64` 배열을 만들어 `np.linalg.det` 을 쓰고 `D(repr(float(...)))` 로 되돌린다. `matrix_inverse` 와 `matrix_solve` 도 numpy `linalg` 을 쓰고 결과는 `repr(float(v))` 로 문자열화한다.
+- `core.cast` 의 `decimal_to_float64` 과 `float64_to_decimal_str` 는 쓰지 않는다. 이 모듈은 `core.rounding` 의 `RoundingPolicy` 도 쓰지 않는다.
+
+### 정밀도 한계
+
+- mpmath 경로는 50자리 컨텍스트에서 계산하지만 문자열로 옮길 때 30자리로 자른다. 마지막 자리는 근사값이다.
+- Decimal 경로는 컨텍스트 정밀도를 입력 자릿수에 맞춰 잡으므로 결과의 소수점은 정확하다. 다만 결과가 Decimal 표현 범위를 넘거나 정확히 표현되지 않으면 `invalid_input` 오류로 거른다.
+- `matrix_inverse` 와 `matrix_solve` 는 float64 결과라 정밀도가 유효숫자 15~17자리에서 멈춘다. 조건이 나쁜 행렬에서는 오차가 커진다.
+- `matrix_determinant` 의 3×3 이하 경로는 Decimal 이지만 4×4 이상 경로로 넘어가면 float64 근사가 된다. 같은 도구 안에서 정밀도가 달라진다.
+
 ## 계산 방식
 
 - 직사각형 넓이는 Decimal로 정확히 곱하고 Decimal 문자열로 돌려준다.
