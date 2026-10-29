@@ -67,6 +67,11 @@ class _Evaluator:
             return self._eval_binop(node)
         if isinstance(node, ast.Call):
             return self._eval_call(node)
+        if isinstance(node, ast.Tuple):
+            # ADR-017: Tuple 은 Call 인자 위치에서만 정당하다. 위치 조건은
+            # _validate._validate_tuple_positions 가 검증한다. 여기는 각 원소를
+            # 평가해 튜플 값을 만드는 부분이다.
+            return tuple(self.evaluate(element) for element in node.elts)
         raise DisallowedOperationError(
             node_kind = type(node).__name__,
             detail    = "unreachable: node passed whitelist but not handled",
@@ -217,6 +222,15 @@ class _Evaluator:
         assert isinstance(node.func, ast.Name)
         name = node.func.id
         args = [self.evaluate(a) for a in node.args]
+
+        # 현재 허용된 함수는 모두 스칼라 인자만 받는다. 튜플이 오면 "unreachable"
+        # 같은 막연한 오류 대신 어느 함수가 튜플을 못 받는지 알려준다.
+        if any(isinstance(a, tuple) for a in args):
+            raise DisallowedOperationError(
+                node_kind = "Call",
+                detail    = f"function {name!r} does not accept a tuple argument",
+                location  = _location_of(node),
+            )
 
         if name in _TRANSCENDENTAL_FUNCTIONS:
             with mpmath.workdps(self.precision):

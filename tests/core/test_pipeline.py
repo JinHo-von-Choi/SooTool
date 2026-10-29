@@ -123,3 +123,71 @@ def test_pipeline_resume_reuses_completed_steps():
     assert resumed["steps"]["step1"].get("reused") is True
     assert resumed["steps"]["step2"]["result"]["result"] == "30"
     assert resumed["steps"]["step3"]["result"]["result"] == "31"
+
+
+# ---------------------------------------------------------------------------
+# 스냅샷 크기 상한 (PIPELINE_SNAPSHOT_MAX)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def _isolated_snapshots():
+    """스냅샷 전역 상태를 격리한다(다른 테스트에 영향 주지 않도록 저장·복원)."""
+    from sootool.core import pipeline as pipeline_mod
+
+    saved = dict(pipeline_mod._PIPELINE_SNAPSHOTS)
+    pipeline_mod._PIPELINE_SNAPSHOTS.clear()
+    try:
+        yield pipeline_mod
+    finally:
+        pipeline_mod._PIPELINE_SNAPSHOTS.clear()
+        pipeline_mod._PIPELINE_SNAPSHOTS.update(saved)
+
+
+def _run_one(ex: PipelineExecutor, step_id: str) -> str:
+    out = ex.run(steps=[{"id": step_id, "tool": "t.add", "args": {"a": "1", "b": "1"}}])
+    return out["pipeline_id"]
+
+
+def test_snapshot_count_never_exceeds_the_cap(_isolated_snapshots, monkeypatch):
+    """스냅샷 개수가 상한을 넘으면长期 실행 서버의 메모리가 계속 늘어난다."""
+    monkeypatch.setenv("SOOTOOL_LIMIT_PIPELINE_SNAPSHOT_MAX", "3")
+    ex = PipelineExecutor(registry=_make_registry())
+    for i in range(10):
+        _run_one(ex, f"s{i}")
+    assert len(_isolated_snapshots._PIPELINE_SNAPSHOTS) == 3
+
+
+def test_default_cap_is_applied_without_configuration(_isolated_snapshots):
+    """환경변수로 조정하지 않아도 기본 상한이 적용된다."""
+    from sootool.core.limits import limit
+
+    assert limit("PIPELINE_SNAPSHOT_MAX") == 64
+
+
+def test_oldest_snapshot_is_evicted_first(_isolated_snapshots, monkeypatch):
+    monkeypatch.setenv("SOOTOOL_LIMIT_PIPELINE_SNAPSHOT_MAX", "3")
+    ex = PipelineExecutor(registry=_make_registry())
+    first = _run_one(ex, "s0")
+    _run_one(ex, "s1")
+    _run_one(ex, "s2")
+    _run_one(ex, "s3")
+    snapshots = _isolated_snapshots._PIPELINE_SNAPSHOTS
+    assert first not in snapshots
+    assert len(snapshots) == 3
+
+
+def test_reading_a_snapshot_refreshes_its_recency(_isolated_snapshots, monkeypatch):
+    """읽은 스냅샷은 최근 사용으로 취급해 LRU 순서가 갱신된다."""
+    monkeypatch.setenv("SOOTOOL_LIMIT_PIPELINE_SNAPSHOT_MAX", "3")
+    ex = PipelineExecutor(registry=_make_registry())
+    first = _run_one(ex, "s0")
+    _run_one(ex, "s1")
+    _run_one(ex, "s2")
+
+    assert _isolated_snapshots.get_pipeline_snapshot(first) is not None
+
+    _run_one(ex, "s3")
+    snapshots = _isolated_snapshots._PIPELINE_SNAPSHOTS
+    assert first in snapshots, "읽은 스냅샷은 상한 초과 시에도 살아남아야 한다"
+    assert len(snapshots) == 3

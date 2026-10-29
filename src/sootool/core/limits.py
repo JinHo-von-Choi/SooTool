@@ -38,6 +38,7 @@ _DEFAULTS: Final[dict[str, int]] = {
     "ARG_DEPTH":              16,
     "ARG_NODES":              1_000_000,
     "ORCHESTRATION_DEPTH":    2,
+    "PIPELINE_SNAPSHOT_MAX":  64,
 }
 
 

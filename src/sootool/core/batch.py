@@ -69,18 +69,30 @@ class BatchExecutor:
         started = time.monotonic()
         workers = min(self.max_workers, max(1, len(items)))
         results: dict[str, BatchItemResult] = {}
-        item_started_at: dict[str, float] = {}
+        submitted_at: dict[str, float] = {}
+        exec_started_at: dict[str, float] = {}
 
         # wait=False + cancel_futures=True: 타임아웃 처리 완료 후 실행 중 worker 를 분리하여
         # pool.__exit__ 의 blocking shutdown 으로 인한 wall-clock 초과를 방지한다.
         pool = ThreadPoolExecutor(max_workers=workers)
         try:
             futures: dict[Future[Any], str] = {}
+
+            def _run_item(item_id: str, tool: str, args: dict[str, Any]) -> Any:
+                """항목의 실행 시작 시각을 기록하고 도구를 호출한다.
+
+                item_timeout_s 는 이 시각부터 센다. 제출 시각부터 세면 워커 대기
+                시간까지 시한에 포함돼, 워커 수보다 항목이 많을 때 실제로는 빠르게
+                끝나는 항목이 대량으로 타임아웃 처리된다(ADR-020 개정).
+                """
+                exec_started_at[item_id] = time.monotonic()
+                return self.registry.invoke_read_only(tool, **args)
+
             for it in items:
                 submit_t0 = time.monotonic()
-                fut = submit_with_context(pool, self.registry.invoke_read_only, it["tool"], **it.get("args", {}))
+                fut = submit_with_context(pool, _run_item, it["id"], it["tool"], it.get("args", {}))
                 futures[fut] = it["id"]
-                item_started_at[it["id"]] = submit_t0
+                submitted_at[it["id"]] = submit_t0
 
             # ADR-020: deterministic 경로도 as_completed 로 결과를 수집하여
             # wall-clock 을 max(item_time) 으로 단축한다. 순차 future.result() 루프는
@@ -92,9 +104,13 @@ class BatchExecutor:
             pending = set(futures.keys())
             batch_deadline = started + self.batch_timeout_s
 
+            def _elapsed_base(item_id: str) -> float:
+                """경과 시간 기준점. 실행을 시작한 항목은 실행 시작 시각, 대기 중 항목은 제출 시각."""
+                return exec_started_at.get(item_id, submitted_at[item_id])
+
             def _finalize_timeout(fut: Future[Any], reason_ms: float, reason_key: str) -> None:
                 item_id = futures[fut]
-                t0 = item_started_at[item_id]
+                t0 = _elapsed_base(item_id)
                 fut.cancel()
                 results[item_id] = {
                     "id":         item_id,
@@ -108,10 +124,13 @@ class BatchExecutor:
 
             while pending:
                 now = time.monotonic()
-                # 1) 개별 item_timeout_s 초과 future 는 즉시 타임아웃 처리
+                # 1) 실행이 시작된 항목 중 item_timeout_s 를 넘은 future 는 즉시 타임아웃 처리.
+                #    아직 시작되지 않은(워커 대기 중) 항목은 실행 시간이 0 이므로 이 검사에 걸리지
+                #    않는다. 대기 시간 자체는 batch_timeout_s 가 대신 구속한다.
                 expired = [
                     fut for fut in pending
-                    if (now - item_started_at[futures[fut]]) >= self.item_timeout_s
+                    if (item_id := futures[fut]) in exec_started_at
+                    and (now - exec_started_at[item_id]) >= self.item_timeout_s
                 ]
                 for fut in expired:
                     _finalize_timeout(fut, self.item_timeout_s, "item_timeout_s")
@@ -126,12 +145,16 @@ class BatchExecutor:
                     pending.clear()
                     break
 
-                # 3) 다음 item deadline 또는 batch deadline 중 가까운 시점까지 대기
-                next_item_deadline = min(
-                    item_started_at[futures[fut]] + self.item_timeout_s
+                # 3) 다음 item deadline 또는 batch deadline 중 가까운 시점까지 대기.
+                #    실행 중인 항목만 item deadline 을 갖는다. 실행 중인 항목이 하나도
+                #    없으면(모두 대기 중) batch deadline 까지 기다린다.
+                item_deadlines = [
+                    exec_started_at[futures[fut]] + self.item_timeout_s
                     for fut in pending
-                )
-                wait_until = min(next_item_deadline, batch_deadline)
+                    if futures[fut] in exec_started_at
+                ]
+                next_item_deadline = min(item_deadlines) if item_deadlines else None
+                wait_until = batch_deadline if next_item_deadline is None else min(next_item_deadline, batch_deadline)
                 wait_for = max(0.0, wait_until - now)
 
                 try:
@@ -143,7 +166,7 @@ class BatchExecutor:
 
                 pending.discard(done_fut)
                 item_id = futures[done_fut]
-                t0 = item_started_at[item_id]
+                t0 = _elapsed_base(item_id)
                 try:
                     res = done_fut.result(timeout=0)
                     results[item_id] = {

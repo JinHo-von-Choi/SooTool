@@ -157,11 +157,38 @@ def test_policy_backed_tool_receipt_roundtrips_and_pins_policy_hash():
 
 
 @pytest.mark.parametrize(
-    "tool", ["core.batch", "core.pipeline", "core.pipeline_resume", "sootool.verify_receipt", "sootool.policy_activate"],
+    "tool", ["core.pipeline_resume", "sootool.verify_receipt", "sootool.policy_activate"],
 )
 def test_non_replayable_tools_are_refused(tool):
     with pytest.raises(InvalidInputError):
         REGISTRY.invoke("sootool.verify_receipt", tool=tool, arguments={}, receipt={})
+
+
+@pytest.mark.parametrize(
+    ("tool", "arguments"),
+    [
+        ("core.batch",    {"items": [{"id": "i1", "tool": "core.add", "args": {"operands": ["1", "2"]}}]}),
+        ("core.pipeline", {"steps": [{"id": "s1", "tool": "core.add", "args": {"operands": ["1", "2"]}}]}),
+    ],
+)
+def test_orchestration_tools_are_replayable(tool, arguments):
+    """core.batch·core.pipeline 은 실행 시간·실행 id가 결과 해시에서 제외되므로 재실행 대조가 성립한다."""
+    response = REGISTRY.invoke(tool, **arguments)
+    # 내부 호출이 실제로 성공한 경로여야 한다(오류 결과도 결정론적이라 거짓 통과할 수 있다).
+    # core.batch 는 "all_ok", core.pipeline 은 "ok" 를 쓴다.
+    assert response["status"] in {"all_ok", "ok"}, response
+    receipt = response["_meta"]["integrity"]
+    out = REGISTRY.invoke("sootool.verify_receipt", tool=tool, arguments=arguments, receipt=receipt)
+    assert out["valid"] is True
+    assert out["mismatches"] == []
+
+
+def test_batch_and_pipeline_results_are_stable_across_runs():
+    """같은 입력이면 실행 시간·pipeline id가 달라도 결과 해시가 같아야 재실행 검증이 성립한다."""
+    args = {"steps": [{"id": "s1", "tool": "core.add", "args": {"operands": ["1", "2"]}}]}
+    first  = REGISTRY.invoke("core.pipeline", **args)["_meta"]["integrity"]
+    second = REGISTRY.invoke("core.pipeline", **args)["_meta"]["integrity"]
+    assert first["result_hash"] == second["result_hash"]
 
 
 def test_bad_arguments_and_receipt_shape_are_typed_errors():

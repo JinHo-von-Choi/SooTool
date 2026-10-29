@@ -120,14 +120,16 @@ class TestKrSalaryStatutory:
         assert ins["employment_insurance"] == "27090"    # 3,010,000 x 0.9%
         assert ins["industrial_accident"]  == "0"
         assert r["taxes"]["income_tax"]       == "74350"  # 간이세액표 3,000~3,020천원, 1명
-        assert r["taxes"]["local_income_tax"] == "7435"
-        assert r["net"] == "2635740"
+        # 74,350 x 10% = 7,435 -> 7,430 (10원 미만 버림, 국고금 관리법 제47조제1항 준용)
+        assert r["taxes"]["local_income_tax"] == "7430"
+        assert r["net"] == "2635745"
 
     def test_3010k_family_2(self):
         r = call(monthly_salary="3010000", year=2026, num_dependents=2)
         assert r["taxes"]["income_tax"]       == "56850"
-        assert r["taxes"]["local_income_tax"] == "5685"
-        assert r["net"] == "2654990"
+        # 56,850 x 10% = 5,685 -> 5,680 (10원 미만 버림)
+        assert r["taxes"]["local_income_tax"] == "5680"
+        assert r["net"] == "2654995"
 
     def test_child_reduction_after_march(self):
         """가족 4명, 8세 이상 20세 이하 자녀 1명: 26,690 - 20,830 = 5,860."""

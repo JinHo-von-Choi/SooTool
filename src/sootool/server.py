@@ -7,6 +7,7 @@ from mcp.server.caching import CacheableMethod, CacheHint
 from mcp.server.mcpserver import MCPServer
 from mcp.types import ToolAnnotations
 
+from sootool import __version__
 from sootool.boundary import SooToolServer, with_error_contract
 from sootool.core.registry import REGISTRY, ToolEntry
 from sootool.runtime import (
@@ -128,7 +129,7 @@ def build_server(profile: str = DEFAULT_PROFILE, *, expose_writes: bool = True) 
         raise ValueError(f"알 수 없는 프로파일: {profile!r} (허용: {', '.join(PROFILES)})")
 
     if profile == "full":
-        server = SooToolServer("sootool", instructions=_SOOTOOL_INSTRUCTIONS, cache_hints=_CACHE_HINTS)
+        server = SooToolServer("sootool", version=__version__, instructions=_SOOTOOL_INSTRUCTIONS, cache_hints=_CACHE_HINTS)
         # 결정적 순서(이름 오름차순): 클라이언트 캐시와 프롬프트 캐시 적중률을 위해 등록 순서와 무관하게 고정한다.
         for entry in sorted(REGISTRY.list(), key=lambda e: e.full_name):
             if entry.read_only or expose_writes:
@@ -137,7 +138,7 @@ def build_server(profile: str = DEFAULT_PROFILE, *, expose_writes: bool = True) 
 
     from sootool.facade import register_facade  # noqa: PLC0415
 
-    server = SooToolServer("sootool", instructions=_LEAN_INSTRUCTIONS, cache_hints=_CACHE_HINTS)
+    server = SooToolServer("sootool", version=__version__, instructions=_LEAN_INSTRUCTIONS, cache_hints=_CACHE_HINTS)
     register_facade(server)
     for entry in REGISTRY.list():
         if entry.full_name == "sootool.skill_guide":

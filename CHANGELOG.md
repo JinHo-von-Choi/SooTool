@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-30
+
+REGISTRY 수치: 18 domains, 276 base tools, 10 admin policy-management tools (0.3.0 대비 도구 수 변화 없음).
+
+0.3.0 릴리스 후 남아 있던 보류 결함 4건을 모두 수정했다. 근거·재현·음성 대조는 `docs/reviews/2026-10-30-project-review.md` §9 에 있다.
+
+### Fixed
+
+- **`core.batch` 의 `item_timeout_s` 가 워커 대기 시간까지 세고 있었다 (P1)**: 시한 기준이 제출 시각이라서, 항목 수가 워커 수보다 많으면 실제로는 milliseconds 만에 끝나는 뒤쪽 항목이 대기 시간만으로 타임아웃 처리됐다. 재현: `max_workers=4`, `item_timeout_s=0.4`, 32항목(각 0.08초) → 32항목 중 15항목이 가짜 타임아웃. 기본값(`max_workers=16`, `item_timeout_s=10`, 항목당 1초, 500항목)에서는 전체의 약 3분의 2가 타임아웃 처리되어 `core.batch` 가 사실상 unusable 이었다. 이제 시한은 **워커가 실행을 시작한 시각**부터 센다. 아직 시작되지 않은 항목은 `batch_timeout_s` 가 구속한다. ADR-020 개정.
+- **산출세액 반올림 방향이 도구마다 달랐다 (P2)**: `tax.kr_comprehensive_income_tax` 는 원 미만 절사(DOWN), `payroll.kr_year_end_tax_settlement` 은 원 미만 반올림(HALF_UP)이라 같은 기본세율표로 같은 산출세액을 내면서 1원씩 갈랐다(과세표준 9,999,999 → 599,999 vs 600,000). 연말정산 쪽을 DOWN 으로 통일했다. 두 모듈 README 의 "원 단위 절사" 명세와도 일치한다.
+- **월급 원천징수 지방소득세 끝수 단위 (P2)**: `payroll.kr_salary` 가 지방소득세를 원 미만 버림(1원)으로 계산해 최대 9원 어긋났다. 「국고금 관리법」 제47조제1항(국고금의 수입·지출에서 10원 미만 끝수는 계산하지 아니한다)을 「지방세기본법」 제59조가 지방자치단체 징수금에 준용하므로, **징수 단계**는 10원 단위 절사가 맞다. 국세청 근로소득 원천징수영수증 예시(소득세 9,450 → 지방소득세 940) 와 일치한다. 단위는 정책 키 `local_income_tax.truncation_unit`(값 10)에서 온다.
+- **오래된 조문 인용**: 「지방세법」 제103조의13 은 2014년 지방세법 개편으로 삭제되고 제92조로 옮겨졌다. `payroll.kr_salary`·`tax.kr_pension_income` 과 정책 YAML 5개가 이를 인용하고 있어 제92조제1항 으로 교체했다. 산출세액 단계(`tax.kr_local_income_tax`·`tax.kr_comprehensive_income_tax`·`tax.kr_pension_income`)는 원 미만 절사가 맞으므로 코드는 그대로 두었다.
+- **MCP `serverInfo.version` 이 빈 문자열**: `SooToolServer("sootool", ...)` 에 버전이 전달되지 않아 클라이언트가 SooTool 버전을 식별하지 못했다. `version=__version__` 을 넘기고, 실제 initialize 핸드셰이크로 `serverInfo.version` 을 확인하는 테스트를 추가했다(full·lean 두 프로파일).
+- **`core.calc` 의 `ast.Tuple`**: ADR-017 은 "Call 인자 위치에서만" 이라 명시하고 화이트리스트에도 Tuple 을 넣어 두었지만 위치 검증이 없어 최상위 튜플(`(1, 2)`)도 통과한 뒤 "unreachable" 오류로 떨어졌다. 평가기 분기 + 위치 검증(직접 인자만 허용) + 어느 함수가 튜플을 못 받는지 알려주는 오류를 넣었다.
+
+### Changed
+
+- **파이프라인 스냅샷 크기 상한**: `_PIPELINE_SNAPSHOTS` 가 만료 항목만 정리해 장기 실행 서버에서 무한히 쌓였다. `PIPELINE_SNAPSHOT_MAX`(기본 64) 상한과 LRU 를 넣었다. 읽은 스냅샷은 최근 사용으로 취급한다. `SOOTOOL_LIMIT_PIPELINE_SNAPSHOT_MAX` 로 조정할 수 있다.
+- **영수증 재실행 검증 제외 목록 정합화**: `core.batch`·`core.pipeline` 이 "실행마다 결과가 달라진다" 는 이유로 재실행 검증 대상에서 제외돼 있었으나, 0.3.0 의 결정론 개선으로 그 사유는 이미 무효였다. 두 도구 모두 실제 재검증이 성립하므로 제외 목록에서 제거했다(`core.pipeline_resume` 은 스냅샷 기반이라 유지).
+- `core.batch` 도구 설명에 `item_timeout_s` 가 실행 시간을 구속한다는 점을 명시했다.
+- 문서 정리: `docs/user_guide.md`·`README.md`·`tax/README.md`·`payroll/README.md` 의 끝수 규칙 설명을 단계별로 나눴다(산출세액=원 단위, 징수=10원 단위). 이전에는 "지방세 10원 미만 절사" 라고 뭉뚱그려 적어 구현과 어긋나 있었다.
+
+### Known limitations
+
+- Python 은 실행 중인 스레드를 강제 종료할 수 없다. 배치 타임아웃은 **응답** 의 wall-clock 을 보장할 뿐, 포기된 워커는 도구가 스스로 반환할 때까지 백그라운드에서 돈다. 응답에 모든 항목의 결과는 빠짐없이 담는다.
+
 ## [0.3.0] - 2026-10-30
 
 REGISTRY 수치: 18 domains, 276 base tools, 10 admin policy-management tools (0.2.0 대비 base 4개 증가: finance.roi, finance.cagr, finance.payback_period, accounting.break_even).

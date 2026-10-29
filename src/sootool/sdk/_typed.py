@@ -192,7 +192,7 @@ class _CoreTools(Protocol):
         """Decimal 정밀 덧셈. operands(쉼표, 단위, 공백 없는 숫자 문자열 목록)의 합을 result 문자열로 반환한다. 유효숫자 50자리 안에서 계산하고 별도 반올림은 없다. trace_level 은 summary(기본), full, none. 합계를 직접 암산하지 말고 이 도구로 구한다."""
         ...
     def batch(self, items: list[dict[str, Any]], max_workers: int = 16, item_timeout_s: float = 10.0, batch_timeout_s: float = 60.0, deterministic: bool = True) -> _m8.BatchResult:
-        """서로 독립인 도구 호출 N개를 병렬 실행한다. items 는 id, tool, args 를 가진 객체 목록(최대 500개, id 중복 불가)이고 읽기 전용 도구만 실행된다. 결과는 입력 id 순서이며 항목별 status(ok, error, timeout)와 item_timeout_s, batch_timeout_s 가 적용된다. 앞 결과를 뒤 입력에 쓰려면 core.pipeline 을 쓴다."""
+        """서로 독립인 도구 호출 N개를 병렬 실행한다. items 는 id, tool, args 를 가진 객체 목록(최대 500개, id 중복 불가)이고 읽기 전용 도구만 실행된다. 결과는 입력 id 순서이며 항목별 status(ok, error, timeout)와 item_timeout_s, batch_timeout_s 가 적용된다. item_timeout_s 는 항목의 실행 시간을, batch_timeout_s 는 배치 전체 시간을 구속한다(워커 대기 시간은 item_timeout_s 에 포함되지 않는다). 앞 결과를 뒤 입력에 쓰려면 core.pipeline 을 쓴다."""
         ...
     def calc(self, expression: Num, variables: dict[str, Num] | None = None, precision: int = 50, trace_level: Num = 'summary') -> _m9.CalcResult:
         """AST 기반 안전 수식 평가기. expression 은 사칙, %, //, **, 괄호, 함수(sqrt, abs, floor, ceil, round, log, ln, exp, 삼각함수 등), 상수(pi, e, tau)를 쓸 수 있고 variables 는 Decimal 문자열 전용이다. 결과는 precision(기본 50)자리 십진 문자열이다. 비교, 조건식, 속성 접근은 거부한다. 세금, 금융 공식은 전용 도구를 쓴다."""
@@ -684,7 +684,7 @@ class _PayrollTools(Protocol):
         """한국 연장·야간·휴일근로수당을 계산한다(근로기준법 제56조, 시행령 제6조). ordinary_wage 는 통상임금(원)이고 wage_unit 으로 시급·일급·주급·월급을 고른다(월급은 주 40시간이면 209시간으로 환산). 시간은 Decimal 문자열이며 휴일근로는 하루별 목록으로 받아 8시간 이내 50%, 초과 100%를, 연장 50%와 야간(22~06시) 50%는 겹치면 더한다. employee_count 4명 이하는 가산 없이 근로시간분만 주고 금액은 원 미만 올림이다. 휴일근로 시간을 overtime_hours 에도 넣으면 이중 가산이다."""
         ...
     def kr_salary(self, monthly_salary: Num, year: int, meal_allowance: Num = '0', num_dependents: int = 1, children_8_20: int = 0, *, as_of: Num | None = None, include_proposed: bool = False) -> _m71.KrSalaryResult:
-        """세전 월급(원, 문자열)에서 한국 실수령액을 구한다. 비과세 식대 한도를 뺀 과세급여로 4대보험 근로자 부담분(국민연금 상·하한, 건강보험, 장기요양, 고용보험)과 근로소득 간이세액표 소득세, 지방소득세(소득세의 10%)를 공제하며 건강보험과 장기요양은 10원 미만 버림, 그 밖의 보험료와 지방소득세는 원 미만 버림이다. 시행일별 정책을 as_of 로 고른다. 연봉을 월급 자리에 넣으면 안 된다."""
+        """세전 월급(원, 문자열)에서 한국 실수령액을 구한다. 비과세 식대 한도를 뺀 과세급여로 4대보험 근로자 부담분(국민연금 상·하한, 건강보험, 장기요양, 고용보험)과 근로소득 간이세액표 소득세, 지방소득세(소득세의 10%)를 공제하며 건강보험과 장기요양은 10원 미만 버림, 그 밖의 보험료는 원 미만 버림이고 지방소득세는 징수 끝수 규칙(국고금 관리법 제47조제1항 준용)으로 10원 미만 버림이다. 시행일별 정책을 as_of 로 고른다. 연봉을 월급 자리에 넣으면 안 된다."""
         ...
     def kr_severance_pay(self, severance_amount: Num, service_years: Num, year: int, non_taxable: Num = '0', *, as_of: Num | None = None, include_proposed: bool = False) -> _m72.KrSeverancePayResult:
         """퇴직소득세(소득세법 제48조·제55조)를 구한다. 퇴직급여총액, 근속연수(년, 소수 가능), 비과세액(원 문자열)에서 근속연수공제, 환산급여(12배 후 근속연수로 나눔)공제, 기본세율 누진을 적용하고 근속연수 비율로 환원해 원 단위 반올림한다. 1년 미만 끝수는 1년으로 올려 쓰며 지방소득세는 포함하지 않는다. 근속연수를 개월 수로 넣으면 안 된다."""
@@ -693,7 +693,7 @@ class _PayrollTools(Protocol):
         """한국 주휴수당을 계산한다(근로기준법 제55조제1항·제18조제3항, 시행령 제30조·별표 2). weekly_contract_hours 는 4주 평균 1주 소정근로시간, hourly_ordinary_wage 는 시간급 통상임금(원)이다. 15시간 이상, 소정근로일 개근, 그 주까지 근로관계 존속이면 주휴시간 = min(주 소정근로시간 / 통상 근로자 주 소정근로일 수, 8)에 시급을 곱하고 원 미만은 올린다. 시급제·일급제 근로자용이며 주휴분이 이미 포함된 월급에 더하면 이중 계산이다."""
         ...
     def kr_year_end_tax_settlement(self, annual_gross: Num, prepaid_tax: Num, year: int, dependents: int = 1, extra_deductions: Num = '0', extra_tax_credits: Num = '0', *, as_of: Num | None = None, include_proposed: bool = False) -> _m74.KrYearEndTaxSettlementResult:
-        """연말정산 환급 또는 추가납부액을 간이 모델로 구한다. 연간 총급여에서 근로소득공제, 인당 기본공제, 추가 소득공제를 뺀 과세표준에 소득세 누진세율을 적용하고 근로소득세액공제, 표준세액공제 13만원, 추가 세액공제를 차감해 결정세액(원 미만 버림)을 낸 뒤 기납부세액과 비교한다. 의료비·교육비·기부금은 각 도구로 따로 구해 extra_* 로 넣어야 한다."""
+        """연말정산 환급 또는 추가납부액을 간이 모델로 구한다. 연간 총급여에서 근로소득공제, 인당 기본공제, 추가 소득공제를 뺀 과세표준에 소득세 누진세율을 적용하고 근로소득세액공제, 표준세액공제 13만원, 추가 세액공제를 차감해 결정세액(원 미만 버림)을 낸 뒤 기납부세액과 비교한다. 산출세액도 원 미만 버림이며 tax.kr_comprehensive_income_tax 와 같은 규칙이다. 의료비·교육비·기부금은 각 도구로 따로 구해 extra_* 로 넣어야 한다."""
         ...
 
 
@@ -912,7 +912,7 @@ class _SootoolTools(Protocol):
         """에이전트용 능동 활용 가이드를 반환한다. section 은 triggers(호출 신호표), examples, anti_patterns, playbooks, all(기본) 중 하나이고 lang 은 ko 또는 en 이다. lang 을 생략하면 요청 언어와 SOOTOOL_LOCALE 환경변수를 거쳐 ko 로 정해진다. 세션을 시작할 때 한 번 읽는다."""
         ...
     def verify_receipt(self, tool: Num, arguments: dict[str, Any], receipt: dict[str, Any], public_key_b64: Num | None = None, require_signature: bool = False) -> _m99.VerifyReceiptResult:
-        """계산 영수증(_meta.integrity)을 재실행으로 검증한다. tool 과 arguments 로 같은 계산을 다시 실행해 입력 해시, 결과 해시, 도구 버전, 정책 해시를 대조하고, 서명이 있으면 public_key_b64 로 서명을 검증한다. valid 와 mismatches 를 반환한다. core.batch, core.pipeline 처럼 실행마다 결과가 달라지는 도구는 대상이 아니다."""
+        """계산 영수증(_meta.integrity)을 재실행으로 검증한다. tool 과 arguments 로 같은 계산을 다시 실행해 입력 해시, 결과 해시, 도구 버전, 정책 해시를 대조하고, 서명이 있으면 public_key_b64 로 서명을 검증한다. valid 와 mismatches 를 반환한다. core.batch, core.pipeline 도 재실행 검증 대상이지만, 저장된 스냅샷에서 이어 실행하는 core.pipeline_resume 은 재현되지 않아 대상이 아니다."""
         ...
 
 

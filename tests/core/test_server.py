@@ -26,6 +26,43 @@ def test_build_server_returns_mcp_server():
     assert isinstance(server, MCPServer)
 
 
+# --- serverInfo.version ---
+
+def _server_info(profile: str = "full"):
+    """실제 MCP initialize 핸드셰이크로 serverInfo 블록을 받아온다."""
+    import asyncio
+
+    from mcp.client._memory import InMemoryTransport
+    from mcp.client.session import ClientSession
+
+    from sootool.server import build_server
+
+    async def _handshake():
+        async with InMemoryTransport(build_server(profile)) as streams:
+            async with ClientSession(*streams) as session:
+                result = await session.initialize()
+                return result.server_info
+
+    return asyncio.run(_handshake())
+
+
+def test_server_info_reports_package_version():
+    """serverInfo.version 이 비면 클라이언트가 SooTool 버전을 식별할 수 없다."""
+    from sootool import __version__
+
+    info = _server_info()
+    assert info.name == "sootool"
+    assert info.version == __version__
+    assert info.version != ""
+
+
+def test_lean_profile_also_reports_package_version():
+    """lean 프로파일도 같은 버전을 밝힌다(프로파일별 분기에서 빠지지 않게)."""
+    from sootool import __version__
+
+    assert _server_info("lean").version == __version__
+
+
 def test_registry_has_core_arithmetic():
     from sootool.core.registry import REGISTRY
     names = {e.full_name for e in REGISTRY.list()}

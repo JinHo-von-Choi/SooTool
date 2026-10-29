@@ -13,7 +13,7 @@ from typing import Any, NotRequired, TypedDict
 
 from sootool.core.batch import ExecutionError
 from sootool.core.errors import DomainConstraintError, SooToolError
-from sootool.core.limits import orchestration_scope
+from sootool.core.limits import limit, orchestration_scope
 from sootool.core.registry import ToolRegistry
 from sootool.core.request_context import submit_with_context
 from sootool.core.result_types import ToolResult
@@ -72,6 +72,14 @@ def _evict_expired() -> None:
                if now - snap["_ts"] > _SNAPSHOT_TTL_S]
     for pid in expired:
         del _PIPELINE_SNAPSHOTS[pid]
+
+    # 크기 상한: TTL 이 지나지 않아도 항목 수가 한도를 넘으면 오래된 것부터 버린다.
+    # OrderedDict 앞쪽이 가장 오래된 항목이므로 popitem(last=False) 로 앞에서부터 제거한다.
+    # 스냅샷은 파이프라인 실행 결과와 _meta.integrity 를 통째로 담기 때문에 개수 제한이
+    # 없으면 장기 실행 서버에서 메모리가 계속 늘어난다.
+    cap = limit("PIPELINE_SNAPSHOT_MAX")
+    while len(_PIPELINE_SNAPSHOTS) > cap:
+        _PIPELINE_SNAPSHOTS.popitem(last=False)
 
 
 def _extract_refs(value: Any) -> list[tuple[str, str]]:
@@ -334,8 +342,9 @@ class PipelineExecutor:
             },
         }
         with _SNAPSHOT_LOCK:
-            _evict_expired()
+            # 삽입 후에 정리해야 크기 상한이 정확히 지킨다(정리 후 삽입이면 상한+1 이 남는다).
             _PIPELINE_SNAPSHOTS[pipeline_id] = snapshot
+            _evict_expired()
 
         return {
             "status":        status,
@@ -353,7 +362,11 @@ class PipelineExecutor:
 def get_pipeline_snapshot(pipeline_id: str) -> dict[str, Any] | None:
     with _SNAPSHOT_LOCK:
         _evict_expired()
-        return _PIPELINE_SNAPSHOTS.get(pipeline_id)
+        snapshot = _PIPELINE_SNAPSHOTS.get(pipeline_id)
+        if snapshot is not None:
+            # 읽힌 항목은 최근 사용으로 취급해 LRU 순서를 갱신한다.
+            _PIPELINE_SNAPSHOTS.move_to_end(pipeline_id)
+        return snapshot
 
 
 def resume_pipeline(

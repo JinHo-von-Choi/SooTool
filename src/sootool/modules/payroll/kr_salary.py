@@ -10,8 +10,9 @@ Modified: 2026-10-03
   4. 장기요양 = 건강보험 x (장기요양보험료율 / 건강보험료율) (노인장기요양보험법 제9조제1항)
   5. 고용보험 = 과세급여 x 근로자 요율, 산재보험 근로자 부담 없음
   6. 소득세 = 근로소득 간이세액표(소득세법 시행령 별표 2) 조회, 8세 이상 20세 이하 자녀 차감
-  7. 지방소득세 = 소득세 x 10% (지방세법 제103조의13제1항)
-  건강보험료와 장기요양보험료는 10원 미만(원 단위)을 버리고 나머지 보험료와 지방소득세는 원 미만을 버린다.
+  7. 지방소득세 = 소득세 x 10% (지방세법 제92조제1항), 징수 끝수는 10원 미만 버림
+  건강보험료와 장기요양보험료는 10원 미만(원 단위)을 버리고 나머지 보험료는 원 미만을 버린다.
+  지방소득세는 「국고금 관리법」 제47조제1항 준용(「지방세기본법」 제59조)으로 10원 단위 버림이다.
 """
 from __future__ import annotations
 
@@ -26,6 +27,7 @@ from sootool.core.result_types import PolicyResult
 from sootool.core.rounding import RoundingPolicy, truncate_to_unit
 from sootool.core.rounding import apply as round_apply
 from sootool.modules.payroll._insurance import employee_health_premium
+from sootool.modules.tax.kr_local_income_tax import collection_local_income_tax
 from sootool.modules.tax.kr_withholding import lookup_simple_tax
 from sootool.policy_mgmt.loader import load as policy_load
 from sootool.policy_mgmt.trace_ext import enrich_response
@@ -90,7 +92,8 @@ def _clip(value: Decimal, lo: Decimal, hi: Decimal) -> Decimal:
     description=(
         "세전 월급(원, 문자열)에서 한국 실수령액을 구한다. 비과세 식대 한도를 뺀 과세급여로 4대보험 근로자 부담분"
         "(국민연금 상·하한, 건강보험, 장기요양, 고용보험)과 근로소득 간이세액표 소득세, 지방소득세(소득세의 10%)를 "
-        "공제하며 건강보험과 장기요양은 10원 미만 버림, 그 밖의 보험료와 지방소득세는 원 미만 버림이다. 시행일별 정책을 as_of 로 고른다. 연봉을 월급 자리에 넣으면 안 된다."
+        "공제하며 건강보험과 장기요양은 10원 미만 버림, 그 밖의 보험료는 원 미만 버림이고 지방소득세는 징수 끝수 규칙"
+        "(국고금 관리법 제47조제1항 준용)으로 10원 미만 버림이다. 시행일별 정책을 as_of 로 고른다. 연봉을 월급 자리에 넣으면 안 된다."
     ),
     version="2.0.0",
     policy=True,
@@ -192,7 +195,10 @@ def payroll_kr_salary(
     income_tax = lookup.tax
 
     local_rate = D(str(data["local_income_tax"]["rate_of_income_tax"]))
-    local_tax  = _round_krw(income_tax * local_rate)
+    local_unit = D(str(data["local_income_tax"].get("truncation_unit", 10)))
+    # 징수 단계 끝수: 10원 미만 버림(「국고금 관리법」 제47조제1항 준용, 「지방세기본법」 제59조).
+    # 국세청 근로소득 원천징수영수증 예시: 소득세 9,450 -> 지방소득세 940(945 에서 10원 미만 버림).
+    local_tax  = collection_local_income_tax(income_tax, local_rate, local_unit)
 
     tax_total = income_tax + local_tax
 

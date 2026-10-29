@@ -33,9 +33,12 @@ log = logging.getLogger("sootool.core.receipts")
 SIGNING_KEY_ENV: Final = "SOOTOOL_RECEIPT_KEY_FILE"
 
 # 실행마다 달라지는 값(소요 시간, 실행 id)이 결과에 포함되어 재실행 검증이 성립하지 않는 도구.
+# 재실행으로 같은 결과를 재현할 수 없는 도구.
+# core.batch / core.pipeline 은 실행 시간(elapsed_ms, total_time_ms)과 실행 id
+# (pipeline_id)가 결과에 들어가지만, 그 필드들은 결과 해시에서 제외되므로 같은 입력은
+# 같은 result_hash 를 낸다. 따라서 재실행 검증 대상이다(2026-10-30).
+# core.pipeline_resume 은 저장된 스냅샷에서 이어 실행하므로 재현되지 않아 제외한다.
 NON_REPLAYABLE_TOOLS: Final = frozenset({
-    "core.batch",
-    "core.pipeline",
     "core.pipeline_resume",
     "sootool.verify_receipt",
 })
