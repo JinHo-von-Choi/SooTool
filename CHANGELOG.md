@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-30
+
 REGISTRY 수치: 18 domains, 276 base tools, 10 admin policy-management tools (0.2.0 대비 base 4개 증가: finance.roi, finance.cagr, finance.payback_period, accounting.break_even).
 
 ### Added
@@ -14,10 +16,16 @@ REGISTRY 수치: 18 domains, 276 base tools, 10 admin policy-management tools (0
 - `finance.roi`: 투자수익률 ROI = 순이익 / 투자원가. 순이익은 손실이면 음수, 투자원가는 0보다 커야 한다. 결과는 배수(0.25 = 25%)이며 `decimals`(기본 4)와 `rounding`(기본 HALF_EVEN)을 따른다. 기간을 반영한 연환산 수익률이 아니다.
 - `finance.cagr`: 복합연평균성장률 CAGR = (기말가치 / 초기가치)^(1/기간수) − 1. 초기가치는 0보다 크고 기말가치는 0 이상, `periods`는 1 이상 정수다. 결과는 배수(0.1 = 10%)이며 `decimals`(기본 6)와 `rounding`(기본 HALF_EVEN)을 따른다.
 - `finance.payback_period`: 단순 투자회수기간. 누적 현금흐름이 처음 0 이상이 되는 기간을 직전 기간 수 + 미회수액 / 그 기간 현금흐름으로 보간한다. 끝까지 회수하지 못하면 `null`과 `recovered: false`를 돌려준다. `decimals`(기본 6), `rounding`(기본 HALF_EVEN).
+- ADR-019 도구 수 단일 소스 가드를 pytest로도 옮겼다(`tests/test_tool_count_guard.py`). README 첫 문단·카탈로그 헤더·`pyproject.toml` description·`CHANGELOG.md` 최신 REGISTRY 수치 선언의 숫자가 레지스트리와 일치하는지 검사한다. CI 가드 단계에 도달하지 않아도 pytest 단계에서 드리프트가 드러난다.
+- `SOOTOOL_LIMIT_ORCHESTRATION_DEPTH` 환경변수로 배치·파이프라인 중첩 깊이 한도를 조정할 수 있다(기본 2).
+
 
 ### Changed
 
 - 문서 전면 갱신: README에 구조도, 빠른 시작, 응답 읽는 법 추가. 사용자 가이드, 정책 관리, SDK, 안정성 계약, 릴리스 절차, 보안 정책, 모듈별 README를 현재 동작에 맞게 다시 썼다. 쿡북 예시를 현재 도구 인자와 실행 결과로 교체했다.
+- 모듈 README 7개를 신설(math·payroll·pm·probability·science·symbolic·tax_us)하고 나머지 11개 모듈 README에 ADR-008 이 요구하는 "내부 자료형 및 캐스팅 정책" 절을 추가했다. 자료형 이원화(Decimal·float64·mpmath) 정책이 모듈별로 문서로 고정됐다.
+- 저장소 감사 보고서를 `docs/reviews/2026-10-30-project-review.md` 에 추가했다.
+
 
 ### Removed
 
@@ -34,6 +42,7 @@ REGISTRY 수치: 18 domains, 276 base tools, 10 admin policy-management tools (0
 - 정책 덮어쓰기(`policy_source=override`)를 사용한 계산 결과의 `policy_audit_id` 가 항상 `None` 이던 문제(ADR-016 위반)를 수정했다. 정책 파일의 sha256 로 감사 로그를 역순 탐색해 그 파일을 유효하게 만든 감사 항목을 찾아 전파한다.
 - `core.calc` 이 `decimal.Overflow` 와 `round()` 의 `quantize` 실패를 잡지 못해 `internal_error` 로 새어나가던 문제(ADR-017·ADR-025 위반)를 수정했다. 두 경우 모두 `domain_constraint` 로 분류된다.
 - `CHANGELOG.md` 의 base tools 수 선언(275)이 실제(276)와 어긋나 CI 가드 단계가 실패하던 문제를 바로잡았다.
+- 0.3.0 에서 처음 공개되는 4개 도구(`accounting.break_even`, `finance.roi`, `finance.cagr`, `finance.payback_period`)의 `since` 표기가 이전 릴리스 버전(0.1.0·0.2.0)으로 잘못되어 있던 것을 0.3.0 으로 고쳤다. `finance.roi` 는 `SINCE` 표에 없어 기본값 0.1.0 으로 표시되고 있었다.
 
 ### Added
 

@@ -117,7 +117,7 @@ sootool call tax.kr_income --arg taxable_income=50000000 --arg year=2026 --forma
       "input_hash": "00da5199...",
       "result_hash": "d7a0ecfe...",
       "tool_version": "1.0.0",
-      "sootool_version": "0.2.0"
+      "sootool_version": "0.3.0"
     },
     "engine": "decimal"
   }

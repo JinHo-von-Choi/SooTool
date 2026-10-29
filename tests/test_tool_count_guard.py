@@ -13,7 +13,6 @@ pytest 판정은 CI grep 보다 엄격하다. CI 는 CHANGELOG 전체에서 문�
 from __future__ import annotations
 
 import importlib.util
-import re
 from pathlib import Path
 from typing import Any
 
@@ -32,11 +31,28 @@ def _load_registry_snapshot() -> dict[str, Any]:
     return snapshot
 
 
-def _unreleased_section() -> str:
+def _latest_registry_count_line() -> str:
+    """CHANGELOG 에서 가장 위에 있는 REGISTRY 수치 선언 줄을 돌려준다.
+
+    릴리스 절차를 거치면 내용이 ``[Unreleased]`` 에서 ``[x.y.z]`` 절로 옮겨 가므로,
+    항상 "[Unreleased] 만 검사" 하면 릴리스 직후에 거짓 실패가 난다. 대신 가장 최근
+    릴리스의 선언 줄을 검사한다.
+    """
     text = (_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    match = re.search(r"^## \[Unreleased\](.*?)(?=^## \[)", text, re.MULTILINE | re.DOTALL)
-    assert match, "CHANGELOG.md 에서 [Unreleased] 절을 찾지 못했다"
-    return match.group(1)
+    lines = [ln for ln in text.splitlines() if "REGISTRY 수치:" in ln]
+    assert lines, "CHANGELOG.md 에서 REGISTRY 수치 선언을 찾지 못했다"
+    return lines[0]
+
+
+def test_changelog_unreleased_counts_match_the_registry() -> None:
+    snapshot = _load_registry_snapshot()
+    domains = snapshot["calculation_domains"]
+    base    = snapshot["base_tools"]
+    policy  = snapshot["policy_tools"]
+    expected = f"{domains} domains, {base} base tools, {policy} admin policy-management tools"
+    assert expected in _latest_registry_count_line(), (
+        f"CHANGELOG.md 최신 REGISTRY 수치 선언 불일치: '{expected}' 를 찾지 못했다"
+    )
 
 
 def test_readme_first_paragraph_counts_match_the_registry() -> None:
@@ -67,17 +83,6 @@ def test_pyproject_description_counts_match_the_registry() -> None:
     pyproject = (_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     expected = f"{domains}개 계산 도메인 {base}개 기본 도구 + {policy}개 admin 정책 도구"
     assert expected in pyproject, f"pyproject.toml description 도구 수 불일치: '{expected}' 를 찾지 못했다"
-
-
-def test_changelog_unreleased_counts_match_the_registry() -> None:
-    snapshot = _load_registry_snapshot()
-    domains = snapshot["calculation_domains"]
-    base    = snapshot["base_tools"]
-    policy  = snapshot["policy_tools"]
-    expected = f"{domains} domains, {base} base tools, {policy} admin policy-management tools"
-    assert expected in _unreleased_section(), (
-        f"CHANGELOG.md [Unreleased] 도구 수 불일치: '{expected}' 를 찾지 못했다"
-    )
 
 
 def test_admin_gated_policy_tools_count_is_four() -> None:

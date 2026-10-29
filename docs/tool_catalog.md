@@ -12,7 +12,7 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |도구|버전|since|비용|정확도|정책|읽기 전용|설명|
 |-|-|-|-|-|-|-|-|
 |balance|1.0.0|0.1.0|light|exact||예|분개 목록의 차변 합계와 대변 합계가 같은지 검증한다. entries 는 {account, debit, credit} 항목의 목록이며 금액은 Decimal 문자…|
-|break_even|1.0.0|0.2.0|light|exact||예|손익분기 판매량 = fixed_costs / (unit_price - unit_variable_cost). 금액은 유한한 Decimal 문자열이며 고정비와 단위…|
+|break_even|1.0.0|0.3.0|light|exact||예|손익분기 판매량 = fixed_costs / (unit_price - unit_variable_cost). 금액은 유한한 Decimal 문자열이며 고정비와 단위…|
 |cashflow_operating|1.0.0|0.1.0|light|exact||예|간접법 영업활동현금흐름(CFO)을 계산한다. 당기순이익에 감가상각비, 무형자산상각비, 기타 비현금 항목을 더하고 매출채권 증가와 재고자산 증가는 빼며 매입채무 …|
 |depreciation_declining_balance|1.0.0|0.1.0|light|exact||예|정률법 감가상각 스케줄을 계산한다. 연도별 감가비 = 기초 장부가 x 감가율(rate, 0 초과 1 미만 Decimal 문자열)이며 장부가는 잔존가치 아래로 내…|
 |depreciation_straight_line|1.0.0|0.1.0|light|exact||예|정액법 감가상각 스케줄을 계산한다. 연 감가비 = (취득원가 - 잔존가치) / 내용연수(life_years, 1 이상 정수), 취득원가와 잔존가치는 유한한 0 …|
@@ -142,7 +142,7 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |black_scholes|1.0.0|0.1.0|light|high_precision||예|Black-Scholes 유럽형 옵션의 가격과 델타, 감마, 베가, 세타, 로를 계산한다. option_type 은 call 또는 put, rate, sigma…|
 |bond_duration|1.0.0|0.1.0|light|exact||예|채권의 맥컬리 듀레이션과 수정 듀레이션을 연 단위로 계산한다. face 는 양수, coupon_rate 와 ytm 은 연율 소수 Decimal 문자열, year…|
 |bond_ytm|1.0.0|0.1.0|heavy|exact||예|채권 만기수익률(YTM)을 뉴턴법으로 구한다. price 와 face 는 양수 Decimal 문자열, coupon_rate 는 연 표면이율 소수 (예 0.05)…|
-|cagr|1.0.0|0.2.0|light|exact||예|복합연평균성장률(CAGR)을 계산한다. CAGR = (ending_value / beginning_value)^(1 / periods) - 1. beginnin…|
+|cagr|1.0.0|0.3.0|light|exact||예|복합연평균성장률(CAGR)을 계산한다. CAGR = (ending_value / beginning_value)^(1 / periods) - 1. beginnin…|
 |forward_price|1.0.0|0.1.0|light|high_precision||예|무차익 선도가격을 계산한다. F = S x exp((r - y) x T), 연속복리 기준이며 income_yield(배당률이나 쿠폰수익률, 기본 0)를 차감한다…|
 |futures_price|1.0.0|0.1.0|light|high_precision||예|연속복리 보유비용 모형의 선물 이론가격을 계산한다. F = S x exp((r - q) x T). spot 은 양수, risk_free_rate 와 divide…|
 |fv|1.0.0|0.1.0|light|exact||예|현재 금액의 미래가치를 계산한다. FV = PV x (1+r)^n, 기간마다 복리. present_value 와 rate(기간당 이율, 0 이상, 예 0.05)…|
@@ -150,9 +150,9 @@ not_numeric(수치 계산 아님). 정책 열이 예이면 `year` 와 시점(`as
 |loan_schedule|1.0.0|0.1.0|heavy|exact||예|대출 상환 스케줄을 계산한다. method 는 EQUAL_PAYMENT(원리금균등, 기본) 또는 EQUAL_PRINCIPAL(원금균등). annual_rate …|
 |npv|1.0.0|0.1.0|light|exact||예|순현재가치를 계산한다. NPV = sum(CF_t / (1+r)^t). cashflows 의 index 0 은 t=0 시점이라 할인하지 않으며 초기 투자는 음수…|
 |option_payoff|1.0.0|0.1.0|light|high_precision||예|옵션의 만기 payoff 를 계산한다. option_type 은 vanilla, digital(현금 지급), asian(산술평균), barrier(up_in, …|
-|payback_period|1.0.0|0.2.0|light|exact||예|단순 투자회수기간을 계산한다. cashflows 의 index 0 은 음수인 초기 투자이고 이후 값은 기간별 현금흐름이다. 누적 현금흐름이 처음 0 이상이 되는…|
+|payback_period|1.0.0|0.3.0|light|exact||예|단순 투자회수기간을 계산한다. cashflows 의 index 0 은 음수인 초기 투자이고 이후 값은 기간별 현금흐름이다. 누적 현금흐름이 처음 0 이상이 되는…|
 |pv|1.0.0|0.1.0|light|exact||예|미래 현금흐름의 현재가치를 계산한다. PV = FV / (1+r)^n. future_value 와 rate(기간당 이율, 0 이상, 예 0.05)는 Decima…|
-|roi|1.0.0|0.1.0|light|exact||예|투자수익률(ROI)을 계산한다. ROI = net_profit / investment_cost. net_profit 은 손실이면 음수인 Decimal 문자열이고…|
+|roi|1.0.0|0.3.0|light|exact||예|투자수익률(ROI)을 계산한다. ROI = net_profit / investment_cost. net_profit 은 손실이면 음수인 Decimal 문자열이고…|
 |sharpe_ratio|1.0.0|0.1.0|light|approximate||예|샤프지수 = (평균수익률 - 무위험수익률) / 표본표준편차(n-1)를 계산한다. returns 는 기간 수익률 문자열 목록(2개 이상), risk_free_ra…|
 |sortino_ratio|1.0.0|0.1.0|light|approximate||예|소르티노 비율 = (평균수익률 - 무위험수익률) / 하방편차를 계산한다. 하방편차 = sqrt(mean(min(r - rf, 0)^2)), 평균은 전체 표본 수…|
 |var_historical|1.0.0|0.1.0|light|approximate||예|과거 수익률의 경험적 분위수로 VaR 와 CVaR(기대부족액)을 계산한다. returns 는 기간 수익률 문자열 목록(2개 이상), confidence 는 0 …|
