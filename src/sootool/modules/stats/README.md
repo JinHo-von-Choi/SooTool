@@ -21,6 +21,29 @@
 
 엔진 열은 도구가 정의된 모듈이 쓰는 가장 거친 수치 엔진이다. Decimal은 정확, mpmath는 지정 자릿수(기본 50자리), float64는 배정밀도 근사다. 인자와 기본값은 `sootool tools describe <도구>`로 확인한다.
 
+## 내부 자료형 및 캐스팅 정책
+
+### 내부 자료형
+
+float64 전 구간 모듈이다. numpy·scipy 로만 계산하고 Decimal 산술은 하지 않는다.
+
+|도구|내부 자료형|
+|-|-|
+|14개 도구 전체|float64 (numpy/scipy)|
+
+### 캐스팅 정책
+
+- 입력: 숫자 문자열 목록을 `float(v)` 로 읽어 `np.array(..., dtype=np.float64)` 로 바꾼다. 모듈 공통 헬퍼 `_to_float_array()` 를 쓴다. `core.cast.decimal_to_float64` 을 쓰지 않는다.
+- 출력: `core.cast.float64_to_decimal_str(value, digits)` 로 Decimal 문자열을 만든다. 기본은 `_fmt(x, digits=10)` 이며 p-value 는 `_fmt_p`(10자리), t 통계량은 `_fmt_t`(6자리) 를 쓴다.
+- 이 모듈은 `core.decimal_ops.D()` 와 `core.rounding` 의 `RoundingPolicy` 를 쓰지 않는다. 반올림 자릿수는 `digits` 인자로 고정된다.
+- 위 "계산 방식" 절의 유효숫자 표가 곧 캐스팅 결과의 자릿수 규칙이다.
+
+### 정밀도 한계
+
+- float64 는 유효숫자 15~17자리만 표현한다. 이 모듈은 결과를 10자리(또는 t 통계량 6자리)로 잘라내므로 마지막 유효숫자는 근사값이다.
+- 입력값이 10자리보다 긴 정밀도를 가져도 계산은 float64 에서 일어나므로 그 뒤 자릿수는 버려진다.
+- `bootstrap_ci` 는 재표본 수에 따라 결과가 달라지고, `seed` 가 같으면 재현된다. 재표본 수 상한은 100,000이다.
+
 ## 계산 방식
 
 numpy와 scipy로 float64 계산을 하고, 결과를 Decimal 문자열로 바꿔 돌려준다(`core.cast.float64_to_decimal_str`). 입력은 숫자 문자열 목록이다. 결과의 마지막 유효숫자는 근사값이다.

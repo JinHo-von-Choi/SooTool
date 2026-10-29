@@ -241,10 +241,12 @@ def area_polygon(vertices: list[list[str]]) -> AreaPolygonResult:
 
     # Align nonzero coordinates to a common exponent. Translation needs one
     # extra digit, products twice that span, and summation adds carry digits.
+    # as_tuple().exponent is int for finite Decimals but Literal['n','N','F']
+    # for NaN/Inf, so it is narrowed explicitly (mypy strict).
     coordinates = [value for point in points for value in point if value]
     span = (
         max(value.adjusted() for value in coordinates)
-        - min(value.as_tuple().exponent for value in coordinates) + 1
+        - min(int(value.as_tuple().exponent) for value in coordinates) + 1
         if coordinates else 1
     )
     precision = max(50, 2 * (span + 1) + len(str(2 * len(points))) + 1)

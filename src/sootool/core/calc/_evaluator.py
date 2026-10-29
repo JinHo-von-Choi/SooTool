@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import ast
-from decimal import Decimal, DivisionByZero, InvalidOperation
+from decimal import Decimal, DivisionByZero, InvalidOperation, Overflow
 from typing import Any
 
 import mpmath
@@ -151,6 +151,13 @@ class _Evaluator:
                 return left ** exponent
         except DivisionByZero as exc:
             raise DomainConstraintError("division by zero") from exc
+        except Overflow as exc:
+            # decimal.Overflow 는 InvalidOperation 의 형제 클래스라 함께 잡지 않으면
+            # 내부 오류(internal_error)로 새어나간다. 값이 표현 범위를 넘는 것은 도메인
+            # 제약 위반이므로 도메인 오류로 분류한다(ADR-017 / ADR-025).
+            raise DomainConstraintError(
+                "numeric overflow: 결과가 표현 가능한 범위를 벗어났습니다."
+            ) from exc
         except InvalidOperation as exc:
             raise DomainConstraintError(str(exc) or "invalid Decimal operation") from exc
         raise DisallowedOperationError(
@@ -332,7 +339,14 @@ class _Evaluator:
                 args[0], digits=self.precision,
             )
             quantizer = Decimal(10) ** (-ndigits)
-            return value.quantize(quantizer, rounding="ROUND_HALF_EVEN")
+            try:
+                return value.quantize(quantizer, rounding="ROUND_HALF_EVEN")
+            except (InvalidOperation, Overflow) as exc:
+                # ndigits 가 결과 자릿수를 넘어서면 quantize 가 InvalidOperation 을,
+                # 값이 표현 범위를 넘으면 Overflow 를 던진다. 둘 다 도메인 제약 위반이다.
+                raise DomainConstraintError(
+                    "round: 소수점 자리수가 결과 자릿수를 초과하거나 값이 표현 범위를 벗어났습니다."
+                ) from exc
         if name == "pow":
             self._require_arity(name, args, 2, node)
             base, exponent = args[0], args[1]

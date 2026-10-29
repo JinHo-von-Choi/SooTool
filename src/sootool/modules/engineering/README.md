@@ -63,6 +63,33 @@
 
 엔진 열은 도구가 정의된 모듈이 쓰는 가장 거친 수치 엔진이다. Decimal은 정확, mpmath는 지정 자릿수(기본 50자리), float64는 배정밀도 근사다. 인자와 기본값은 `sootool tools describe <도구>`로 확인한다.
 
+## 내부 자료형 및 캐스팅 정책
+
+### 내부 자료형
+
+mixed 모듈이다. 사칙연산만으로 되는 도구는 Decimal, 초월함수(루트·삼각함수·지수·π)가 필요한 도구는 mpmath 를 거친 Decimal 다. float64 경로는 없다. 위 표의 엔진 열은 모듈 단위의 거친 분류이고, 아래 표는 도구별 실제 경로다.
+
+|도구|내부 자료형|
+|-|-|
+|`elastic_modulus_relate`, `electrical_ohm`, `electrical_power`, `max_power_transfer`, `mech_strain`, `mech_stress`, `moment_of_inertia`, `norton_equivalent`, `resistor_parallel`, `resistor_series`, `si_prefix_convert`, `thevenin_equivalent`, `torque_rotational_power`|Decimal|
+|`capacitor_combine`, `inductor_combine`|Decimal|
+|`ac_impedance`, `rlc_time_constant`, `lc_resonant_frequency`, `rc_filter_cutoff`, `db_convert`, `three_phase_power`, `power_factor_correction`|Decimal + mpmath|
+|나머지 mpmath 표기 도구|Decimal + mpmath|
+
+### 캐스팅 정책
+
+- 입력 숫자는 전부 십진 문자열이며 `core.decimal_ops.D()` 로 읽고, 사칙연산은 `core.decimal_ops` 의 `add` / `sub` / `mul` / `div` 를 쓴다. `div` 는 분모가 0 이면 `DivisionByZeroError` 를 낸다.
+- 초월함수 경로는 모듈 공통 헬퍼(`_sqrt_mp`, `_atan2_deg_mp`, `_pi_dec`)를 거쳐 `mpmath.workdps(50)` 안에서 계산하고 `core.cast.mpmath_to_decimal(digits=30)` 으로 Decimal 문자열로 되돌린다.
+- Decimal 전 구간 도구의 제곱근은 `Decimal.sqrt()` 로 컨텍스트 정밀도까지 계산한다.
+- `core.cast.decimal_to_float64` 과 `float64_to_decimal_str` 는 쓰지 않는다. 이 모듈은 `core.rounding` 의 `RoundingPolicy` 도 쓰지 않아 결과를 `str(Decimal)` 로 그대로 내보낸다.
+
+### 정밀도 한계
+
+- Decimal 경로는 `decimal_ops` 컨텍스트(정밀도 50자리)에서 돈다. 결과는 십진 문자열이므로 소수점은 정확하다.
+- mpmath 경로는 50자리 컨텍스트에서 계산해 유효숫자 30자리로 내보낸다.
+- `moody_friction_factor` 는 콜브룩 방정식을 반복 풀이하므로 반복 횟수와 종료 판정값에 따라 마지막 자리가 달라질 수 있다.
+- `hardness_convert` 는 근사 환산식이라 변환 결과 자체가 근사값이다.
+
 ## 사용 시 주의
 
 - 입력 단위는 SI 기본 단위다(V, A, Ω, H, F, Hz, m, kg, Pa, K 등). µF는 `"0.000001"`처럼 환산해 넣는다. 접두어 환산은 `engineering.si_prefix_convert`를 쓴다.

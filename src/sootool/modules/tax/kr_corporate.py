@@ -19,6 +19,7 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import PolicyResult
+from sootool.core.rounding import apply as round_apply
 from sootool.modules.tax.progressive import (
     BracketBreakdown,
     _calc_progressive,
@@ -172,7 +173,10 @@ def tax_kr_corporate(
     )
 
     min_tax_raw = _calc_minimum_tax(min_base, is_small, sme_graduation_period, data["minimum_tax"])
-    min_tax     = min_tax_raw.quantize(Decimal("1")) if decimals == 0 else min_tax_raw
+    # ADR-002: 반올림은 호출자가 고른다. quantize() 에 rounding 인자를 주지 않으면 앰비언트
+    # 컨텍스트(기본 HALF_EVEN)가 적용되어 호출자의 반올림 지시가 무시된다. base_tax 와 같은
+    # 헬퍼(round_apply)를 써서 정책과 자릿수를 모두 존중한다.
+    min_tax     = round_apply(min_tax_raw, decimals, policy_enum)
 
     if min_base == income:
         tax_without_relief = base_tax
