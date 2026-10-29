@@ -275,7 +275,7 @@ def _register_core_tools() -> None:
         trace.input("b", db)
         return _arithmetic_response(d_div(da, db), trace, trace_level)
 
-    @REGISTRY.tool(namespace="core", name="batch", description="서로 독립인 도구 호출 N개를 병렬 실행한다. items 는 id, tool, args 를 가진 객체 목록(최대 500개, id 중복 불가)이고 읽기 전용 도구만 실행된다. 결과는 입력 id 순서이며 항목별 status(ok, error, timeout)와 item_timeout_s, batch_timeout_s 가 적용된다. 앞 결과를 뒤 입력에 쓰려면 core.pipeline 을 쓴다.")
+    @REGISTRY.tool(namespace="core", name="batch", description="서로 독립인 도구 호출 N개를 병렬 실행한다. items 는 id, tool, args 를 가진 객체 목록(최대 500개, id 중복 불가)이고 읽기 전용 도구만 실행된다. 결과는 입력 id 순서이며 항목별 status(ok, error, timeout)와 item_timeout_s, batch_timeout_s 가 적용된다. item_timeout_s 는 항목의 실행 시간을, batch_timeout_s 는 배치 전체 시간을 구속한다(워커 대기 시간은 item_timeout_s 에 포함되지 않는다). 앞 결과를 뒤 입력에 쓰려면 core.pipeline 을 쓴다.")
     def core_batch(items: list[dict[str, Any]], max_workers: int = 16, item_timeout_s: float = 10.0, batch_timeout_s: float = 60.0, deterministic: bool = True) -> BatchResult:
         ex = BatchExecutor(registry=REGISTRY, max_workers=max_workers, item_timeout_s=item_timeout_s, batch_timeout_s=batch_timeout_s, deterministic=deterministic)
         return ex.run(items=items)

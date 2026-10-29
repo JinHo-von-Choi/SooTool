@@ -3,7 +3,7 @@
   "name": "io.github.JinHo-von-Choi/sootool",
   "title": "SooTool",
   "description": "Deterministic Decimal calculation MCP server: Korean tax, finance, accounting, statistics",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "repository": {
     "url": "https://github.com/JinHo-von-Choi/SooTool",
     "source": "github"
@@ -12,7 +12,7 @@
     {
       "registryType": "pypi",
       "identifier": "sootool",
-      "version": "0.3.0",
+      "version": "0.3.1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

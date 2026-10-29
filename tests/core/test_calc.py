@@ -310,6 +310,48 @@ def test_trace_full_records_steps() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Tuple 위치 계약 (ADR-017 "Call 인자 위치에서만")
+# ---------------------------------------------------------------------------
+
+
+def test_top_level_tuple_is_rejected() -> None:
+    """최상위 튜플은 계산 결과가 될 수 없다. 위치 위반으로 명확히 거절되어야 한다."""
+    with pytest.raises(DisallowedOperationError) as exc:
+        calc("(1, 2)")
+    assert "only permitted as a call argument" in str(exc.value)
+
+
+def test_tuple_inside_arithmetic_is_rejected() -> None:
+    """인자 안쪽 일반 표현식에 섞인 튜플도 위치 위반이다."""
+    with pytest.raises(DisallowedOperationError):
+        calc("1 + (2, 3)")
+    with pytest.raises(DisallowedOperationError):
+        calc("sqrt((1, 2) + 3)")
+
+
+def test_tuple_as_call_argument_reports_the_function_that_cannot_take_it() -> None:
+    """위치는 맞지만 그 함수가 튜플을 못 받으면 어느 함수가 문제인지 알려야 한다."""
+    with pytest.raises(DisallowedOperationError) as exc:
+        calc("sqrt((1, 2))")
+    message = str(exc.value)
+    assert "sqrt" in message
+    assert "tuple" in message
+
+
+def test_tuple_position_error_is_not_the_generic_unreachable_error() -> None:
+    """위치 위반이 "unreachable" 같은 막연한 오류로 떨어지면 안 된다."""
+    with pytest.raises(DisallowedOperationError) as exc:
+        calc("(1, 2)")
+    assert "unreachable" not in str(exc.value)
+
+
+def test_scalars_still_evaluate_normally() -> None:
+    """튜플 위치 검사가 일반 수식 계산을 깨지 않아야 한다."""
+    assert calc("1 + 2")["result"] == "3"
+    assert calc("sqrt(4)")["result"].startswith("2")
+
+
+# ---------------------------------------------------------------------------
 # REGISTRY integration
 # ---------------------------------------------------------------------------
 

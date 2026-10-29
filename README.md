@@ -117,7 +117,7 @@ sootool call tax.kr_income --arg taxable_income=50000000 --arg year=2026 --forma
       "input_hash": "00da5199...",
       "result_hash": "d7a0ecfe...",
       "tool_version": "1.0.0",
-      "sootool_version": "0.3.0"
+      "sootool_version": "0.3.1"
     },
     "engine": "decimal"
   }
@@ -137,7 +137,7 @@ sootool call tax.kr_income --arg taxable_income=50000000 --arg year=2026 --forma
 
 ### 반올림은 호출자가 고른다
 
-반올림 관행이 상황마다 갈리는 금융·회계 도구(부가세, 현금흐름, 감가상각, 환전 등)는 `rounding`(HALF_EVEN, HALF_UP, DOWN, UP, FLOOR, CEIL)과 `decimals`를 받는다. 부가세 역산은 원 단위 절사(DOWN), 회계 일반은 HALF_EVEN처럼 쓰임새마다 규칙이 다르기 때문이다. 법령이 끝수 처리를 정한 세목(예: 지방세 10원 미만 절사)은 그 규칙을 그대로 따르고 도구 설명에 적어 둔다.
+반올림 관행이 상황마다 갈리는 금융·회계 도구(부가세, 현금흐름, 감가상각, 환전 등)는 `rounding`(HALF_EVEN, HALF_UP, DOWN, UP, FLOOR, CEIL)과 `decimals`를 받는다. 부가세 역산은 원 단위 절사(DOWN), 회계 일반은 HALF_EVEN처럼 쓰임새마다 규칙이 다르기 때문이다. 법령이 끝수 처리를 정한 세목(건강보험료·장기요양보험료, 월급 원천징수 지방소득세, 자동차세·등록면허세는 10원 단위 절사)은 그 규칙을 그대로 따르고 도구 설명에 적어 둔다.소득세 산출세액과 개인지방소득세 산출세액은 원 미만 절사다.
 
 ### 시점을 지정한 정책 계산
 

@@ -95,11 +95,9 @@ def _count_and_validate(tree: ast.Expression) -> dict[str, int]:
             elif isinstance(node, ast.Constant):
                 _validate_constant(node)
             elif isinstance(node, ast.Tuple):
-                # Tuple 은 Call 의 인자 위치에서만 정당함. 부모 컨텍스트 검사는
-                # _validate_call 에서 처리되므로 여기서는 AST 단독으로는 허용된
-                # 상태로 남겨둔다. 평가 단계에서 Tuple 값이 직접 결과가 되는
-                # 경로는 존재하지 않는다(최상위는 Expression.body 단일 노드).
-                continue
+                # Tuple 은 Call 의 인자 위치에서만 정당함(ADR-017). 위치 조건은
+                # 순회 후 _validate_tuple_positions 가 실제로 검사한다.
+                pass
             continue
 
         raise DisallowedOperationError(
@@ -108,7 +106,37 @@ def _count_and_validate(tree: ast.Expression) -> dict[str, int]:
             location  = _location_of(node),
         )
 
+    _validate_tuple_positions(tree)
     return counts
+
+
+def _validate_tuple_positions(tree: ast.Expression) -> None:
+    """Tuple 은 Call 의 직접 인자 위치에만 허용한다.
+
+    ADR-017 이 "Call 인자 위치에서만" 이라 명시하고 _ALLOWED_NODE_TYPES 에
+    ast.Tuple 을 넣어 두었지만, 위치 검사는 구현되지 않아 최상위 튜플
+    (``expression="(1, 2)"``)도 화이트리스트를 통과한 뒤 평가 단계에서
+    "unreachable" 오류로 떨어지고 있었다.
+
+    "직접 인자" 로 좁힌 이유: ``sqrt((1, 2) + 3)`` 처럼 인자 안쪽의 일반
+    표현식에 튜플이 섞이면 스칼라 연산자로 튜플이 섞여 값 계산이 모호해진다.
+    중첩 호출은 허용한다(``f(g((1, 2)))`` — ``(1, 2)`` 는 ``g`` 의 직접 인자).
+    """
+    allowed: set[int] = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        for arg in node.args:
+            if isinstance(arg, ast.Tuple):
+                allowed.add(id(arg))
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Tuple) and id(node) not in allowed:
+            raise DisallowedOperationError(
+                node_kind = "Tuple",
+                detail    = "tuple literal is only permitted as a call argument",
+                location  = _location_of(node),
+            )
 
 
 def _validate_call(node: ast.Call) -> None:

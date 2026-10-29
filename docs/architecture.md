@@ -200,13 +200,15 @@ CI(`.github/workflows/ci.yml`의 Tool count single source guard step)는 REGISTR
 결정:
 - `BatchExecutor.run(deterministic=True)` 경로의 결과 수집 루프를 순차 `future.result()` 블록킹 방식에서 `concurrent.futures.as_completed` 기반 수집 + 입력 id 순 재정렬로 전환한다.
 - ADR-011 결정론 invariant(응답 `results` 배열이 입력 `items` 의 id 순서) 를 유지하되, wall-clock 은 `max(item_time)` 에 근접하도록 단축한다. 느린 선행 항목이 뒤따르는 빠른 항목의 결과 수집을 블로킹하지 않는다.
-- `item_timeout_s` 와 `batch_timeout_s` 두 시한을 모두 존중한다. 개별 future 의 제출 시각(`item_started_at`) 을 저장하고, 루프 매 반복에서 `now - item_started_at >= item_timeout_s` 인 future 를 즉시 타임아웃 처리한다. 총 경과가 `batch_timeout_s` 를 초과하면 남은 pending 전체를 타임아웃으로 일괄 종결한다.
+- `item_timeout_s` 와 `batch_timeout_s` 두 시한을 모두 존중한다. **`item_timeout_s` 는 항목의 실행 시간을 구속한다**(2026-10-30 개정). 워커가 실행을 시작한 시각(`exec_started_at`)을 저장하고, 루프 매 반복에서 `now - exec_started_at >= item_timeout_s` 인 future 를 즉시 타임아웃 처리한다. 아직 실행이 시작되지 않은(워커 대기 중) 항목은 실행 시간이 0 이므로 이 검사에 걸리지 않으며, 그 대기 시간은 `batch_timeout_s` 가 대신 구속한다. 총 경과가 `batch_timeout_s` 를 초과하면 남은 pending 전체를 타임아웃으로 일괄 종결한다.
+- 타임아웃 처리된 항목의 워커 스레드는 중단할 수 없다. Python 은 실행 중인 스레드를 강제 종료할 수 없고 `fut.cancel()` 은 대기 중인 항목만 취소하기 때문이다. 따라서 보장되는 것은 **응답의 wall-clock** 이며, 포기된 워커는 도구가 스스로 반환할 때까지 백그라운드에서 계속 돈다. 이 한계를 감추지 않기 위해 `elapsed_ms` 는 실행 시작 시각 기준(실행 전에 타임아웃된 항목은 제출 시각 기준)으로 보고하고, 응답에는 모든 항목의 결과를 빠짐없이 담는다.
 - `deterministic=False` 경로는 이전과 동일하게 완료 순서로 노출하고 응답에 `non_deterministic=True` 플래그를 강제한다. 두 경로 모두 `as_completed` 를 공유하므로 코드 중복을 제거한다.
 
 사유:
 - 기존 순차 `future.result()` 루프는 ThreadPoolExecutor 의 병렬 제출 이점을 수집 단계에서 희석했다. 예를 들어 50개 항목 중 첫 항목만 5초 소요·나머지 49개는 0.1초인 배치에서, 기존 구조는 첫 항목 완료까지 5초 블로킹 후에야 뒤쪽 이미 완료된 항목들을 수집했다. 새 구조는 빠른 항목들을 완료 즉시 수집하므로 동일 배치의 wall-clock 이 `max(item_time)` 수준으로 수렴한다.
 - ADR-011 의 결정론 약속은 응답 `results` 의 인덱스 순서에만 의존한다. 수집 순서를 변경해도 최종 재정렬 단계에서 입력 id 순으로 복원하면 invariant 는 보존된다. 회귀 테스트 `test_batch_deterministic_order_independent_of_completion` 이 이 성질을 감시한다.
 - `item_timeout_s` 를 루프 내 명시적 polling 으로 처리하면 개별 항목의 취소 가능성을 유지하면서도 `as_completed` 의 timeout 파라미터(배치 단위) 와 충돌하지 않는다. 추가적인 회귀 테스트 `test_batch_deterministic_wall_clock_bounded_by_max_item` 이 느린 선행 항목 시나리오에서 wall-clock 상한을 감시한다.
+- `item_timeout_s` 의 기준을 제출 시각에서 실행 시작 시각으로 옮긴 이유: 이전 구현은 워커 대기 시간을 시한에 포함했다. 항목 수가 워커 수보다 많으면 뒤쪽 항목은 실제로는 milliseconds 만에 끝나더라도 대기 시간만으로 타임아웃 처리됐다. 기본값(`max_workers=16`, `item_timeout_s=10`, 항목당 1초, 500항목)에서는 전체 항목의 약 3분의 2 가 가짜 타임아웃이 되어 `core.batch` 가 사실상 unusable 이었다. 회귀 테스트 `test_batch_item_timeout_excludes_queue_wait` 가 이 계약을 감시한다.
 
 ## ADR-021: 결정적 재현성 인증 필드 (_meta.integrity)
 
@@ -290,7 +292,7 @@ R3. Optional Extras 매트릭스 (Optional Extras Matrix)
 - 영수증은 응답의 `_meta.integrity` 블록이다. ADR-021 필드에 `tool`(정규화된 도구 이름)과 `result_hash`를 더한다. `result_hash` 는 응답 본문(result, trace 등)의 canonical JSON sha256 이며 모든 중첩 수준의 `_meta` 를 제외한다. `_meta` 에는 세션 통계와 힌트처럼 호출 이력에 따라 달라지는 값이 들어가므로 해시에 넣지 않는다.
 - `input_hash` 는 도구 시그니처의 기본값을 채운 정규화 입력으로 계산한다. 직접 호출, MCP 호출, `sootool.call` 호출이 같은 해시를 갖는다.
 - `sootool.verify_receipt(tool, arguments, receipt)` 는 같은 도구를 다시 실행해 `tool`, `input_hash`, `result_hash`, `tool_version`, `policy_sha256` 을 대조한다. `sootool_version` 차이는 경고로만 보고한다. 결정적 엔진이라 가능한 검증이며 외부 API 에 의존하는 계산기는 제공할 수 없다.
-- 재실행 검증 제외 대상: `core.batch`, `core.pipeline`, `core.pipeline_resume`(결과에 소요 시간과 실행 id 포함), 쓰기 도구, `sootool.verify_receipt` 자신.
+- 재실행 검증 제외 대상: `core.pipeline_resume`(저장된 스냅샷에서 이어 실행하므로 재현되지 않는다), 쓰기 도구, `sootool.verify_receipt` 자신. `core.batch`·`core.pipeline` 은 2026-10-30 부터 대상에 포함된다. 결과에 소요 시간(`elapsed_ms`·`total_time_ms`)과 실행 id(`pipeline_id`)가 들어가지만 이 필드들은 결과 해시에서 제외되므로(결정론 유지) 같은 입력은 같은 `result_hash` 를 내고 재실행 대조가 성립한다.
 - 선택 서명: 환경변수 `SOOTOOL_RECEIPT_KEY_FILE` 이 가리키는 파일의 base64 ed25519 개인 키로 `signature` 를 제외한 스탬프의 정규화 JSON 에 서명하고 `key_id`(공개 키 sha256 앞 16자)를 함께 싣는다. 키는 파일 경로로만 참조하며 도구 인자로 받지 않는다. 키를 읽을 수 없으면 계산 결과는 그대로 반환하고 `signature_error` 코드를 남긴다.
 - 서명 기반 함수는 `sootool.core.signing` 에 두고 정책 번들 서명(`policy_mgmt.signatures`)과 공유한다.
 - 벽시계 시각은 영수증에 넣지 않는다(결정성 유지). 시각이 필요한 감사 기록은 별도 로그 계층의 책임이다.

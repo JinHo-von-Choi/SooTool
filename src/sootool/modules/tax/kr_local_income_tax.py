@@ -15,11 +15,28 @@ from sootool.core.decimal_ops import D
 from sootool.core.errors import InvalidInputError
 from sootool.core.registry import REGISTRY
 from sootool.core.result_types import TracedResult
-from sootool.core.rounding import RoundingPolicy
+from sootool.core.rounding import RoundingPolicy, truncate_to_unit
 from sootool.core.rounding import apply as round_apply
 
 _VALID_POLICIES = {p.value for p in RoundingPolicy}
 _LOCAL_RATE = Decimal("0.10")
+_COLLECTION_TRUNCATION_UNIT = Decimal(10)
+
+
+def collection_local_income_tax(
+    income_tax: Decimal,
+    rate:        Decimal,
+    unit:        Decimal = _COLLECTION_TRUNCATION_UNIT,
+) -> Decimal:
+    """징수 단계의 개인지방소득세(원천징수액)를 계산한다.
+
+    산출세액(「지방세법」 제92조제3항)과 달리, 징수 단계에는 끝수 규칙이 붙는다.
+    「국고금 관리법」 제47조제1항은 국고금의 수입·지출에서 10원 미만의 끝수를 계산하지
+    아니한다고 하고, 「지방세기본법」 제59조가 지방자치단체의 징수금에 그 준용을 정한다.
+
+    국세청 근로소득 원천징수영수증 예시: 소득세 9,450 -> 지방소득세 940 (945 에서 10원 미만 버림).
+    """
+    return truncate_to_unit(income_tax * rate, unit)
 
 
 class TaxKrLocalIncomeTaxResult(TracedResult):

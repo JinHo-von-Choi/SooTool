@@ -34,11 +34,13 @@ Decimal 전 구간 모듈이다. float64, numpy, mpmath 를 쓰지 않으므로 
 - 계산 결과는 `str(Decimal)` 로 문자열 직렬화한다. `core.cast` 의 `decimal_to_float64`, `float64_to_decimal_str`, `mpmath_to_decimal` 을 쓰지 않는다.
 - 반올림은 `core.rounding.apply(value, decimals, policy)`(= `round_apply`) 로만 한다. 정책과 자릿수는 법령이 정한 대로 고정돼 있고 호출자가 바꾸지 못한다.
 - 4대보험료의 단위 미만 처리는 `core.rounding.truncate_to_unit(value, unit)` 이 0 방향으로 정확히 버린다. 국민연금 기준은 천원(`base_truncation_unit`), 건강보험·장기요양 보험료 기준은 10원(`premium_truncation_unit`)이며 두 값 모두 정책 파일에서 온다.
+- 월급 원천징수 지방소득세는 **징수 단계**라서 끝수 단위가 10원이다. 「국고금 관리법」 제47조제1항(국고금의 수입·지출에서 10원 미만 끝수는 계산하지 아니한다)을 「지방세기본법」 제59조가 지방자치단체 징수금에 준용한다. 단위는 정책 키 `local_income_tax.truncation_unit` 에서 온다. 산출세액 단계(「지방세법」 제92조제3항, `tax.kr_local_income_tax`·`tax.kr_comprehensive_income_tax`)와 구분된다.
 - `kr_gross_from_net` 은 목표 실수령액을 달성하는 최소 정수 월급을 찾기 위해 `to_integral_value(rounding="ROUND_CEILING")` 을 쓴다.
 
 |도구|반올림|
 |-|-|
 |`kr_salary`, `hourly_to_monthly_net`, `kr_bonus_tax`, `kr_year_end_tax_settlement`, `kr_donation_deduction`, `kr_education_deduction`, `kr_medical_deduction`, `kr_health_income_premium`, `kr_national_pension_benefit`|원 단위 절사(`RoundingPolicy.DOWN`, 소수 0자리)|
+|`kr_salary` 의 지방소득세|10원 단위 절사(징수 끝수, `local_income_tax.truncation_unit`)|
 |`kr_severance_pay`|원 단위 반올림(`RoundingPolicy.HALF_UP`, 소수 0자리)|
 |`kr_overtime_pay`|시급 환산값 소수 2자리 `HALF_UP`|
 |`kr_minimum_wage_check`|시급 환산값 소수 2자리 `DOWN`, 부족액은 `CEIL`|

@@ -39,7 +39,8 @@ class VerifyReceiptResult(TracedResult):
         "계산 영수증(_meta.integrity)을 재실행으로 검증한다. tool 과 arguments 로 같은 계산을 "
         "다시 실행해 입력 해시, 결과 해시, 도구 버전, 정책 해시를 대조하고, 서명이 있으면 "
         "public_key_b64 로 서명을 검증한다. valid 와 mismatches 를 반환한다. "
-        "core.batch, core.pipeline 처럼 실행마다 결과가 달라지는 도구는 대상이 아니다."
+        "core.batch, core.pipeline 도 재실행 검증 대상이지만, 저장된 스냅샷에서 이어 "
+        "실행하는 core.pipeline_resume 은 재현되지 않아 대상이 아니다."
     ),
     version="1.0.0",
 )

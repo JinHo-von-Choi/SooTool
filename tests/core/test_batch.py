@@ -167,3 +167,77 @@ def test_batch_deterministic_order_independent_of_completion() -> None:
     out = ex.run(items=items)
     assert [r["id"] for r in out["results"]] == ["a", "b", "c"]
     assert all(r["status"] == "ok" for r in out["results"])
+
+
+# ---------------------------------------------------------------------------
+# item_timeout_s 는 대기 시간이 아니라 실행 시간을 구속한다 (ADR-020 개정)
+# ---------------------------------------------------------------------------
+
+
+def test_batch_item_timeout_excludes_queue_wait() -> None:
+    """워커 대기 시간이 item_timeout_s 에 포함되면 안 된다.
+
+    항목 수가 워커 수보다 많으면 뒤쪽 항목은 제출 후 대기만으로 시한을 넘긴다.
+    실제로는 milliseconds 만에 끝나는 항목이 대량으로 타임아웃 처리되면
+    core.batch 가 사실상 unusable 이 된다. 시한은 실행 시작부터 센다.
+    """
+    r = _make_registry()
+    ex = BatchExecutor(
+        registry=r, max_items=100, max_workers=4, item_timeout_s=0.4, batch_timeout_s=30.0,
+    )
+    items = [
+        {"id": f"i{i}", "tool": "t.slow", "args": {"seconds": 0.08}}
+        for i in range(32)
+    ]
+    out = ex.run(items=items)
+    assert out["count_timeout"] == 0, (
+        f"대기 시간만으로 타임아웃 처리된 항목이 있다: "
+        f"{[r_['id'] for r_ in out['results'] if r_['status'] != 'ok']}"
+    )
+    assert out["count_ok"] == 32
+    assert out["status"] == "all_ok"
+
+
+def test_batch_item_timeout_still_fires_for_a_genuinely_slow_item() -> None:
+    """실행 시간이 시한을 넘으면 여전히 타임아웃 처리되어야 한다."""
+    r = _make_registry()
+    ex = BatchExecutor(registry=r, max_items=10, item_timeout_s=0.2, batch_timeout_s=5.0)
+    out = ex.run(items=[{"id": "s", "tool": "t.slow", "args": {"seconds": 3.0}}])
+    assert out["results"][0]["status"] == "timeout"
+    assert out["results"][0]["error"]["message"] == "item_timeout_s=0.2"
+
+
+def test_batch_timeout_still_bounds_items_that_never_started() -> None:
+    """batch_timeout_s 는 배치 전체 wall-clock 을 구속한다."""
+    r = _make_registry()
+    ex = BatchExecutor(
+        registry=r, max_items=100, max_workers=2, item_timeout_s=30.0, batch_timeout_s=0.5,
+    )
+    items = [
+        {"id": f"i{i}", "tool": "t.slow", "args": {"seconds": 5.0}}
+        for i in range(10)
+    ]
+    t0 = time.monotonic()
+    out = ex.run(items=items)
+    wall = time.monotonic() - t0
+    assert wall < 2.0, f"batch wall-clock {wall:.2f}s 가 batch_timeout_s 를 넘었다"
+    assert out["count_timeout"] == 10
+    assert out["status"] == "all_failed"
+
+
+def test_batch_timeout_response_is_complete_even_when_workers_are_abandoned() -> None:
+    """포기된 워커가 남아 있어도 응답은 모든 항목을 빠짐없이 담아야 한다."""
+    r = _make_registry()
+    ex = BatchExecutor(
+        registry=r, max_items=100, max_workers=2, item_timeout_s=0.2, batch_timeout_s=2.0,
+    )
+    items = [
+        {"id": "slow", "tool": "t.slow", "args": {"seconds": 3.0}},
+        {"id": "fast", "tool": "t.add", "args": {"a": "1", "b": "2"}},
+    ]
+    out = ex.run(items=items)
+    assert [r_["id"] for r_ in out["results"]] == ["slow", "fast"]
+    by_id = {r_["id"]: r_ for r_ in out["results"]}
+    assert by_id["slow"]["status"] == "timeout"
+    assert by_id["fast"]["status"] == "ok"
+    assert by_id["fast"]["result"]["result"] == "3"

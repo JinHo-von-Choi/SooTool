@@ -457,6 +457,8 @@ class EmployeeRate(BaseModel):
 
 class LocalIncomeTaxRate(BaseModel):
     rate_of_income_tax: Decimal
+    # 징수 단계 끝수 단위(원). 「국고금 관리법」 제47조제1항 준용(「지방세기본법」 제59조)으로 10.
+    truncation_unit: Decimal = Decimal(10)
 
     @field_validator("rate_of_income_tax")
     @classmethod

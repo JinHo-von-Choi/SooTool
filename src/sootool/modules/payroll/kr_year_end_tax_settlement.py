@@ -55,7 +55,8 @@ class KrYearEndTaxSettlementResult(PolicyResult):
     description=(
         "연말정산 환급 또는 추가납부액을 간이 모델로 구한다. 연간 총급여에서 근로소득공제, 인당 기본공제, 추가 소득공제를 "
         "뺀 과세표준에 소득세 누진세율을 적용하고 근로소득세액공제, 표준세액공제 13만원, 추가 세액공제를 차감해 결정세액(원 "
-        "미만 버림)을 낸 뒤 기납부세액과 비교한다. 의료비·교육비·기부금은 각 도구로 따로 구해 extra_* 로 넣어야 한다."
+        "미만 버림)을 낸 뒤 기납부세액과 비교한다. 산출세액도 원 미만 버림이며 tax.kr_comprehensive_income_tax 와 같은 규칙이다. "
+        "의료비·교육비·기부금은 각 도구로 따로 구해 extra_* 로 넣어야 한다."
     ),
     version="2.0.0",
     policy=True,
@@ -140,8 +141,11 @@ def payroll_kr_year_end_tax_settlement(
     if taxable < Decimal("0"):
         taxable = Decimal("0")
 
+    # 산출세액은 원 미만 절사(RoundingPolicy.DOWN).
+    # tax.kr_comprehensive_income_tax 의 기본세율 산출세액과 같은 규칙이어야 같은 과세표준이
+    # 같은 산출세액을 낸다. 이전에는 이 자리만 HALF_UP 이라 두 도구가 1원씩 갈렸다.
     computed_tax, _eff, _marg, breakdown = _calc_progressive(
-        taxable, brackets, RoundingPolicy.HALF_UP, 0
+        taxable, brackets, RoundingPolicy.DOWN, 0
     )
 
     labor_credit = labor_income_tax_credit(computed_tax, gross, wh_data)
